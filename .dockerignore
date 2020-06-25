@@ -1,0 +1,9 @@
+.gitignore
+.Rprofile
+*.Rproj
+*.R
+data_raw
+R
+renv
+results
+
