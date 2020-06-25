@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ############################
 
 # gcc through libtool for treePL
-# cmake for IQTREE
+# cmake, libeigen3-dev for IQTREE
 # zlib1g-dev for R package XVector
 # libxml2-dev for R package XML
 # libudunits2-dev for R package units
@@ -27,6 +27,7 @@ RUN apt-get update \
     automake \
     libtool \
     cmake \
+    libeigen3-dev \
     zlib1g-dev \
     libxml2-dev \
     libudunits2-dev \
