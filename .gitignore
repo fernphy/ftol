@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 data_raw
+*_cache
+renv
