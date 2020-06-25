@@ -165,7 +165,7 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
     ~extract_gene_from_gbrecs_list(
       gbrecs_list = .,
       gene = gene),
-  ) %>% flatten_DNA_list()
+  ) %>% jntools::flatten_DNA_list()
   
 }
 

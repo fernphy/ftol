@@ -4,7 +4,7 @@ plan <- drake_plan(
   
   # Data for resolving taxonomic names:
   # Catalog of Life database subsetted to tracheophytes.
-  col_plants = load_col_plants(
+  col_plants = pferns::load_col_plants(
     file_in("data_raw/archive-kingdom-plantae-phylum-tracheophyta-bl3/taxa.txt")),
   
   # Modified PPGI taxonomy
