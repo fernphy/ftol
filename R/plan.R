@@ -12,28 +12,33 @@ plan <- drake_plan(
   
   # Load data ----
   
+  # Use `target("path", format = "file")` to track file contents
+  
   # Data for resolving taxonomic names:
   # Catalog of Life database subsetted to tracheophytes.
-  col_plants = pferns::load_col_plants(
-    file_in("data_raw/archive-kingdom-plantae-phylum-tracheophyta-bl3/taxa.txt")),
+  col_plants_path = target("data_raw/archive-kingdom-plantae-phylum-tracheophyta-bl3/taxa.txt", format = "file"),
+  col_plants = pferns::load_col_plants(col_plants_path),
   
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
-  ppgi_taxonomy = read_csv(file_in("data_raw/ppgi_taxonomy_mod.csv")),
+  ppgi_taxonomy_path = target("data_raw/ppgi_taxonomy_mod.csv", format = "file"),
+  ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
   
   # List of plastid coding genes from Wei et al 2017
-  target_sanger_genes = read_lines("data_raw/wei_2017_coding_genes.txt"),
+  target_sanger_genes_path = target("data_raw/wei_2017_coding_genes.txt", format = "file"),
+  target_sanger_genes = read_lines(target_sanger_genes_path),
   
   # Outgroup plastome accessions
-  plastome_outgroups = read_csv(file_in("data_raw/plastome_outgroups.csv")),
+  plastome_outgroups_path = target("data_raw/plastome_outgroups.csv", format = "file"),
+  plastome_outgroups = read_csv(plastome_outgroups_path),
   
   # Calibration dates after Testo and Sundue 2016
-  plastome_calibration_dates = load_calibration_dates(
-    file_in("data_raw/testo_sundue_2016_calibrations.csv")),
+  plastome_calibration_dates_path = target("data_raw/testo_sundue_2016_calibrations.csv", format = "file"),
+  plastome_calibration_dates = load_calibration_dates(plastome_calibration_dates_path),
   
   # Manually selected synonyms for resolving names of plastid genes
-  genbank_names_with_mult_syns_select = read_csv(
-    "data_raw/genbank_names_with_mult_syns_select.csv"),
+  genbank_names_with_mult_syns_select_path = target("data_raw/genbank_names_with_mult_syns_select.csv", format = "file"),
+  genbank_names_with_mult_syns_select = read_csv(genbank_names_with_mult_syns_select_path),
   
   # Download individual plastid sequences from GenBank----
   
