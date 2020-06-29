@@ -46,7 +46,7 @@ fetch_genbank_refs <- function(query) {
   
   # Exract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  print(glue::glue("Found {num_hits} sequences (UIDs)"))
+  print(glue("Found {num_hits} sequences (UIDs)"))
   
   # Download complete GenBank record for each and write it to a temporary file
   temp_dir <- tempdir()
@@ -92,14 +92,14 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   # Format GenBank query: all ferns matching the gene name.
   # Assume that we only want single genes or small sets of genes, not entire plastome.
   # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-  query <- glue::glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
   
   # Get list of GenBank IDs (GIs)
   uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
   
   # Exract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  print(glue::glue("Found {num_hits} sequences (UIDs)"))
+  print(glue("Found {num_hits} sequences (UIDs)"))
   
   # Download complete GenBank record for each and write it to a temporary file
   temp_dir <- tempdir()
@@ -186,7 +186,7 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   # Format GenBank query: all ferns matching the gene name and date range.
   # Assume that we only want single genes or small sets of genes, not entire plastome.
   # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-  query <- glue::glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
   
   # Fetch standard metadata
   metadata <- gbfetch::fetch_metadata(query) %>%
@@ -250,7 +250,7 @@ join_genbank_fasta_with_meta <- function (seqs, metadata, ...) {
   missing_from_seqs <- anti_join(metadata, seqs_tibble, by = "accession")
   message <- assertthat::validate_that(
     nrow(missing_from_seqs) == 0,
-    msg = warning(glue::glue(
+    msg = warning(glue(
       "The following accessions are in the metadata 
      but missing from sequences, and will be dropped: 
      {paste(missing_from_seqs$accession, collapse = ', ')}")))
@@ -517,7 +517,7 @@ blast_rogues <- function (metadata_with_seqs, ...) {
   # Create OTU column for naming sequences as species_accession
   metadata_with_seqs <- dplyr::mutate(
     metadata_with_seqs,
-    otu = glue::glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
+    otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
   )
   
   # Extract sequences from metadata and rename
@@ -617,7 +617,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
     dplyr::add_count(family) %>%
     dplyr::filter(n == 1) %>%
     dplyr::mutate(
-      otu = glue::glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
     dplyr::pull(otu)
   
@@ -711,7 +711,7 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
     dplyr::slice(1) %>%
     # Set OTU name for naming sequences
     dplyr::mutate(
-      otu = glue::glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
     )
   
   # Extract sequences from metadata and rename
@@ -841,12 +841,12 @@ filter_genbank_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
     metadata_with_seqs %>%
     dplyr::mutate(genus = stringr::str_split(species, " ") %>% purrr::map_chr(1)) %>%
     dplyr::anti_join(ppgi, by = "genus") %>%
-    dplyr::mutate(msg = glue::glue("{accession} ({genus})")) %>%
+    dplyr::mutate(msg = glue("{accession} ({genus})")) %>%
     dplyr::arrange(genus)
   
   assertthat::validate_that(
     nrow(genus_not_in_ppgi) == 0,
-    msg = warning(glue::glue(
+    msg = warning(glue(
       "{nrow(genus_not_in_ppgi)} accessions do not have genera in ppgi and will be dropped: 
        {paste(genus_not_in_ppgi$msg, collapse = ', ')}"))
   )
@@ -898,7 +898,7 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used) {
     # FIXME: work-around to avoid joining on NA vouchers: treat each as a distinct sample
     mutate(
       row_num = 1:nrow(.),
-      specimen_voucher = ifelse(is.na(specimen_voucher), glue::glue("specimen_missing_{row_num}"), specimen_voucher)
+      specimen_voucher = ifelse(is.na(specimen_voucher), glue("specimen_missing_{row_num}"), specimen_voucher)
       ) %>%
     # Convert to wide format, joining on voucher
     # - first split into a list of dataframes by gene
@@ -1382,9 +1382,9 @@ trimal_auto <- function (seqs, echo = FALSE, ...) {
   # Write out alignment to temp dir
   temp_wd <- tempdir()
   
-  in_file_name <- glue::glue("{digest::digest(seqs)}.fasta")
+  in_file_name <- glue("{digest::digest(seqs)}.fasta")
   
-  out_file_name <- glue::glue("{digest::digest(seqs)}.aln")
+  out_file_name <- glue("{digest::digest(seqs)}.aln")
   
   ape::write.FASTA(seqs, fs::path(temp_wd, in_file_name))
   
@@ -1725,7 +1725,7 @@ run_treepl_cv <- function (
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
   
   assertthat::assert_that(all(taxa %in% phy$tip.label),
-                          msg = glue::glue(
+                          msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
   
@@ -1809,7 +1809,7 @@ run_treepl_prime <- function (
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
   
   assertthat::assert_that(all(taxa %in% phy$tip.label),
-                          msg = glue::glue(
+                          msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
   
@@ -1909,7 +1909,7 @@ run_treepl <- function (
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
   
   assertthat::assert_that(all(taxa %in% phy$tip.label),
-                          msg = glue::glue(
+                          msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
   
