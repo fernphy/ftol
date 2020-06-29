@@ -371,6 +371,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
   
   # - categorize the results into those that had
   # multiple hits within a data source vs. those that didn't
+  if(any(names_resolved_to_other_sources_raw$n > 1)) {
   names_resolved_to_other_sources_mult_hits <-
     names_resolved_to_other_sources_raw %>%
     filter(n > 1) %>%
@@ -382,8 +383,10 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
       synonyms = current_name_string,
       name_resolved_manual = NA_character_,
       name_resolved_manual_source = NA_character_
-    )
-  
+    ) } else {
+      names_resolved_to_other_sources_mult_hits <- tibble()
+    }
+    
   # Combine results of names with mult. synonyms
   # *add to tally at end
   names_with_mult_syns <-
@@ -393,7 +396,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
   # *add to tally at end
   names_resolved_to_other_sources <-
     names_resolved_to_other_sources_raw %>%
-    anti_join(names_resolved_to_other_sources_mult_hits, by = c(user_supplied_name = "query")) %>%
+    filter(n == 1) %>%
     mutate(
       data_source_title = factor(
         data_source_title, 
@@ -410,7 +413,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
       data_source_title, # To track database version
       imported_at, # To track database version
       matched_name, 
-      synonyms = current_name_string,
+      synonyms = ifelse("current_name_string" %in% colnames(.), current_name_string, NA_character_),
       name_resolved_manual = NA_character_,
       name_resolved_manual_source = NA_character_
     )
@@ -423,7 +426,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
     anti_join(names_with_mult_syns, by = "query")
   
   ### Check to make everything is accounted for
-  assert_that(isTRUE(all.equal(
+  assertthat::assert_that(isTRUE(all.equal(
     bind_rows(
       non_valid_queries %>% select(query),
       names_resolved_auto %>% select(query),
@@ -483,7 +486,7 @@ resolve_genbank_names_final <- function (
       names_resolved_to_other_sources, 
       name_resolution_syns_to_use) %>%
     assert(is_uniq, query) %>%
-    add_parsed_names(scientificName, species)
+    taxastand::add_parsed_names(scientificName, species)
   
   # Update names in rbcL data to resolved names, and 
   # only keep sequences with resolved names.
