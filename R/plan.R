@@ -31,6 +31,10 @@ plan <- drake_plan(
   plastome_calibration_dates = load_calibration_dates(
     file_in("data_raw/testo_sundue_2016_calibrations.csv")),
   
+  # Manually selected synonyms for resolving names of plastid genes
+  genbank_names_with_mult_syns_select = read_csv(
+    "data_raw/genbank_names_with_mult_syns_select.csv"),
+  
   # Download individual plastid sequences from GenBank----
   
   # Download fern plastid gene fasta files
@@ -127,9 +131,7 @@ plan <- drake_plan(
     col_plants
   ),
 
-  # - read-in manually selected synonyms
-  genbank_names_with_mult_syns_select = read_csv(
-    "data_raw/genbank_names_with_mult_syns_select.csv"),
+  # (manually select synonyms, save as genbank_names_with_mult_syns_select.csv)
 
   # - then determine final names to use, filtering out names that didn't match.
   genbank_seqs_names_resolved = resolve_genbank_names_final(
