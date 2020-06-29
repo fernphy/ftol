@@ -1091,8 +1091,7 @@ combine_genbank_with_plastome <- function (
 #' 
 download_plastome_metadata <- function (start_date = "1980/01/01", end_date, outgroups) {
   
-  
-  assertthat::assert_that(assertthat::is.string(gene))
+  assertthat::assert_that(assertthat::is.string(start_date))
   
   assertthat::assert_that(assertthat::is.string(end_date))
   
