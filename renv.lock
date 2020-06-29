@@ -25,6 +25,13 @@
       "Source": "Bioconductor",
       "Hash": "ae191b5608f175de0f69b6302390c705"
     },
+    "BiocManager": {
+      "Package": "BiocManager",
+      "Version": "1.30.10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "db75371846625725e221470b310da1d5"
+    },
     "Biostrings": {
       "Package": "Biostrings",
       "Version": "2.56.0",
@@ -378,6 +385,13 @@
       "Repository": "CRAN",
       "Hash": "db63a44aab5aadcb6bf2f129751d129a"
     },
+    "clustermq": {
+      "Package": "clustermq",
+      "Version": "0.8.9",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "496acc77604d473929cb543431ff7b95"
+    },
     "coda": {
       "Package": "coda",
       "Version": "0.19-3",
@@ -634,8 +648,8 @@
       "Package": "gbfetch",
       "Version": "0.1.0",
       "Source": "GitHub",
-      "Remotes": "joelnitta/jntools",
       "RemoteType": "github",
+      "Remotes": "joelnitta/jntools",
       "RemoteHost": "api.github.com",
       "RemoteRepo": "gbfetch",
       "RemoteUsername": "joelnitta",
@@ -928,6 +942,13 @@
       "Repository": "CRAN",
       "Hash": "6dfe8bf774944bd5595785e3229d8771"
     },
+    "narray": {
+      "Package": "narray",
+      "Version": "0.4.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b275f9d21e812b6338f4c3e9d70b2209"
+    },
     "natserv": {
       "Package": "natserv",
       "Version": "1.0.0",
@@ -1205,6 +1226,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "6a20c2cdf133ebc7ac45888c9ccc052b"
+    },
+    "rzmq": {
+      "Package": "rzmq",
+      "Version": "0.9.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "19feb38a48f30f0eadd56c1b06c58d92"
     },
     "scales": {
       "Package": "scales",

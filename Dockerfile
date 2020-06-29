@@ -12,6 +12,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libxml2-dev for R package XML
 # libudunits2-dev for R package units
 # libgdal-dev for R package sf
+# libzmq3-dev for R package rzmq -> clustermq
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     gcc \
@@ -32,6 +33,7 @@ RUN apt-get update \
     libxml2-dev \
     libudunits2-dev \
     libgdal-dev \
+    libzmq3-dev \
     mafft \
     ncbi-blast+ \
   && apt-get clean
