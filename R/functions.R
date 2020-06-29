@@ -895,6 +895,11 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used) {
     arrange(desc(length)) %>%
     slice(1) %>%
     ungroup %>%
+    # FIXME: work-around to avoid joining on NA vouchers: treat each as a distinct sample
+    mutate(
+      row_num = 1:nrow(.),
+      specimen_voucher = ifelse(is.na(specimen_voucher), glue::glue("specimen_missing_{row_num}"), specimen_voucher)
+      ) %>%
     # Convert to wide format, joining on voucher
     # - first split into a list of dataframes by gene
     group_by(gene) %>%
@@ -909,11 +914,15 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used) {
       )
     ) %>%
     # Join the gene sequences by species + voucher
-    reduce(full_join, by = c("species", "specimen_voucher"), na_matches = "never") %>%
+    # FIXME: na_matches = "never" is currently breaking with full_join()
+    # once this bug gets fixed in dplyr, can delete the work-around above
+    reduce(full_join, by = c("species", "specimen_voucher"), na_matches = "na") %>%
     mutate_at(vars(contains("length")), ~replace_na(., 0)) %>%
     # Add total length of all genes (need to sum row-wise)
     # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
-    mutate(total_length = pmap_dbl(select(., contains("length")), sum))
+    mutate(total_length = pmap_dbl(select(., contains("length")), sum)) %>%
+    # FIXME: last part of work-around: convert "specimen_missing" back to NA. remove this once bug gets fixed in dplyr.
+    mutate(specimen_voucher = ifelse(str_detect(specimen_voucher, "specimen_missing"), NA, specimen_voucher))
   
   ### Select final sequences ###
   
