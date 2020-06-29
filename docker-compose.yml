@@ -1,0 +1,11 @@
+version: "3"
+services:
+  analysis:
+    image: joelnitta/ftol:4.0.0
+    ports:
+      - "7070:8787"
+    volumes:
+      - "~/:/home/rstudio/ftol"
+    environment:
+      DISABLE_AUTH: "true"
+    working_dir: /home/rstudio/ftol
