@@ -1,3 +1,12 @@
+# Define variables used to generate plan
+#
+# - Target plastid fern genes to download individually 
+# (not as part of a plastome)
+target_genes <- c("rbcL", "atpA", "atpB", "rps4")
+# - Minimum lengths for each gene (in case this needs to be adjusted per gene)
+min_lengths <- c(400, 400, 400, 400)
+
+
 plan <- drake_plan(
   
   # Load data ----
@@ -107,20 +116,20 @@ plan <- drake_plan(
   # Combine cleaned genes into single dataframe
   genbank_seqs_rogues_removed_all_genes = target(
     bind_rows(genbank_seqs_rogues_removed, .id = "gene"),
-    transform = combine(genbank_seqs_rogues_removed),
+    transform = combine(genbank_seqs_rogues_removed, .id = gene),
   ),
-  
-  # Resolve names: 
+
+  # Resolve names:
   # - first run automatic name resolution
   genbank_seqs_names_resolved_auto = resolve_genbank_names_auto(
     genbank_seqs_rogues_removed_all_genes,
     col_plants
   ),
-  
+
   # - read-in manually selected synonyms
   genbank_names_with_mult_syns_select = read_csv(
     "data_raw/genbank_names_with_mult_syns_select.csv"),
-  
+
   # - then determine final names to use, filtering out names that didn't match.
   genbank_seqs_names_resolved = resolve_genbank_names_final(
     names_resolved_auto = genbank_seqs_names_resolved_auto$names_resolved_auto,
@@ -128,7 +137,7 @@ plan <- drake_plan(
     name_resolution_syns_to_use = genbank_names_with_mult_syns_select,
     combined_metadata = genbank_seqs_rogues_removed_all_genes
   ),
-  
+
   # Select final GenBank accessions.
   # Select one specimen per species, prioritizing in order
   # - 1: specimens with rbcL + any other gene
@@ -139,57 +148,57 @@ plan <- drake_plan(
   
   # Download core set of plastid genes from plastomes ----
   # ca. 100 species by 60 genes
-  
+
   # Download plastome metadata (accessions and species)
   plastome_metadata = download_plastome_metadata(
     query = "genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete)",
     outgroups = plastome_outgroups),
-  
+
   # Resolve species names in metadata using CoL plants as the taxonomic standard.
   plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_metadata,
     col_plants),
-  
+
   # Extract list of accessions for looping
   plastome_accessions = plastome_metadata_renamed$accession,
-  
+
   # Download the coding genes for each plastome one at a time.
   plastid_seqs = target(
     gbfetch::fetch_gene_from_genome(
-      target_sanger_genes, 
+      target_sanger_genes,
       plastome_accessions),
     dynamic = map(plastome_accessions)
   ),
-  
+
   # Clean up the downloaded sequences: remove NULL values, duplicated genes, etc.
   cleaned_plastid_seqs = target(
     clean_plastid_seqs(plastid_seqs),
     dynamic = map(plastid_seqs)
   ),
-  
+
   # Combine results of cleaning downloaded sequences
   # and set names by accession.
   # Use readd() to convert the object back to a static object from dynamic.
-  cleaned_plastid_seqs_list = readd(cleaned_plastid_seqs, cache = plastid_cache) %>% 
+  cleaned_plastid_seqs_list = readd(cleaned_plastid_seqs, cache = plastid_cache) %>%
     purrr::set_names(plastome_accessions),
-  
+
   # Select final accessions / genes
   # - best representative accession per species
   # - only include genes and accessions with > 50% occupancy.
   plastid_selection = select_plastid_seqs(
     cleaned_plastid_seqs_list, plastome_metadata_renamed, "species"),
-  
+
   # Reformat as list of unaligned genes.
   plastid_genes_unaligned = extract_seqs_by_gene(cleaned_plastid_seqs_list, plastid_selection),
-  
+
   # Combine genes from GenBank with genes from plastomes ----
-  
+
   # Combine raw GenBank fasta sequences.
   raw_fasta_all_genes = target(
     bind_rows(genbank_seqs_combined_raw, .id = "gene"),
     transform = combine(genbank_seqs_combined_raw),
   ),
-  
+
   # Combine genes from GenBank with genes from plastomes (still unaligned).
   plastid_genes_unaligned_combined = combine_genbank_with_plastome(
     raw_fasta_all_genes,
@@ -198,7 +207,7 @@ plan <- drake_plan(
     plastome_metadata_renamed,
     plastid_genes_unaligned
   ),
-  
+
   # Align each gene.
   plastid_genes_aligned = purrr::map(
     plastid_genes_unaligned_combined,
@@ -206,44 +215,44 @@ plan <- drake_plan(
       x = .,
       options = "--adjustdirection",
       exec = "/home/nittaj/miniconda3/envs/pacferns/bin/mafft")),
-  
+
   # Trim alignments.
   plastid_genes_aligned_trimmed = purrr::map(
     plastid_genes_aligned,
     trimal_auto),
-  
+
   # Rename sequences in each gene as species
   # (using underscores, not spaces).
-  # - first combine accession + resolved name for GenBank genes and 
+  # - first combine accession + resolved name for GenBank genes and
   # plastome genes
   resolved_names_all = bind_rows(
     select(genbank_seqs_names_resolved, accession, species),
     select(plastome_metadata_renamed, accession, species)
   ) %>% unique,
-  
+
   # - then use the combined, resolved names to rename each alignment
   # by species instead of accession
   plastid_genes_aligned_trimmed_renamed = purrr::map(
     plastid_genes_aligned_trimmed, rename_alignment,
     name_metadata = resolved_names_all),
-  
+
   # Concatenate alignments by species name.
   plastome_alignment = concatenate_genes(
     plastid_genes_aligned_trimmed_renamed),
-  
+
   # Generate tree.
   plastome_tree = jntools::iqtree(
     plastome_alignment,
     m = "GTR+I+G", bb = 1000, nt = "AUTO",
     redo = FALSE, echo = TRUE, wd = here::here("iqtree")),
-  
+
   # Dating analysis with treepl ----
-  
+
   # Root tree on bryophytes
   plastome_tree_rooted = ape::root(
     plastome_tree,
     c("Anthoceros_angustus", "Marchantia_polymorpha", "Physcomitrella_patens")),
-  
+
   # Run initial treepl search to identify smoothing parameter
   treepl_cv_results = run_treepl_cv(
     phy = plastome_tree_rooted,
@@ -258,7 +267,7 @@ plan <- drake_plan(
     nthreads = 1,
     echo = TRUE
   ),
-  
+
   # Run priming analysis to determine optimal states for other parameters
   treepl_priming_results = run_treepl_prime(
     phy = plastome_tree_rooted,
@@ -272,7 +281,7 @@ plan <- drake_plan(
     nthreads = 1,
     echo = TRUE
   ),
-  
+
   # Run treePL dating analysis
   treepl_dating_results = run_treepl(
     phy = plastome_tree_rooted,
@@ -287,5 +296,5 @@ plan <- drake_plan(
     nthreads = 7,
     echo = TRUE
   )
-  
+
 )

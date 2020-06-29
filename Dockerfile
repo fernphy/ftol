@@ -80,6 +80,7 @@ RUN git clone https://github.com/blackrim/treePL.git \
   && ./configure \
   && make \
   && echo '/usr/lib64' > /etc/ld.so.conf.d/lib64.conf \
+  && ldconfig \
   && cp treePL /usr/local/bin
 
 ### gnparser ###
@@ -102,5 +103,13 @@ RUN git clone https://github.com/Cibiv/$APP_NAME.git && \
 	cmake -DIQTREE_FLAGS=omp .. && \
 	make && \
 	cp iqtree /usr/local/bin
+	
+### trimAL ###
+WORKDIR $APPS_HOME
+ENV APP_NAME=trimal
+RUN git clone https://github.com/scapella/$APP_NAME.git && \
+	cd $APP_NAME/source && \
+	make && \
+	cp trimal /usr/local/bin
 
 WORKDIR /home/rstudio/
