@@ -10,6 +10,11 @@ options(rstudio_drake_cache = plastid_cache)
 # Specify parallel back-end
 options(clustermq.scheduler = "multicore")
 
+# Specify non-global environment
+# to get around taxizez modifying global env
+# (cf https://github.com/ropensci/drake/issues/749)
+envir <- new.env(parent = globalenv())
+
 # Configure settings for making plan
 # (choose either parallel or serial, comment-out the other)
 
@@ -19,7 +24,8 @@ drake_config(
   parallelism = "clustermq",
   jobs = 6, # Change to match number of cores available!
   cache = plastid_cache,
-  seed = 0
+  seed = 0,
+  envir = envir
 )
 
 # - serial
