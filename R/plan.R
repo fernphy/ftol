@@ -5,7 +5,8 @@
 target_genes <- c("rbcL", "atpA", "atpB", "rps4")
 # - Minimum lengths for each gene (in case this needs to be adjusted per gene)
 min_lengths <- c(400, 400, 400, 400)
-
+# - Most recent date cutoff for sampling genes
+date_cutoff <- "2020/06/28"
 
 plan <- drake_plan(
   
@@ -35,13 +36,13 @@ plan <- drake_plan(
   # Download fern plastid gene fasta files
   # (target genes defined in plastid_make.R)
   raw_fasta = target(
-    fetch_fern_gene(gene, start_date = "1980/01/01", end_date = "2019/12/10"),
+    fetch_fern_gene(gene, end_date = date_cutoff),
     transform = map(gene = !!target_genes)
   ),
   
   # Download fern plastid gene metadata
   raw_meta = target(
-    fetch_fern_metadata(gene, start_date = "1980/01/01", end_date = "2019/12/10"),
+    fetch_fern_metadata(gene, end_date = date_cutoff),
     transform = map(gene = !!target_genes)
   ),
   
@@ -151,7 +152,7 @@ plan <- drake_plan(
 
   # Download plastome metadata (accessions and species)
   plastome_metadata = download_plastome_metadata(
-    query = "genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete)",
+    end_date = date_cutoff,
     outgroups = plastome_outgroups),
 
   # Resolve species names in metadata using CoL plants as the taxonomic standard.

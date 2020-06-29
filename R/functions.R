@@ -1080,7 +1080,8 @@ combine_genbank_with_plastome <- function (
 
 #' Download plastome metadata
 #'
-#' @param query Genbank query to look up plastomes
+#' @param start_date Earliest date to download
+#' @param end_date Most recent date to download
 #' @param outgroups Dataframe of genbank accession numbers
 #' and species names to use for outgroups (taxa that wouldn't
 #' be captured by the query)
@@ -1088,7 +1089,15 @@ combine_genbank_with_plastome <- function (
 #' @return Tibble of GenBank metadata combining the results of
 #' the query and the outgroups.
 #' 
-download_plastome_metadata <- function (query, outgroups) {
+download_plastome_metadata <- function (start_date = "1980/01/01", end_date, outgroups) {
+  
+  
+  assertthat::assert_that(assertthat::is.string(gene))
+  
+  assertthat::assert_that(assertthat::is.string(end_date))
+  
+  # Format GenBank query: all ferns plastomes within specified dates
+  query = glue('genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete) AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
   
   # Download metadata and accession numbers.
   pterido_metadata <- gbfetch::fetch_metadata(query) %>%
