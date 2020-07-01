@@ -6,7 +6,7 @@ target_genes <- c("rbcL", "atpA", "atpB", "rps4")
 # - Minimum lengths for each gene (in case this needs to be adjusted per gene)
 min_lengths <- c(400, 400, 400, 400)
 # - Most recent date cutoff for sampling genes
-date_cutoff <- "2020/06/28"
+date_cutoff <- "2020/06/30"
 
 plan <- drake_plan(
   
