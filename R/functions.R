@@ -74,6 +74,65 @@ fetch_genbank_refs <- function(query) {
   
 }
 
+#' Extract a translated amino acid sequence from a single entry
+#' in a genbank flatfile
+#'
+#' @param gb_entry String (character vector of length 1);
+#' single entry from a genbank flatfile
+#'
+#' @return amino acid sequence as a character vector, named
+#' for the species + voucher
+#' 
+extract_sequence <- function (gb_entry) {
+  
+  sequence <- 
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_remove_all("\n") %>%
+    str_remove_all('\"') %>%
+    str_match('ORIGIN(.+)$') %>%
+    magrittr::extract(,2) %>%
+    str_remove_all(" ") %>%
+    str_remove_all("[0-9]")
+  accession <-
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_remove_all("\n") %>%
+    str_remove_all('\"') %>%
+    str_match('LOCUS +([^ ]+) +') %>%
+    magrittr::extract(,2)
+  
+  set_names(sequence, accession)
+  
+}
+
+#' Parse a genbank file and extract all the amino acid sequences
+#'
+#' @param gbff_path Path to genbank flat file
+#'
+#' @return List of class "AAbin"
+#' 
+parse_dna_from_flatfile <- function (gbff_path) {
+  
+  # Read-in flat file
+  readr::read_file(gbff_path) %>%
+    # '\\' is delimiter between entries
+    stringr::str_split("\\/\\/") %>%
+    unlist %>%
+    # Drop the last item, as it is just an empty line (after the last '\\')
+    magrittr::extract(-length(.)) %>%
+    # Extract DNA sequences from each entry
+    purrr::map(extract_sequence) %>%
+    # Name them as the accession
+    purrr::set_names(map_chr(., names)) %>%
+    # Convert to ape format
+    # - each sequence needs to be a character vector with each letter as an element
+    map(stringr::str_split, "") %>%
+    map(ape::as.DNAbin) %>%
+    jntools::flatten_DNA_list()
+  
+}
+
 #' Download a set of fern sequences for a given gene
 #' 
 #'
@@ -107,65 +166,8 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
-  # Read in full GenBank records text, remove blank lines
-  gbrecs <- readr::read_lines(temp_file) %>%
-    magrittr::extract(str_detect(., "^$", negate = TRUE))
-  
-  # Make a vector of record groups for splitting the records into a list
-  record_groups <- cumsum(gbrecs == "//")
-  
-  # Need to shift the groups one to the right so they end on "//"
-  record_groups <- c(0, record_groups)
-  record_groups <- record_groups[1:(length(record_groups) - 1)]
-  
-  # Split the records into a list of records
-  gbrecs_list <- split(gbrecs, record_groups)
-  
-  # Work on chunks of 100 records at a time.
-  
-  safely_parse_gbRecord <- purrr::safely(biofiles::gbRecord)
-  
-  #' Helper function to extract gene from a list of
-  #' genbank flat-file character vectors
-  #'
-  #' @param gbrecs_list List of character vectors. Each one
-  #' should be the results of reading-in a raw genbank flatfile
-  #' @param gene Name of gene to extract from the flatfile
-  #'
-  #' @return List of class DNAbin. Sequences named by GenBank accession.
-  #' 
-  extract_gene_from_gbrecs_list <- function(gbrecs_list, gene) {
-    gbrecs_list %>%
-      # Pretend we're reading in a text file for biofiles::gbRecord
-      map(textConnection) %>%
-      # Use our safe version of biofiles::gbRecord() and 
-      # drop any errors (occasional mis-formatted records)
-      map(safely_parse_gbRecord) %>%
-      purrr::transpose() %>%
-      magrittr::extract2("result") %>%
-      purrr::compact() %>%
-      # Fetch gene of interest from parsed record
-      map(~gbfetch:::fetch_gene(gene, rec = ., rename = TRUE, detect_dups = TRUE)) %>%
-      # Only keep accessions that have one copy of the gene of interest
-      magrittr::extract(map_chr(., class) == "DNAbin") %>%
-      jntools::flatten_DNA_list() %>%
-      # Format names as GenBank accession
-      purrr::set_names(names(.) %>% stringr::str_match("\\.(.*)-") %>% magrittr::extract(,2))
-  }
-  
-  # Split list into chunks of max 100 each
-  n <- length(gbrecs_list)
-  chunk_size <- 100
-  r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
-  chunked_gbrecs_list <- split(gbrecs_list, r) %>% magrittr::set_names(NULL)
-  
-  # Loop over input in chunks to make sure memory use doesn't get out of control
-  purrr::map(
-    chunked_gbrecs_list,
-    ~extract_gene_from_gbrecs_list(
-      gbrecs_list = .,
-      gene = gene),
-  ) %>% jntools::flatten_DNA_list()
+  # Parse flatfile
+  parse_dna_from_flatfile(temp_file)
   
 }
 
