@@ -85,6 +85,34 @@ fetch_genbank_refs <- function(query) {
 #' 
 extract_sequence <- function (gb_entry) {
   
+  # Extract start and end of target gene
+  gene_range <-
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_remove_all("\n") %>%
+    str_remove_all('\"') %>%
+    str_match("FEATURES(.*)ORIGIN") %>%
+    magrittr::extract(,1) %>%
+    # Match strings like 'gene complement(<1..10) /gene=rbcL' 
+    # (we want the gene and the range it contains)
+    # use negative look-ahead to match middle part NOT containing the word "/gene"
+    # use '?' for non-greedy match, that will stop on the first instance of "/gene"
+    str_match_all("gene +(?!/gene).*?/gene=[:alnum:]+") %>%
+    unlist %>%
+    magrittr::extract(str_detect(., regex(gene, ignore_case = TRUE))) %>% 
+    str_split(" +") %>%
+    unlist %>%
+    magrittr::extract(str_detect(., "\\d")) %>%
+    str_match_all("\\d+") %>%
+    unlist() %>%
+    parse_number
+  
+  # Make sure that worked correctly
+  assertthat::assert_that(length(gene_range) == 2)
+  assertthat::assert_that(is.numeric(gene_range))
+  assertthat::assert_that(!anyNA(gene_range))
+  
+  # Extract sequence, subset to target gene
   sequence <- 
     gb_entry %>%
     paste(sep = "") %>%
@@ -93,7 +121,9 @@ extract_sequence <- function (gb_entry) {
     str_match('ORIGIN(.+)$') %>%
     magrittr::extract(,2) %>%
     str_remove_all(" ") %>%
-    str_remove_all("[0-9]")
+    str_remove_all("[0-9]") %>%
+    substr(gene_range[1], gene_range[2])
+  
   accession <-
     gb_entry %>%
     paste(sep = "") %>%
@@ -101,7 +131,7 @@ extract_sequence <- function (gb_entry) {
     str_remove_all('\"') %>%
     str_match('LOCUS +([^ ]+) +') %>%
     magrittr::extract(,2)
-  
+
   set_names(sequence, accession)
   
 }
@@ -117,7 +147,7 @@ parse_dna_from_flatfile <- function (gbff_path) {
   # Read-in flat file
   readr::read_file(gbff_path) %>%
     # '\\' is delimiter between entries
-    stringr::str_split("\\/\\/") %>%
+    stringr::str_split("\n\\/\\/\n") %>%
     unlist %>%
     # Drop the last item, as it is just an empty line (after the last '\\')
     magrittr::extract(-length(.)) %>%
