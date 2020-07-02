@@ -103,6 +103,7 @@ extract_sequence <- function (gb_entry, gene) {
     magrittr::extract(str_detect(., regex(gene, ignore_case = TRUE))) %>% 
     str_split(" +") %>%
     unlist %>%
+    magrittr::extract(!str_detect(., "gene")) %>%
     magrittr::extract(str_detect(., "\\d")) %>%
     str_match_all("\\d+") %>%
     unlist() %>%
