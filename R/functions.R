@@ -1505,6 +1505,7 @@ resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
     mutate(scientificName = case_when(
       exclude_non_pterido_genus == TRUE ~ query,
       query == "Physcomitrella patens" ~ query,
+      query == "Physcomitrium patens" ~ query,
       query == "Marchantia polymorpha" ~ query,
       query == "Psilotum nudum" ~ query,
       query == "Botrychium sp. ternatum/japonicum" ~ "Sceptridium ternatum",
