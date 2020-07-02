@@ -129,8 +129,13 @@ extract_sequence <- function (gb_entry, gene) {
   accession <-
     gb_entry %>%
     paste(sep = "") %>%
-    str_match('ACCESSION +([^ ]+)\n') %>%
-    magrittr::extract(,2)
+    str_match('ACCESSION(.+)\n') %>%
+    magrittr::extract(,2) %>%
+    # In very rare cases, may have multiple values for accession,
+    # separated by space. In this case, take the first one.
+    str_trim(side = "both") %>%
+    str_split(" ") %>%
+    purrr::pluck(1,1)
   
   set_names(sequence, accession)
   
