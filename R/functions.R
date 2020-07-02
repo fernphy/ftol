@@ -129,11 +129,9 @@ extract_sequence <- function (gb_entry, gene) {
   accession <-
     gb_entry %>%
     paste(sep = "") %>%
-    str_remove_all("\n") %>%
-    str_remove_all('\"') %>%
-    str_match('LOCUS +([^ ]+) +') %>%
+    str_match('ACCESSION +([^ ]+)\n') %>%
     magrittr::extract(,2)
-
+  
   set_names(sequence, accession)
   
 }
