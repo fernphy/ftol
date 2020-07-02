@@ -79,11 +79,12 @@ fetch_genbank_refs <- function(query) {
 #'
 #' @param gb_entry String (character vector of length 1);
 #' single entry from a genbank flatfile
+#' @param gene Name of gene
 #'
 #' @return amino acid sequence as a character vector, named
 #' for the species + voucher
 #' 
-extract_sequence <- function (gb_entry) {
+extract_sequence <- function (gb_entry, gene) {
   
   # Extract start and end of target gene
   gene_range <-
@@ -136,13 +137,14 @@ extract_sequence <- function (gb_entry) {
   
 }
 
-#' Parse a genbank file and extract all the amino acid sequences
+#' Parse a genbank file and extract all the DNA sequences for a given gene
 #'
 #' @param gbff_path Path to genbank flat file
+#' @param gene Name of gene
 #'
 #' @return List of class "AAbin"
 #' 
-parse_dna_from_flatfile <- function (gbff_path) {
+parse_dna_from_flatfile <- function (gbff_path, gene) {
   
   # Read-in flat file
   readr::read_file(gbff_path) %>%
@@ -152,7 +154,7 @@ parse_dna_from_flatfile <- function (gbff_path) {
     # Drop the last item, as it is just an empty line (after the last '\\')
     magrittr::extract(-length(.)) %>%
     # Extract DNA sequences from each entry
-    purrr::map(extract_sequence) %>%
+    purrr::map2(gene, extract_sequence) %>%
     # Name them as the accession
     purrr::set_names(map_chr(., names)) %>%
     # Convert to ape format
@@ -186,7 +188,7 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   # Get list of GenBank IDs (GIs)
   uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
   
-  # Exract number of hits and print
+  # Extract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
   print(glue("Found {num_hits} sequences (UIDs)"))
   
@@ -197,7 +199,7 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
   # Parse flatfile
-  parse_dna_from_flatfile(temp_file)
+  parse_dna_from_flatfile(temp_file, gene)
   
 }
 
