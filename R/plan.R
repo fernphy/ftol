@@ -180,8 +180,7 @@ plan <- drake_plan(
 
   # Combine plastome sequences and set names by accession.
   # Use readd() to convert the object back to a static object from dynamic.
-  plastid_seqs_list = readd(plastid_seqs, cache = plastid_cache) %>%
-    purrr::set_names(plastome_accessions),
+  plastid_seqs_list = readd(plastid_seqs, cache = plastid_cache),
 
   # Select final accessions / genes
   # - best representative accession per species

@@ -1238,6 +1238,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
   genes_successful <- genes[!map_lgl(extracted_genes, is.null)]
   
   # Subset results to successful genes, filter by length, and set names
+  extracted_genes_filtered <-
   extracted_genes %>%
     # Drop errors
     compact() %>%
@@ -1252,6 +1253,9 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     magrittr::extract(!map_lgl(., ~map_dbl(., length) > max_length)) %>%
     # Name each DNAbin as the accession
     map(~set_names(., accession))
+  
+  # Return as a list of 1, so the results can be combined into a list later
+  list(extracted_genes_filtered) %>% set_names(accession)
   
 }
 
