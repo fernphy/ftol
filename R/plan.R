@@ -170,34 +170,27 @@ plan <- drake_plan(
   # Extract list of accessions for looping
   plastome_accessions = plastome_metadata_renamed$accession,
 
-  # Download the coding genes for each plastome one at a time.
+  # Extract the coding genes for each plastome one at a time.
   plastid_seqs = target(
-    gbfetch::fetch_gene_from_genome(
+    fetch_fern_genes_from_plastome(
       target_sanger_genes,
       plastome_accessions),
     dynamic = map(plastome_accessions)
   ),
 
-  # Clean up the downloaded sequences: remove NULL values, duplicated genes, etc.
-  cleaned_plastid_seqs = target(
-    clean_plastid_seqs(plastid_seqs),
-    dynamic = map(plastid_seqs)
-  ),
-
-  # Combine results of cleaning downloaded sequences
-  # and set names by accession.
+  # Combine plastome sequences and set names by accession.
   # Use readd() to convert the object back to a static object from dynamic.
-  cleaned_plastid_seqs_list = readd(cleaned_plastid_seqs, cache = plastid_cache) %>%
+  plastid_seqs_list = readd(plastid_seqs, cache = plastid_cache) %>%
     purrr::set_names(plastome_accessions),
 
   # Select final accessions / genes
   # - best representative accession per species
   # - only include genes and accessions with > 50% occupancy.
   plastid_selection = select_plastid_seqs(
-    cleaned_plastid_seqs_list, plastome_metadata_renamed, "species"),
+    plastid_seqs_list, plastome_metadata_renamed, "species"),
 
   # Reformat as list of unaligned genes.
-  plastid_genes_unaligned = extract_seqs_by_gene(cleaned_plastid_seqs_list, plastid_selection),
+  plastid_genes_unaligned = extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
 
   # Combine genes from GenBank with genes from plastomes ----
 

@@ -1170,28 +1170,71 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
   
 }
 
-#' Clean up list of plastid gene sequences downloaded
-#' from a full plastome
-#' 
-#' Removes null genes, genes over 10,000 bp, and errors, 
-#' renames each sequence as the accession.
+#' Fetch a set of genes from a plastome
 #'
-#' @param gene_list List of genes; output of gbfetch::fetch_gene_from_genome()
+#' @param genes Vector of gene names
+#' @param accession Genbank accession number (of a plastome)
+#' @param max_length Maximum length to accept for genes. Used to filter
+#' out any abnormally (probably erroneously) long genes.
 #'
-#' @return List
+#' @return List of lists; each list is a gene sequence of class DNAbin
+#' with a single sequence.
+#' The lists are named by gene, and the sequences are named after the accession.
 #' 
-clean_plastid_seqs <- function (gene_list) {
-  gene_list %>%
-    # Exclude NULL, i.e., no gene for that plastome
-    magrittr::extract(!map_lgl(., is.null)) %>%
-    # Exclude those with warnings (i.e., duplications)
-    magrittr::extract(map_lgl(., ~inherits(., "DNAbin"))) %>%
+#' test <- fetch_fern_genes_from_plastome(
+#' accession = "AY178864",
+#' max_length = 10000,
+#' genes = read_lines("data_raw/wei_2017_coding_genes.txt")
+#' )
+fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000) {
+  
+  # Get GenBank ID for the accession
+  uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
+  
+  # Make sure there is only 1 hit for that accession
+  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
+  
+  assertthat::assert_that(
+    num_hits == 1,
+    msg = "Did not find exactly one accession")
+  
+  # Download complete GenBank record and write it to a temporary file
+  temp_dir <- tempdir()
+  temp_file <- fs::path(temp_dir, "gb_records.txt")
+  
+  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
+  
+  # Parse flatfile
+  gb_entry <- readr::read_file(temp_file)
+  
+  # Some genes are missing or duplicates for a given plastome,
+  # so avoid errors by wrapping extract_sequence() in safely()
+  extract_sequence_safely <- safely(extract_sequence)
+  
+  # get the results
+  extracted_genes <- map(genes, ~extract_sequence_safely(gb_entry, .)) %>%
+    transpose() %>%
+    pluck("result")
+  
+  # subset gene names to those to successfully extracted
+  genes_successful <- genes[!map_lgl(extracted_genes, is.null)]
+  
+  # Subset results to successful genes, filter by length, and set names
+  extracted_genes %>%
+    # Drop errors
+    compact() %>%
+    flatten() %>%
+    # Name each list item as the gene
+    set_names(genes_successful) %>%
+    # Convert to DNAbin
+    map(~stringr::str_split(., "") %>% ape::as.DNAbin()) %>%
     # Exclude abnormally long sequences
     # (rps12 from Adiantum capillus-veneris AY178864) with 72,969 bp!
     # Appears to be an error in annotation?
-    magrittr::extract(!map_lgl(., ~map_dbl(., length) > 10000)) %>%
-    # Set names of each seq to just the accession
-    map(~set_names(., names(.) %>% str_match("^(.*)-") %>% magrittr::extract(,2)))
+    magrittr::extract(!map_lgl(., ~map_dbl(., length) > max_length)) %>%
+    # Name each DNAbin as the accession
+    map(~set_names(., accession))
+  
 }
 
 #' Helper function to filter accessions missing > 50% of genes
