@@ -87,7 +87,7 @@ fetch_genbank_refs <- function(query) {
 extract_sequence <- function (gb_entry, gene) {
   
   # Extract start and end of target gene
-  gene_range <-
+  gene_range_list <-
     gb_entry %>%
     paste(sep = "") %>%
     str_remove_all("\n") %>%
@@ -99,7 +99,17 @@ extract_sequence <- function (gb_entry, gene) {
     # use negative look-ahead to match middle part NOT containing the word "/gene"
     # use '?' for non-greedy match, that will stop on the first instance of "/gene"
     str_match_all("gene +(?!/gene).*?/gene=[:alnum:]+") %>%
-    unlist %>%
+    unlist
+  
+  # Make sure target gene is detected
+  assertthat::assert_that(
+    any(str_detect(gene_range_list, regex(gene, ignore_case = TRUE))),
+    msg = "Gene not detected"
+  )
+  
+  # Subset to only the target gene
+  gene_range <-
+    gene_range_list %>%
     magrittr::extract(str_detect(., regex(gene, ignore_case = TRUE))) %>% 
     str_split(" +") %>%
     unlist %>%
@@ -107,12 +117,20 @@ extract_sequence <- function (gb_entry, gene) {
     magrittr::extract(str_detect(., "\\d")) %>%
     str_match_all("\\d+") %>%
     unlist() %>%
-    parse_number
+    parse_number %>%
+    sort()
   
   # Make sure that worked correctly
-  assertthat::assert_that(length(gene_range) == 2)
+  assertthat::assert_that(
+    length(unique(gene_range)) <= 2,
+    msg = "Duplicate copies of gene detected")
+  assertthat::assert_that(
+    length(gene_range) > 1,
+    msg = "Full range of gene not detected")
   assertthat::assert_that(is.numeric(gene_range))
   assertthat::assert_that(!anyNA(gene_range))
+  assertthat::assert_that(gene_range[1] <= gene_range[2])
+  assertthat::assert_that(gene_range[2] >= gene_range[1])
   
   # Extract sequence, subset to target gene
   sequence <- 
@@ -126,19 +144,19 @@ extract_sequence <- function (gb_entry, gene) {
     str_remove_all("[0-9]") %>%
     substr(gene_range[1], gene_range[2])
   
+  # Extract accession
   accession <-
     gb_entry %>%
     paste(sep = "") %>%
     str_match('ACCESSION(.+)\n') %>%
     magrittr::extract(,2) %>%
     # In very rare cases, may have multiple values for accession,
-    # separated by space. In this case, take the first one.
+    # separated by space. If so, take the first one.
     str_trim(side = "both") %>%
     str_split(" ") %>%
     purrr::pluck(1,1)
   
   set_names(sequence, accession)
-  
 }
 
 #' Parse a genbank file and extract all the DNA sequences for a given gene
