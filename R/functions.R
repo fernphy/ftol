@@ -1267,8 +1267,8 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 #' @return Length of each sequence in long format
 get_gene_lengths <- function (seq_list) {
   seq_list %>%
-    map_df(~map_dbl(., length)) %>%
-    gather(gene, slen)
+    map_df(~map_dbl(., length), .id = "gene") %>%
+    rename(slen = 2)
 }
 
 #' Helper function to to filter accessions missing > 50% of genes
@@ -1340,6 +1340,13 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
   assertthat::assert_that(assertthat::is.string(filter_by))
   
   assertthat::assert_that(filter_by %in% c("species", "genus"))
+  
+  # Drop any plastome sequences with zero genes
+  check_genes <- function(plastome_seq) {
+    length(plastome_seq) > 0
+  }
+  
+  plastid_seq_list <- plastid_seq_list[map_lgl(plastid_seq_list, check_genes)]
   
   # Make tibble of gene lengths by accession
   gene_lengths <- 
