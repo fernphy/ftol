@@ -452,6 +452,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
   # *add to tally at end
   names_resolved_to_other_sources <-
     names_resolved_to_other_sources_raw %>%
+    anti_join(names_with_mult_syns, by = c(user_supplied_name = "query")) %>%
     filter(n == 1) %>%
     mutate(
       data_source_title = factor(
