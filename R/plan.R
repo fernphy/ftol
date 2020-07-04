@@ -214,7 +214,7 @@ plan <- drake_plan(
     ~ips::mafft(
       x = .,
       options = "--adjustdirection",
-      exec = "/home/nittaj/miniconda3/envs/pacferns/bin/mafft")),
+      exec = "/usr/bin/mafft")),
 
   # Trim alignments.
   plastid_genes_aligned_trimmed = purrr::map(
