@@ -772,7 +772,7 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
     )
   
   # Extract sequences from metadata and rename
-  seqs <- as.DNAbin(metadata_with_seqs$seq)
+  seqs <- ape::as.DNAbin(metadata_with_seqs$seq)
   names(seqs) <- metadata_with_seqs$otu
   
   # Make sure that went OK
@@ -1030,7 +1030,7 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used) {
 extract_seqs <- function(data) {
   seqs <- data$seq
   names(seqs) <- data$accession
-  as.DNAbin(seqs)
+  ape::as.DNAbin(seqs)
 }
 
 #' Combine sequences for target genes from GenBank with sequences
