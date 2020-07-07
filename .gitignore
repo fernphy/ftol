@@ -10,3 +10,5 @@ working*
 iqtree
 treepl
 .DS_Store
+results/
+*.tar.gz

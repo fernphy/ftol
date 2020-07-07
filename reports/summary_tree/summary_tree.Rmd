@@ -1,0 +1,150 @@
+---
+title: "Tree Summary"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = "hide", cache = FALSE)
+library(phytools)
+```
+
+```{r load-data}
+# Load Catalog of Life plants taxonomy
+loadd(col_plants, cache = plastid_cache)
+
+# Load time tree inferred from plastid data
+phy <- readd(treepl_dating_results, cache = plastid_cache)
+
+# Load Pteridopyte Phylogeny Group I taxonomy
+ppgi <- readd(ppgi_taxonomy, cache = plastid_cache)
+
+# Vector of outgroup genera
+outgroup_genera <- c(
+  "Acorus", "Lamprocapnos", "Liquidambar", "Sorbus", "Nicotiana", "Plumbago", "Magnolia", "Kadsura",
+  "Amborella", "Trithuria", "Ginkgo", "Sciadopitys", "Anthoceros", "Marchantia", "Physcomitrella",
+  "Isoetes", "Selaginella", "Lycopodium")
+```
+
+```{r plot-tree-prep}
+# Specify custom list of clades for plotting (at the suborder or order level)
+ppgi <-
+  ppgi %>% 
+  mutate(clade = case_when(
+    suborder == "Aspleniineae" ~ "Aspleniineae",
+    suborder == "Dennstaedtiineae" ~ "Dennstaedtiineae",
+    suborder == "Lindsaeineae" ~ "Lindsaeineae",
+    suborder == "Polypodiineae" ~ "Polypodiineae",
+    suborder == "Pteridineae" ~ "Pteridineae",
+    suborder == "Saccolomatineae" ~ "Saccolomatineae",
+    order == "Psilotales" ~ "Psilotales + Ophioglossales",
+    order == "Ophioglossales" ~ "Psilotales + Ophioglossales",
+    TRUE ~ order
+  ))
+
+# Extract data frame of tips from tree, add higher-level taxonomy
+tips <- tibble(tip = phy$tip.label) %>%
+  mutate(genus = str_split(tip, "_") %>% map_chr(1)) %>%
+  assert(not_na, genus) %>%
+  left_join(ppgi, by = "genus")
+
+# Compile clade data: number in tree vs. number of accepted species
+clade_data <-
+  col_plants %>%
+  # Filter to ferns
+  filter(class == "Polypodiopsida") %>%
+  # Filter to accepted names
+  filter(taxonomicStatus == "accepted name") %>%
+  # Join with tips of tree
+  select(scientificName, genus, specificEpithet, infraspecificEpithet) %>%
+  mutate(taxon = jntools::paste3(genus, specificEpithet, infraspecificEpithet, sep = "_")) %>%
+  mutate(in_tree = taxon %in% phy$tip.label) %>%
+  # Make sure at least most of the tips match
+  verify(sum(in_tree) > .9*length(phy$tip.label)) %>%
+  left_join(ppgi, by = "genus") %>%
+  # Remove some intergenic hybrids
+  filter(!is.na(clade)) %>% 
+  group_by(clade) %>%
+  summarize(
+    sampled = sum(in_tree),
+    total = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(coverage = sampled / total) %>%
+  # Add MCRA for clades
+  mutate(mrca = purrr::map_chr(clade, ~get_clade_mrca(phy = phy, tips = tips, clade_select = .))) %>%
+  # Fix some in the case there was a rogue taxon that was in the wrong clade
+  mutate(mrca = case_when(
+    clade == "Polypodiineae" ~ ape::getMRCA(phy, c("Leucostegia_pallida", "Prosaptia_alata")) %>% as.character,
+    clade == "Lindsaeineae" ~ ape::getMRCA(phy, c("Odontosoria_clavata", "Lindsaea_digitata")) %>% as.character,
+    clade == "Dennstaedtiineae" ~ ape::getMRCA(phy, c("Monachosorum_subdigitatum", "Microlepia_obtusiloba")) %>% as.character,
+    TRUE ~ mrca
+  )) %>%
+  # Manually set level of clades to match order in phylogeny
+  mutate(
+    phylo_order = case_when(
+      clade == "Equisetales" ~ 1,
+      clade == "Psilotales + Ophioglossales" ~ 2,
+      clade == "Marattiales" ~ 3,
+      clade == "Osmundales" ~ 4,
+      clade == "Hymenophyllales" ~ 5,
+      clade == "Gleicheniales" ~ 6,
+      clade == "Schizaeales" ~ 7,
+      clade == "Salviniales" ~ 8,
+      clade == "Cyatheales" ~ 9,
+      clade == "Saccolomatineae" ~ 10,
+      clade == "Lindsaeineae" ~ 11,
+      clade == "Pteridineae" ~ 12,
+      clade == "Dennstaedtiineae" ~ 13,
+      clade == "Aspleniineae" ~ 14,
+      clade == "Polypodiineae" ~ 15
+    )) %>%
+  mutate(clade = as.factor(clade) %>% fct_reorder(phylo_order)) %>%
+  # Specify colors for plotting clade names
+  mutate(color = palette.colors(n = 15, palette = "Polychrome 36", recycle = FALSE))
+
+# Exctract vector of colors for setting manually
+cols <- clade_data$color %>%
+  set_names(clade_data$clade)
+
+# Ladderize phylogeny
+phy <- ape::ladderize(phy)
+
+# Get total tree height
+tree_height <- max(phytools::nodeHeights(phy))
+```
+
+```{r plot-tree, fig.width = 8, fig.height = 8}
+# Make phylogeny plot with colored bars for clades
+# wrap it in a function so it can be combined with cowplot
+phytools::plotTree(phy, type="fan", ftype="off", lwd = 0.8)
+  plotrix::draw.circle(0,0,radius=tree_height-252, col = scales::alpha("grey60", 0.25), border="transparent")
+  plotrix::draw.circle(0,0,radius=tree_height-66, col = scales::alpha("grey60", 0.25), border="transparent")
+  text(x = tree_height-(252 + 80), y = 30, labels = "Paleozoic", cex = 0.8)
+  text(x = tree_height-(66 + 100), y = 30, labels = "Mesozoic", cex = 0.8)
+  add_scale_bar(units = "my", length = 100)
+  
+  for (i in 1:nrow(clade_data)) { 
+    phytools::arc.cladelabels(text = " ", node = clade_data$mrca[i], lwd = 5, lend = "square", col = clade_data$color[i], mark.node = FALSE, orientation = "horizontal")
+  }
+```
+
+**Fern tree of life (FTOL) based on plastid data.** Colors correspond to major clade (order or suborder). Shading on tree indicates geologic era (Cenozoic not labeled)
+
+```{r plot-bars, fig.width = 5, fig.height = 4}
+# Make barplot showing coverage
+ggplot(clade_data, aes(x = clade, y = coverage)) +
+  geom_col(aes(fill = clade), color = "grey10") +
+  geom_text(aes(label = total), hjust = -0.25) +
+  scale_fill_manual(values = cols) +
+  scale_y_continuous(labels = scales::percent, expand = expansion(mult = c(0, .15))) +
+  coord_flip() +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Coverage") +
+  theme(
+    axis.text.y = element_text(size = 10, color = "black")
+  )
+```
+
+**Sampling completeness.** Barplot shows coverage (percent of species in tree out of all accepted species); numbers next to bars indicate the total number of accepted species in each major clade.

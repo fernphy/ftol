@@ -2203,3 +2203,83 @@ remove_dup_seqs <- function (
   )
   
 }
+
+# Plotting ----
+
+# Hacked version of ape::add.scale.bar() that allows adding units
+add_scale_bar <- function (x, y, length = NULL, ask = FALSE, lwd = 1, lcol = "black", units = NA_character_,
+                           ...) 
+{
+  lastPP <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  direc <- lastPP$direction
+  if (is.null(length)) {
+    nb.digit <- if (direc %in% c("rightwards", "leftwards")) 
+      diff(range(lastPP$xx))
+    else diff(range(lastPP$yy))
+    length <- pretty(c(0, nb.digit)/6, 1)[2]
+  }
+  if (ask) {
+    cat("\nClick where you want to draw the bar\n")
+    x <- unlist(locator(1))
+    y <- x[2]
+    x <- x[1]
+  }
+  else if (missing(x) || missing(y)) {
+    if (lastPP$type %in% c("phylogram", "cladogram")) {
+      switch(direc, rightwards = {
+        x <- 0
+        y <- 1
+      }, leftwards = {
+        x <- max(lastPP$xx)
+        y <- 1
+      }, upwards = {
+        x <- max(lastPP$xx)
+        y <- 0
+      }, downwards = {
+        x <- 1
+        y <- max(lastPP$yy)
+      })
+    }
+    else {
+      direc <- "rightwards"
+      x <- lastPP$x.lim[1]
+      y <- lastPP$y.lim[1]
+    }
+  }
+  
+  label <- jntools::paste3(as.character(length), units, sep = " ")
+  
+  switch(direc, rightwards = {
+    segments(x, y, x + length, y, col = lcol, lwd = lwd)
+    text(x + length * 1.1, y, label, adj = c(0, 
+                                             0.5), ...)
+  }, leftwards = {
+    segments(x - length, y, x, y, col = lcol, lwd = lwd)
+    text(x - length * 1.1, y, label, adj = c(1, 
+                                             0.5), ...)
+  }, upwards = {
+    segments(x, y, x, y + length, col = lcol, lwd = lwd)
+    text(x, y + length * 1.1, label, adj = c(0, 
+                                             0.5), srt = 90, ...)
+  }, downwards = {
+    segments(x, y - length, x, y, col = lcol, lwd = lwd)
+    text(x, y - length * 1.1, label, adj = c(0, 
+                                             0.5), srt = 270, ...)
+  })
+}
+
+#' Get most recent common ancestor for a selected clade
+#'
+#' @param phy Phylogeny
+#' @param tips Dataframe with tip names and clades
+#' @param clade_select Selected clade
+#'
+#' @return Single number
+#' 
+get_clade_mrca <- function (phy, tips, clade_select) {
+  ape::getMRCA(
+    phy, 
+    tips %>% filter(clade == clade_select) %>% pull(tip)
+  )
+}
+

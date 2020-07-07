@@ -295,6 +295,13 @@ plan <- drake_plan(
     wd = here::here("treepl"),
     nthreads = 7,
     echo = TRUE
-  )
+  ),
+  
+  # Generate reports ----
+  
+  summary_tree = rmarkdown::render(
+    knitr_in("reports/summary_tree/summary_tree.Rmd"),
+    output_dir = here::here("results"),
+    quiet = TRUE)
 
 )
