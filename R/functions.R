@@ -2076,9 +2076,9 @@ run_treepl <- function (
     glue("nthreads = {nthreads}"),
     glue("outfile = {outfile_path}"),
     # Include specifications from priming
-    priming_results %>% extract(., str_detect(., "opt =")),
-    priming_results %>% extract(., str_detect(., "optad =")),
-    priming_results %>% extract(., str_detect(., "optcvad ="))
+    priming_results %>% magrittr::extract(., str_detect(., "opt =")),
+    priming_results %>% magrittr::extract(., str_detect(., "optad =")),
+    priming_results %>% magrittr::extract(., str_detect(., "optcvad ="))
   )
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
@@ -2137,7 +2137,7 @@ remove_dup_seqs <- function (
   
   # Find the minimum non-zero height
   min_diff_height <-
-    clusters$height %>% unique %>% sort %>% extract(2)
+    clusters$height %>% unique %>% sort %>% magrittr::extract(2)
   
   # Find groups of sequences with minimum non-zero height.
   # i.e., groups of identical sequences
