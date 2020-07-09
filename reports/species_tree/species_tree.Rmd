@@ -1,12 +1,12 @@
 ---
-title: "Tree Summary"
+title: "Species Tree"
 output: github_document
 editor_options: 
   chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = "hide", cache = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = "hide", cache = FALSE, fig.retina = 3, fig.align = "center")
 library(phytools)
 ```
 
@@ -26,6 +26,7 @@ outgroup_genera <- c(
   "Amborella", "Trithuria", "Ginkgo", "Sciadopitys", "Anthoceros", "Marchantia", "Physcomitrella",
   "Isoetes", "Selaginella", "Lycopodium")
 ```
+
 
 ```{r plot-tree-prep}
 # Specify custom list of clades for plotting (at the suborder or order level)
@@ -115,6 +116,47 @@ phy <- ape::ladderize(phy)
 tree_height <- max(phytools::nodeHeights(phy))
 ```
 
+```{r tree-numbers, echo=FALSE, warning=FALSE, message=FALSE, error = FALSE}
+# Check the total number of ingroup samples
+n_ingroup <- tips %>%
+  filter(!genus %in% outgroup_genera) %>%
+  pull(tip) %>%
+  n_distinct()
+  
+n_accepted_ferns <-
+  col_plants %>%
+  # Filter to ferns
+  filter(class == "Polypodiopsida") %>%
+  # Filter to accepted names
+  filter(taxonomicStatus == "accepted name") %>%
+  pull(scientificName) %>%
+  n_distinct()
+
+overall_coverage <-
+n_ingroup %>% magrittr::divide_by(n_accepted_ferns) %>% scales::percent()
+
+cov_high <-
+clade_data %>% arrange(desc(coverage)) %>% slice(1) %>% pull(coverage) %>% scales::percent()
+
+cov_high_name <-
+clade_data %>% arrange(desc(coverage)) %>% slice(1) %>% pull(clade) %>% as.character()
+
+cov_low <-
+clade_data %>% arrange(coverage) %>% slice(1) %>% pull(coverage) %>% scales::percent()
+
+cov_low_name <-
+clade_data %>% arrange(coverage) %>% slice(1) %>% pull(clade) %>% as.character()
+
+cov_pteridineae <-
+clade_data %>% filter(clade == "Pteridineae") %>% pull(coverage) %>% scales::percent()
+```
+
+The species tree includes one sample per species.
+
+The current species tree includes `r scales::number(n_ingroup, big.mark = ",")` tips (**Fig. 1**). 
+
+Overall coverage (percent of species in the tree out of all accepted species) is `r overall_coverage` (**Fig. 2**). Coverage by major clade (order or suborder; taxonomy follows [Pteridophyte Phylogeny Group 2016](https://doi.org/10.1111/jse.12229)) varies from `r cov_low` (`r cov_low_name`) to `r cov_high` (`r cov_high_name`). Larger clades tend to have lower coverage, with the exception of Pteridineae (`r cov_pteridineae` of 1,532 accepted names).
+
 ```{r plot-tree, fig.width = 8, fig.height = 8}
 # Make phylogeny plot with colored bars for clades
 # wrap it in a function so it can be combined with cowplot
@@ -130,7 +172,7 @@ phytools::plotTree(phy, type="fan", ftype="off", lwd = 0.8)
   }
 ```
 
-**Fern tree of life (FTOL) based on plastid data.** Colors correspond to major clade (order or suborder). Shading on tree indicates geologic era (Cenozoic not labeled)
+**Figure 1: Fern tree of life (FTOL) based on plastid data.** Colors correspond to major clade (order or suborder, see **Fig. 2** for labels). Shading on tree indicates geologic era (Cenozoic not labeled).
 
 ```{r plot-bars, fig.width = 5, fig.height = 4}
 # Make barplot showing coverage
@@ -147,4 +189,4 @@ ggplot(clade_data, aes(x = clade, y = coverage)) +
   )
 ```
 
-**Sampling completeness.** Barplot shows coverage (percent of species in tree out of all accepted species); numbers next to bars indicate the total number of accepted species in each major clade.
+**Figure 2: Sampling completeness.** Barplot shows coverage (percent of species in tree out of all accepted species); numbers next to bars indicate the total number of accepted species in each major clade.

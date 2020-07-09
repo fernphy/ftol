@@ -299,9 +299,9 @@ plan <- drake_plan(
   
   # Generate reports ----
   
-  summary_tree = rmarkdown::render(
-    knitr_in("reports/summary_tree/summary_tree.Rmd"),
-    output_dir = here::here("results"),
+  species_tree = rmarkdown::render(
+    knitr_in("reports/species_tree/species_tree.Rmd"),
+    output_dir = here::here("results/species_tree"),
     quiet = TRUE)
 
 )
