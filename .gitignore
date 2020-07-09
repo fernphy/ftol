@@ -12,3 +12,4 @@ treepl
 .DS_Store
 results/
 *.tar.gz
+*.html
