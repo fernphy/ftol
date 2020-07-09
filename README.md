@@ -1,6 +1,6 @@
 ## FTOL
 
-The goal of this project is to generate an automatically updated *Fern Tree of Life*.
+The goal of this project is to generate an automatically updated **Fern Tree of Life**.
 
 All code is in R, and workflow is controlled with the [drake](https://docs.ropensci.org/drake/) package.
 
