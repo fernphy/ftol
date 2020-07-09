@@ -13,13 +13,13 @@ Group 2016](https://doi.org/10.1111/jse.12229)) varies from 18%
 coverage, with the exception of Pteridineae (50% of 1,532 accepted
 names).
 
-<img src="/home/rstudio/ftol/repos/ftol/results/species_tree/species_tree_files/figure-gfm/plot-tree-1.png" width="768" style="display: block; margin: auto;" />
+<img src="species_tree_files/figure-gfm/plot-tree-1.png" width="768" style="display: block; margin: auto;" />
 
 **Figure 1: Fern tree of life (FTOL) based on plastid data.** Colors
 correspond to major clade (order or suborder, see **Fig. 2** for
 labels). Shading on tree indicates geologic era (Cenozoic not labeled).
 
-<img src="/home/rstudio/ftol/repos/ftol/results/species_tree/species_tree_files/figure-gfm/plot-bars-1.png" width="480" style="display: block; margin: auto;" />
+<img src="species_tree_files/figure-gfm/plot-bars-1.png" width="480" style="display: block; margin: auto;" />
 
 **Figure 2: Sampling completeness.** Barplot shows coverage (percent of
 species in tree out of all accepted species); numbers next to bars

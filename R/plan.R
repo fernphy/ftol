@@ -301,7 +301,7 @@ plan <- drake_plan(
   
   species_tree = rmarkdown::render(
     knitr_in("reports/species_tree/species_tree.Rmd"),
-    output_dir = here::here("results/species_tree"),
+    output_file = "species_tree.md",
     quiet = TRUE)
 
 )
