@@ -13,6 +13,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libudunits2-dev for R package units
 # libgdal-dev for R package sf
 # libzmq3-dev for R package rzmq -> clustermq
+# libmagick++-dev for R package magick -> phytools
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     gcc \
@@ -34,6 +35,7 @@ RUN apt-get update \
     libudunits2-dev \
     libgdal-dev \
     libzmq3-dev \
+    libmagick++-dev \
     mafft \
     ncbi-blast+ \
   && apt-get clean
@@ -92,7 +94,7 @@ RUN wget https://gitlab.com/gogna/gnparser/uploads/7d6ed7e3b1eee0fd6c9ae51f5bf71
   && tar xf $APP_NAME-v$VERSION-linux.tar.gz \
   && rm $APP_NAME-v$VERSION-linux.tar.gz \
   && mv "$APP_NAME" /usr/local/bin/
-  
+
 ### IQ Tree ###
 WORKDIR $APPS_HOME
 ENV APP_NAME=IQ-TREE
@@ -103,7 +105,7 @@ RUN git clone https://github.com/Cibiv/$APP_NAME.git && \
 	cmake -DIQTREE_FLAGS=omp .. && \
 	make && \
 	cp iqtree /usr/local/bin
-	
+
 ### trimAL ###
 WORKDIR $APPS_HOME
 ENV APP_NAME=trimal
