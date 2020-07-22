@@ -706,6 +706,13 @@
       "Repository": "CRAN",
       "Hash": "7d651b7131794fe007b1ad6f21aaa401"
     },
+    "htmlwidgets": {
+      "Package": "htmlwidgets",
+      "Version": "1.5.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "41bace23583fbc25089edae324de2dc3"
+    },
     "httpcode": {
       "Package": "httpcode",
       "Version": "0.3.0",
@@ -1126,7 +1133,7 @@
       "Package": "renv",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Hash": "0d3f1c2b63e70b3d918246b4e2ca59b7"
     },
     "reprex": {
@@ -1483,6 +1490,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "ce4f6271baa94776db692f1cb2055bee"
+    },
+    "visNetwork": {
+      "Package": "visNetwork",
+      "Version": "2.0.9",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "12545f2acf49d1d346d075580122d89c"
     },
     "whisker": {
       "Package": "whisker",
