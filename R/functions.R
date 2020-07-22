@@ -1542,6 +1542,9 @@ trimal_auto <- function (seqs, echo = FALSE, ...) {
 #' Concatenate a list of aligned genes
 #'
 #' @param dna_list List of matrices of class DNAbin
+#' @param check_mult Logical; should sequences be checked for multiple
+#' sequences per gene? If TRUE and multiple sequences detected for a
+#' given species, will result in error.
 #'
 #' @return Matrix of class DNAbin
 #'
@@ -1551,7 +1554,7 @@ trimal_auto <- function (seqs, echo = FALSE, ...) {
 #' gene_2 <- woodmouse[,101:200]
 #' woodmouse_genes <- list(gene_1, gene_2)
 #' concatenate_genes(woodmouse_genes)
-concatenate_genes <- function (dna_list) {
+concatenate_genes <- function (dna_list, check_mult = TRUE) {
   require(apex)
   
   assertthat::assert_that(is.list(dna_list))
@@ -1561,8 +1564,10 @@ concatenate_genes <- function (dna_list) {
                           msg = "All elements of dna_list must be matrices")
   
   # Check that there are no duplicate sequence names (species) within a gene
+  if (isTRUE(check_mult)) {
   map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
     assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
+  }
   
   dna_multi <- new("multidna", dna_list) 
   apex::concatenate(dna_multi)

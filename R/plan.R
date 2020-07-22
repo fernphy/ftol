@@ -271,9 +271,14 @@ plan <- drake_plan(
   
   # Concatenate alignments by species name.
   plastome_alignment = target(
-    concatenate_genes(plastid_genes_aligned_trimmed_renamed),
+    concatenate_genes(
+      plastid_genes_aligned_trimmed_renamed,
+      check),
     transform = map(
       plastid_genes_aligned_trimmed_renamed,
+      # n_seqs_per_sp is in order ("single", "multiple")
+      # Run check for multiple seqs per species for single, but not multiple
+      check = c(TRUE, FALSE),
       .id = n_seqs_per_sp)
   ),
   
