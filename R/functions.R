@@ -923,19 +923,19 @@ filter_genbank_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
 #' including columns for `gene`, `species`, `specimen_voucher`, 
 #' `accession` (GenBank accession), and `length` (gene length in bp)
 #' @param genes_used Vector of gene names used.
-#' @param return_type String; format of output data. If 'single', only one set 
+#' @param n_seqs_per_sp String; format of output data. If 'single', only one set 
 #' of sequences per species will be returned, prioritizing species with rbcL. 
 #' If 'multiple', all sequences will be returned (multiple seqs per species)
 #'
 #' @return Tibble in wide format joining genes based on species + voucher
 #' 
-select_genbank_genes <- function (genbank_seqs_tibble, genes_used, return_type = c("single", "multiple")) {
+select_genbank_genes <- function (genbank_seqs_tibble, genes_used, n_seqs_per_sp = c("single", "multiple")) {
   
-  assertthat::assert_that(assertthat::is.string(return_type))
+  assertthat::assert_that(assertthat::is.string(n_seqs_per_sp))
   
   assertthat::assert_that(
-    return_type %in% c("single", "multiple"),
-    msg = "'return_type' must be either 'single' or 'multiple'")
+    n_seqs_per_sp %in% c("single", "multiple"),
+    msg = "'n_seqs_per_sp' must be either 'single' or 'multiple'")
   
   # Need to recode gene names from numbers to actual genes used.
   # Note this depends on the order of `genes_used`!
@@ -990,8 +990,8 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used, return_type =
     # FIXME: last part of work-around: convert "specimen_missing" back to NA. remove this once bug gets fixed in dplyr.
     mutate(specimen_voucher = ifelse(str_detect(specimen_voucher, "specimen_missing"), NA, specimen_voucher))
   
-  # If `return_type` is 'multiple' exit early, returning all seqs (including multiple seqs per species) 
-  if (return_type == "multiple") return (gb_data)
+  # If `n_seqs_per_sp` is 'multiple' exit early, returning all seqs (including multiple seqs per species) 
+  if (n_seqs_per_sp == "multiple") return (gb_data)
   
   # Otherwise continue on, selecting one set of sequences per species.
   

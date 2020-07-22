@@ -147,7 +147,13 @@ plan <- drake_plan(
   ),
   
   # Select final GenBank accessions.
-  # Select one specimen per species, prioritizing in order
+  #
+  # From here, there will be two datasets: targets with "multiple" include
+  # multiple specimens per species; targets with "single" include a single 
+  # specimen per species
+  # 
+  # For "single",
+  # select one specimen per species, prioritizing in order
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
@@ -155,10 +161,10 @@ plan <- drake_plan(
     select_genbank_genes(
       genbank_seqs_tibble = genbank_seqs_names_resolved, 
       genes_used = target_genes, 
-      return_type),
+      n_seqs_per_sp),
     transform = map(
-      return_type = c("single", "multiple"),
-      .id = return_type)
+      n_seqs_per_sp = c("single", "multiple"),
+      .id = n_seqs_per_sp)
   ),
   
   # Download core set of plastid genes from plastomes ----
@@ -217,7 +223,7 @@ plan <- drake_plan(
     ),
     transform = map(
       genbank_accessions_selection,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Align each gene.
@@ -230,7 +236,7 @@ plan <- drake_plan(
         exec = "/usr/bin/mafft")),
     transform = map(
       plastid_genes_unaligned_combined,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Trim alignments.
@@ -240,7 +246,7 @@ plan <- drake_plan(
       trimal_auto),
     transform = map(
       plastid_genes_aligned,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Rename sequences in each gene as species
@@ -260,7 +266,7 @@ plan <- drake_plan(
       name_metadata = resolved_names_all),
     transform = map(
       plastid_genes_aligned_trimmed,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Concatenate alignments by species name.
@@ -268,7 +274,7 @@ plan <- drake_plan(
     concatenate_genes(plastid_genes_aligned_trimmed_renamed),
     transform = map(
       plastid_genes_aligned_trimmed_renamed,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Generate tree.
@@ -279,7 +285,7 @@ plan <- drake_plan(
       redo = FALSE, echo = TRUE, wd = here::here("iqtree")),
     transform = map(
       plastome_alignment,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Dating analysis with treepl ----
@@ -291,7 +297,7 @@ plan <- drake_plan(
       c("Anthoceros_angustus", "Marchantia_polymorpha", "Physcomitrium_patens")),
     transform = map(
       plastome_tree,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Run initial treepl search to identify smoothing parameter
@@ -312,53 +318,51 @@ plan <- drake_plan(
     transform = map(
       plastome_tree_rooted,
       plastome_alignment,
-      .id = return_type)
+      .id = n_seqs_per_sp)
   ),
   
   # Run priming analysis to determine optimal states for other parameters
   treepl_priming_results = target(
     run_treepl_prime(
-    phy = plastome_tree_rooted,
-    alignment = plastome_alignment,
-    calibration_dates = plastome_calibration_dates,
-    cv_results = treepl_cv_results,
-    plsimaniter = "200000", # preliminary output suggested > 100000
-    seed = 7167,
-    thorough = TRUE,
-    wd = here::here("treepl"),
-    nthreads = 1,
-    echo = TRUE
-  ),
-  transform = map(
-    plastome_tree_rooted,
-    plastome_alignment,
-    treepl_cv_results,
-    .id = return_type
-  )
+      phy = plastome_tree_rooted,
+      alignment = plastome_alignment,
+      calibration_dates = plastome_calibration_dates,
+      cv_results = treepl_cv_results,
+      plsimaniter = "200000", # preliminary output suggested > 100000
+      seed = 7167,
+      thorough = TRUE,
+      wd = here::here("treepl"),
+      nthreads = 1,
+      echo = TRUE
+    ),
+    transform = map(
+      plastome_tree_rooted,
+      plastome_alignment,
+      treepl_cv_results,
+      .id = n_seqs_per_sp)
   ),
   
   # Run treePL dating analysis
   treepl_dating_results = target(
     run_treepl(
-    phy = plastome_tree_rooted,
-    alignment = plastome_alignment,
-    calibration_dates = plastome_calibration_dates,
-    cv_results = treepl_cv_results,
-    priming_results = treepl_priming_results,
-    plsimaniter = "200000", # preliminary output suggested > 100000
-    seed = 7167,
-    thorough = TRUE,
-    wd = here::here("treepl"),
-    nthreads = 7,
-    echo = TRUE
-  ),
-  transform = map(
-    plastome_tree_rooted,
-    plastome_alignment,
-    treepl_cv_results,
-    treepl_priming_results,
-    .id = return_type
-  )
+      phy = plastome_tree_rooted,
+      alignment = plastome_alignment,
+      calibration_dates = plastome_calibration_dates,
+      cv_results = treepl_cv_results,
+      priming_results = treepl_priming_results,
+      plsimaniter = "200000", # preliminary output suggested > 100000
+      seed = 7167,
+      thorough = TRUE,
+      wd = here::here("treepl"),
+      nthreads = 7,
+      echo = TRUE
+    ),
+    transform = map(
+      plastome_tree_rooted,
+      plastome_alignment,
+      treepl_cv_results,
+      treepl_priming_results,
+      .id = n_seqs_per_sp)
   ),
   
   # Generate reports ----
