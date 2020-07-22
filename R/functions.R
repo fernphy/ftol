@@ -1892,10 +1892,12 @@ run_treepl_cv <- function (
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
   
-  readr::write_lines(treepl_config, fs::path(wd, "treepl_cv_config"))
+  config_file_name <- glue::glue("{phy_name}_treepl_cv_config")
+  
+  readr::write_lines(treepl_config, fs::path(wd, config_file_name))
   
   # Run treePL
-  processx::run("treePL", "treepl_cv_config", wd = wd, echo = echo)
+  processx::run("treePL", config_file_name, wd = wd, echo = echo)
   
   # Return cross-validation results
   read_lines(fs::path(wd, outfile_path))
@@ -1990,10 +1992,12 @@ run_treepl_prime <- function (
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
   
-  readr::write_lines(treepl_config, fs::path(wd, "treepl_prime_config"))
+  config_file_name <- glue::glue("{phy_name}_treepl_prime_config")
+  
+  readr::write_lines(treepl_config, fs::path(wd, config_file_name))
   
   # Run treePL
-  results <- processx::run("treePL", "treepl_prime_config", wd = wd, echo = echo)
+  results <- processx::run("treePL", config_file_name, wd = wd, echo = echo)
   
   # Return stdout
   read_lines(results$stdout)
@@ -2097,10 +2101,12 @@ run_treepl <- function (
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
   
-  readr::write_lines(treepl_config, fs::path(wd, "treepl_config"))
+  config_file_name <- glue::glue("{phy_name}_treepl_config")
+  
+  readr::write_lines(treepl_config, fs::path(wd, config_file_name))
   
   # Run treePL
-  processx::run("treePL", "treepl_config", wd = wd, echo = echo)
+  processx::run("treePL", config_file_name, wd = wd, echo = echo)
   
   # Read in tree
   ape::read.tree(fs::path(wd, outfile_path))
