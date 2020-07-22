@@ -15,7 +15,8 @@ library(phytools)
 loadd(col_plants, cache = plastid_cache)
 
 # Load time tree inferred from plastid data
-phy <- readd(treepl_dating_results, cache = plastid_cache)
+phy <- readd(treepl_dating_results_single, cache = plastid_cache)
+phy_multiple <- readd(treepl_dating_results_multiple, cache = plastid_cache)
 
 # Load Pteridopyte Phylogeny Group I taxonomy
 ppgi <- readd(ppgi_taxonomy, cache = plastid_cache)
