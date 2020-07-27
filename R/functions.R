@@ -1228,6 +1228,10 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
     # with biofiles::getFeatures() and biofiles::filter()
     # (AP004638, Psilotum nudum)
     filter(accession != "AP004638") %>%
+    # Parse out data contained in the "subtype" and "subname" columns
+    tidy_genbank_metadata() %>%
+    # Remove weird brackets from species names
+    mutate(species = str_remove_all(species, "\\[") %>% str_remove_all("\\]")) %>%
     # Remove GenBank duplicate sequences starting with "NC_"
     # - consider accessions with same species and seq length to be same
     # if they only differ in accession.
@@ -1246,7 +1250,8 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
   og_query <- outgroups %>% pull(accession) %>% paste(collapse = "[accession] OR ") %>%
     paste("[accession]", collapse = "", sep = "")
   
-  outgroup_metadata <- gbfetch::fetch_metadata(og_query)
+  outgroup_metadata <- gbfetch::fetch_metadata(og_query) %>%
+    tidy_genbank_metadata() 
   
   bind_rows(pterido_metadata, outgroup_metadata) %>%
     select(-maybe_dup)
