@@ -1147,6 +1147,56 @@ combine_genbank_with_plastome <- function (
   c(common_genes, genbank_genes_only, plastome_genes_only)
 }
 
+#' Make a voucher lookup table
+#'
+#' @param genbank_seqs_names_resolved Metadata of plastid (sanger) sequences
+#' from Genbank, with names resolved
+#' @param genbank_accessions_selection_multiple Selected genbank accessions
+#' to use for tree with multiple tips per species
+#' @param target_genes Character vector of target gene names
+#'
+#' @return Dataframe
+#' 
+make_voucher_table <- function(
+  genbank_seqs_names_resolved,
+  genbank_accessions_selection_multiple,
+  target_genes
+) {
+  
+  # Extract list of all accessions used in the final genbank accessions selection
+  # (multiple sequences per species)
+  # This has already been filtered to one sequence per specimen per gene
+  all_accessions <- genbank_accessions_selection_multiple %>%
+    select(contains("accession")) %>%
+    unlist %>%
+    magrittr::extract(!is.na(.))
+  
+  # Double check that all vouchers appear no more than once per gene
+  genbank_seqs_names_resolved %>%
+    select(gene, accession, species, voucher = specimen_voucher) %>% 
+    unique %>%
+    filter(accession %in% all_accessions) %>%
+    group_by(species, voucher) %>%
+    count(voucher, sort = TRUE) %>%
+    ungroup %>%
+    assert(within_bounds(1, length(target_genes)), n, error_fun = assertr::error_stop, success_fun = assertr::success_logical)
+  
+  # Make voucher-lookup table: assign a voucher ID to each accession within each species/gene combination
+  genbank_seqs_names_resolved %>%
+    select(gene, accession, species, voucher = specimen_voucher) %>% 
+    unique %>%
+    filter(accession %in% all_accessions) %>%
+    mutate(number = 1) %>%
+    group_by(species, gene) %>% 
+    mutate(voucher_id = cumsum(number)) %>%
+    select(-number) %>%
+    # Make sure no missing values (except for voucher)
+    assert(not_na, gene, accession, species, voucher_id) %>%
+    # Make sure combination of gene + species + voucher_id is unique
+    assert_rows(col_concat, is_uniq, gene, species, voucher_id, error_fun = assertr::error_stop)
+  
+}
+
 # Download plastid genes from plastomes ----
 
 #' Download plastome metadata

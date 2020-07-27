@@ -204,6 +204,13 @@ plan <- drake_plan(
   # Reformat as list of unaligned genes.
   plastid_genes_unaligned = extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
   
+  # Make voucher lookup table for concatenating genes
+  voucher_table = make_voucher_table(
+    genbank_seqs_names_resolved,
+    genbank_accessions_selection_multiple,
+    target_genes
+  ),
+  
   # Combine genes from GenBank with genes from plastomes ----
   
   # Combine raw GenBank fasta sequences.
