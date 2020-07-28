@@ -230,7 +230,13 @@ plan <- drake_plan(
   raw_fasta_all_genes = target(
     bind_rows(genbank_seqs_combined_raw, .id = "gene"),
     transform = combine(genbank_seqs_combined_raw),
-  ) %>% rename_genes(target_genes),
+  ),
+  
+  # Rename genes as gene names (not numbers)
+  raw_fasta_all_genes_renamed = raw_fasta_all_genes(
+    raw_fasta_all_genes,
+    target_genes
+  ),
   
   # Filter out species already in plastomes from Sanger sequences
   # (for "single" [one tip per species] dataset only)
@@ -252,7 +258,7 @@ plan <- drake_plan(
   # Combine genes from GenBank with genes from plastomes (still unaligned).
   plastid_genes_unaligned_combined = target(
     combine_genbank_with_plastome(
-      raw_fasta_all_genes = raw_fasta_all_genes,
+      raw_fasta_all_genes = raw_fasta_all_genes_renamed,
       genbank_accessions_selection_filtered,
       plastid_genes_unaligned
     ),
