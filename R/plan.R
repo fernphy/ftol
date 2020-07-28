@@ -198,11 +198,23 @@ plan <- drake_plan(
   # Select final accessions / genes
   # - best representative accession per species
   # - only include genes and accessions with > 50% occupancy.
-  plastid_selection = select_plastid_seqs(
-    plastid_seqs_list, plastome_metadata_renamed, "species"),
+  plastid_selection = target(
+    select_plastid_seqs(
+    plastid_seqs_list, 
+    plastome_metadata_renamed, 
+    filter_type),
+    transform = map(
+      filter_type = c("species", "voucher"),
+      .id = filter_type
+    )),
   
   # Reformat as list of unaligned genes.
-  plastid_genes_unaligned = extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
+  plastid_genes_unaligned = target(
+    extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
+    transform = map(
+      plastid_selection,
+      .id = filter_type
+    )),
   
   # Make voucher lookup table for concatenating genes
   voucher_table = make_voucher_table(

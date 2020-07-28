@@ -428,21 +428,21 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
   # - categorize the results into those that had
   # multiple hits within a data source vs. those that didn't
   if(any(names_resolved_to_other_sources_raw$n > 1)) {
-  names_resolved_to_other_sources_mult_hits <-
-    names_resolved_to_other_sources_raw %>%
-    filter(n > 1) %>%
-    transmute(
-      query = user_supplied_name,
-      data_source_title, # To track database version
-      imported_at, # To track database version
-      matched_name, 
-      synonyms = current_name_string,
-      name_resolved_manual = NA_character_,
-      name_resolved_manual_source = NA_character_
-    ) } else {
-      names_resolved_to_other_sources_mult_hits <- tibble()
-    }
-    
+    names_resolved_to_other_sources_mult_hits <-
+      names_resolved_to_other_sources_raw %>%
+      filter(n > 1) %>%
+      transmute(
+        query = user_supplied_name,
+        data_source_title, # To track database version
+        imported_at, # To track database version
+        matched_name, 
+        synonyms = current_name_string,
+        name_resolved_manual = NA_character_,
+        name_resolved_manual_source = NA_character_
+      ) } else {
+        names_resolved_to_other_sources_mult_hits <- tibble()
+      }
+  
   # Combine results of names with mult. synonyms
   # *add to tally at end
   names_with_mult_syns <-
@@ -965,7 +965,7 @@ select_genbank_genes <- function (genbank_seqs_tibble, genes_used, n_seqs_per_sp
     mutate(
       row_num = 1:nrow(.),
       specimen_voucher = ifelse(is.na(specimen_voucher), glue("specimen_missing_{row_num}"), specimen_voucher)
-      ) %>%
+    ) %>%
     # Convert to wide format, joining on voucher
     # - first split into a list of dataframes by gene
     group_by(gene) %>%
@@ -1309,7 +1309,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
   
   # Subset results to successful genes, filter by length, and set names
   extracted_genes_filtered <-
-  extracted_genes %>%
+    extracted_genes %>%
     # Drop errors
     compact() %>%
     flatten() %>%
@@ -1364,7 +1364,8 @@ filter_majority_missing <- function (gene_lengths_best) {
     )) %>%
     group_by(gene) %>%
     summarize(
-      n_missing_accs = sum(missing)
+      n_missing_accs = sum(missing),
+      .groups = "drop"
     ) %>%
     mutate(
       keep_gene = case_when(
@@ -1381,7 +1382,8 @@ filter_majority_missing <- function (gene_lengths_best) {
     )) %>%
     group_by(accession) %>%
     summarize(
-      n_missing_genes = sum(missing)
+      n_missing_genes = sum(missing),
+      .groups = "drop"
     ) %>%
     mutate(
       keep_acc = case_when(
@@ -1403,13 +1405,13 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' a named list of gene sequences for a plastome accession.
 #' @param plastome_metadata Associated plastome metadata (species names)
 #' @param filter_by Should the list be selected by the best representative
-#' accession per species or genus?
+#' accession per species, genus, or voucher?
 #'
-select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by = c("species", "genus")) {
+select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by = c("species", "genus", "voucher")) {
   
   assertthat::assert_that(assertthat::is.string(filter_by))
   
-  assertthat::assert_that(filter_by %in% c("species", "genus"))
+  assertthat::assert_that(filter_by %in% c("species", "genus", "voucher"))
   
   # Drop any plastome sequences with zero genes
   check_genes <- function(plastome_seq) {
@@ -1418,13 +1420,13 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
   
   plastid_seq_list <- plastid_seq_list[map_lgl(plastid_seq_list, check_genes)]
   
-  # Make tibble of gene lengths by accession
+  # Make tibble of gene lengths by accession, including species and voucher
   gene_lengths <- 
     plastid_seq_list %>%
     map_df(get_gene_lengths, .id = "plastid_seq_name") %>%
     mutate(accession = str_remove(plastid_seq_name, "clean_plastid_seqs_plastid_seqs_")) %>%
-    left_join(select(plastome_metadata, accession, species), by = "accession") %>%
-    assert(not_na, species)
+    left_join(select(plastome_metadata, accession, species, specimen_voucher), by = "accession") %>%
+    assert(not_na, species, gene, accession, slen)
   
   # Missing genes (length 0) are not in the original sequences list,
   # so add these by crossing all combinations of accession and gene
@@ -1434,6 +1436,7 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
       accession = gene_lengths$accession %>% unique)) %>%
     left_join(select(gene_lengths, gene, accession, slen), by = c("gene", "accession")) %>%
     left_join(select(gene_lengths, accession, species) %>% unique, by = "accession") %>%
+    left_join(select(gene_lengths, accession, specimen_voucher) %>% unique, by = "accession") %>%
     left_join(select(gene_lengths, accession, plastid_seq_name) %>% unique, by = "accession") %>%
     mutate(slen = replace_na(slen, 0)) %>%
     assert(not_na, gene, accession, slen, species)
@@ -1445,7 +1448,8 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
     arrange(desc(slen)) %>%
     group_by(gene) %>%
     summarize(
-      max_length = max(slen)
+      max_length = max(slen),
+      .groups = "drop"
     )
   
   # Identify the "best" accessions as those having the least
@@ -1455,11 +1459,13 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
     assert(not_na, accession, species) %>%
+    # first get total length for each accession
     group_by(accession, species) %>%
     summarize(
-      total_rel_len = sum(rel_len)
+      total_rel_len = sum(rel_len),
+      .groups = "drop"
     ) %>%
-    ungroup %>%
+    # then sort by species and keep the one with the greatest length
     group_by(species) %>%
     arrange(desc(total_rel_len)) %>%
     slice(1) %>%
@@ -1469,8 +1475,8 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
   # the best accession per species
   gene_lengths_best_by_species <-
     best_accessions_by_species %>%
-    select(-total_rel_len) %>%
-    left_join(gene_lengths, by = c("accession", "species")) %>%
+    select(accession) %>%
+    left_join(gene_lengths, by = "accession") %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length)
   
@@ -1480,12 +1486,16 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
     gene_lengths %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
+    # add Genus column
     mutate(genus = str_split(species, " ") %>% map_chr(1)) %>%
+    # first get total length for each accession
     group_by(accession, genus) %>%
     summarize(
-      total_rel_len = sum(rel_len)
+      total_rel_len = sum(rel_len),
+      .groups = "drop"
     ) %>%
     ungroup %>%
+    # then sort by genus and keep the one with the greatest length
     group_by(genus) %>%
     arrange(desc(total_rel_len)) %>%
     slice(1) %>%
@@ -1494,11 +1504,41 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
   # And best gene lengths by genus
   gene_lengths_best_by_genus <-
     best_accessions_by_genus %>%
-    select(-total_rel_len) %>%
+    select(accession) %>%
     left_join(gene_lengths, by = "accession") %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length)
   
+  # Do the same at the voucher level:
+  # Best accession per voucher
+  best_accessions_by_voucher <-
+    gene_lengths %>%
+    left_join(max_lengths, by = "gene") %>%
+    mutate(rel_len = slen / max_length) %>%
+    # If voucher is NA (often the case), use accession as stand-in
+    # (so assume each accession comes from a different voucher)
+    mutate(specimen_voucher = ifelse(is.na(specimen_voucher), accession, specimen_voucher)) %>%
+    assert(not_na, accession, specimen_voucher) %>%
+    group_by(accession, specimen_voucher) %>%
+    summarize(
+      total_rel_len = sum(rel_len),
+      .groups = "drop"
+    ) %>%
+    group_by(specimen_voucher) %>%
+    arrange(desc(total_rel_len)) %>%
+    slice(1) %>%
+    ungroup
+  
+  # Make a table of (relative) gene lengths for
+  # the best accession per voucher
+  gene_lengths_best_by_voucher <-
+    best_accessions_by_voucher %>%
+    select(accession) %>%
+    left_join(gene_lengths, by = "accession") %>%
+    left_join(max_lengths, by = "gene") %>%
+    mutate(rel_len = slen / max_length)
+  
+  # Select gene lengths filtered by genus, species, or voucher
   gene_lengths_best_filtered_by_genus <-
     filter_majority_missing(gene_lengths_best_by_genus) %>%
     select(accession, species, gene) %>%
@@ -1511,9 +1551,17 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
     left_join(select(gene_lengths, plastid_seq_name, accession) %>% unique, by = "accession") %>%
     assert(not_na, everything())
   
-  switch(filter_by,
-         species = gene_lengths_best_filtered_by_species,
-         genus = gene_lengths_best_filtered_by_genus)
+  gene_lengths_best_filtered_by_voucher <-
+    filter_majority_missing(gene_lengths_best_by_voucher)  %>%
+    select(accession, species, specimen_voucher, gene) %>%
+    left_join(select(gene_lengths, plastid_seq_name, accession) %>% unique, by = "accession") %>%
+    assert(not_na, accession, species, gene, plastid_seq_name)
+  
+  switch(
+    filter_by,
+    genus = gene_lengths_best_filtered_by_genus,
+    species = gene_lengths_best_filtered_by_species,
+    voucher = gene_lengths_best_filtered_by_voucher)
   
 }
 
@@ -1620,8 +1668,8 @@ concatenate_genes <- function (dna_list, check_mult = TRUE) {
   
   # Check that there are no duplicate sequence names (species) within a gene
   if (isTRUE(check_mult)) {
-  map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
-    assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
+    map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
+      assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
   }
   
   dna_multi <- new("multidna", dna_list) 
