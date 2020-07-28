@@ -233,7 +233,7 @@ plan <- drake_plan(
   ),
   
   # Rename genes as gene names (not numbers)
-  raw_fasta_all_genes_renamed = raw_fasta_all_genes(
+  raw_fasta_all_genes_renamed = rename_genes(
     raw_fasta_all_genes,
     target_genes
   ),
