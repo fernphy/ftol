@@ -195,9 +195,9 @@ plan <- drake_plan(
   # Use readd() to convert the object back to a static object from dynamic.
   plastid_seqs_list = readd(plastid_seqs, cache = plastid_cache),
   
-  # Select final accessions / genes
-  # - best representative accession per species
-  # - only include genes and accessions with > 50% occupancy.
+  # Select final accessions / genes, only include genes and accessions with > 50% occupancy
+  # `_species`: best representative accession per species
+  # `_voucher`: best representative accession per voucher per species (so, some with multiple tips/species)
   plastid_selection = target(
     select_plastid_seqs(
     plastid_seqs_list, 
@@ -216,32 +216,53 @@ plan <- drake_plan(
       .id = filter_type
     )),
   
-  # Make voucher lookup table for concatenating genes
+  # Make voucher lookup table for concatenating genes by specimen voucher
   voucher_table = make_voucher_table(
     genbank_seqs_names_resolved,
     genbank_accessions_selection_multiple,
+    plastid_selection_voucher,
     target_genes
   ),
   
   # Combine genes from GenBank with genes from plastomes ----
   
-  # Combine raw GenBank fasta sequences.
+  # Combine raw GenBank (Sanger) fasta sequences
   raw_fasta_all_genes = target(
     bind_rows(genbank_seqs_combined_raw, .id = "gene"),
     transform = combine(genbank_seqs_combined_raw),
+  ) %>% rename_genes(target_genes),
+  
+  # Filter out species already in plastomes from Sanger sequences
+  # (for "single" [one tip per species] dataset only)
+  genbank_accessions_selection_filtered = target(
+    filter_out_plastome_species(
+      plastid_genes_unaligned = plastid_genes_unaligned_species,
+      plastome_metadata_renamed = plastome_metadata_renamed,
+      genbank_accessions_selection,
+      filter
+    ),
+    transform = map(
+      genbank_accessions_selection,
+      # filter is TRUE for single seq per species, FALSE for multiple seqs per species
+      filter = c(TRUE, FALSE), 
+      .id = n_seqs_per_sp
+    )
   ),
   
   # Combine genes from GenBank with genes from plastomes (still unaligned).
   plastid_genes_unaligned_combined = target(
     combine_genbank_with_plastome(
       raw_fasta_all_genes = raw_fasta_all_genes,
-      genes_used = target_genes,
-      genbank_accessions_selection,
-      plastome_metadata_renamed = plastome_metadata_renamed,
-      plastid_genes_unaligned = plastid_genes_unaligned
+      genbank_accessions_selection_filtered,
+      plastid_genes_unaligned
     ),
     transform = map(
-      genbank_accessions_selection,
+      # maps this combination:
+      # genbank_accessions_selection_filtered_single, genbank_accessions_selection_filtered_multiple 
+      #                |                                                 |  
+      # plastid_genes_unaligned_species,              plastid_genes_unaligned_voucher
+      genbank_accessions_selection_filtered,
+      plastid_genes_unaligned,
       .id = n_seqs_per_sp)
   ),
   

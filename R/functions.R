@@ -1047,51 +1047,77 @@ extract_seqs <- function(data) {
   ape::as.DNAbin(seqs)
 }
 
+#' Rename genes from number (1, 2, etc) to gene name ("rbcL", "atpA", etc)
+#'
+#' @param raw_fasta_all_genes Combined dataframe including metadata
+#' and DNA sequence for all downloaded GenBank (Sanger) sequences
+#' @param genes_used Character vector of genes used
+#'
+#' @return Dataframe with genes listed by name instead of number
+#' 
+rename_genes <- function (raw_fasta_all_genes, genes_used) {
+  
+  ### Recode gene names from numbers to actual genes used ###
+  # Note this depends on the order of `genes_used`:
+  # must be in the same order as `target_used used` for fetch_fern_gene()
+  genes_used <- genes_used %>% set_names(1:length(genes_used))
+  
+  raw_fasta_all_genes %>%
+    rename(gene_number = gene) %>%
+    mutate(
+      gene = recode(gene_number, !!!genes_used)
+    )
+  
+}
+
+#' Filter out species in plastome data from Sanger data
+#'
+#' @param plastid_genes_unaligned List of unaligned plastome genes
+#' @param plastome_metadata_renamed Plastome metadata after standardizing names
+#' @param genbank_accessions_selection Selected GenBank (Sanger) sequences to use
+#' @param filter Logical; should filtering be done or not?
+#'
+#' @return genbank_accessions_selection, with species in plastome data filtered out (if `filter` = TRUE) 
+#' 
+filter_out_plastome_species <- function (plastid_genes_unaligned, plastome_metadata_renamed, genbank_accessions_selection, filter) {
+  
+  # Don't do any filtering if `filter` is false
+  if(filter == FALSE) return (genbank_accessions_selection)
+  
+  ### Make list of species in selected plastome genes ###
+  # (not the same as plastome_metadata_renamed, since that was ALL plastomes, and
+  # we need a list of species names of only the plastomes that will actually be used)
+  plastid_genes_unaligned_species_list <-
+    map_df(plastid_genes_unaligned, ~names(.) %>% tibble(accession = .), .id = "gene") %>%
+    left_join(plastome_metadata_renamed, by = "accession") %>%
+    select(gene, accession, species) %>%
+    assert(not_na, species)
+  
+  # Filter out species from GenBank (Sanger) accessions that are already in plastome data
+  anti_join(
+    genbank_accessions_selection, 
+    plastid_genes_unaligned_species_list,
+    by = "species"
+  )
+  
+}
+
 #' Combine sequences for target genes from GenBank with sequences
 #' extracted from plastomes
-#' 
-#' This will discard any GenBank target gene sequences for any species
-#' that are already represented in the plastomes.
 #'
 #' @param raw_fasta_all_genes Tibble of DNA sequence data downloaded from GenBank
-#' @param genes_used Vector of names of target genes downloaded individually from GenBank
 #' @param genbank_accessions_selection Final selection of accessions to use after removing rogues
-#' @param plastome_metadata_renamed Plastome metadata (accessions and species names)
 #' @param plastid_genes_unaligned List of unaligned genes extracted from plastomes
 #'
 #' @return List of class DNAbin
 #' 
 combine_genbank_with_plastome <- function (
   raw_fasta_all_genes,
-  genes_used,
   genbank_accessions_selection,
-  plastome_metadata_renamed,
   plastid_genes_unaligned
 ) {
   
-  ### Recode gene names from numbers to actual genes used ###
-  # Note this depends on the order of `genes_used`!
-  genes_used <- genes_used %>% set_names(1:length(genes_used))
-  
-  raw_fasta_all_genes <-
-    raw_fasta_all_genes %>%
-    rename(gene_number = gene) %>%
-    mutate(
-      gene = recode(gene_number, !!!genes_used)
-    )
-  
-  ### Make list of species in selected plastome genes ###
-  # (not the same as plastome_metadata_renamed, since that was ALL plastomes, and
-  # we need a list of species names of only the plastomes that will actually be used)
-  plastid_genes_unaligned_species <-
-    map_df(plastid_genes_unaligned, ~names(.) %>% tibble(accession = .), .id = "gene") %>%
-    left_join(plastome_metadata_renamed) %>%
-    select(gene, accession, species) %>%
-    assert(not_na, species)
-  
-  ### Select final sequences (after rogue removal) ###
-  
-  # Convert final selected accessions to long format
+  # Convert final selected GenBank (Sanger) accessions to long format
   final_gb_accessions <-
     genbank_accessions_selection %>%
     select(species, specimen_voucher, contains("accession")) %>%
@@ -1102,16 +1128,11 @@ combine_genbank_with_plastome <- function (
       values_to = "accession") %>%
     filter(!is.na(accession))
   
-  # Add sequence data, group by gene
+  # GenBank (Sanger) data: add sequence data, group by gene
   final_seqs_grouped <-
     final_gb_accessions %>%
     # Check that the combination of gene + accession is unique
     assert_rows(col_concat, is_uniq, accession, gene) %>%
-    # Remove any species already in plastome data
-    anti_join(
-      plastid_genes_unaligned_species,
-      by = "species"
-    ) %>%
     left_join(
       select(raw_fasta_all_genes, gene, accession, seq),
       # Join on gene + accession, since some different genes share the same acc
@@ -1122,7 +1143,7 @@ combine_genbank_with_plastome <- function (
     # Set grouping
     group_by(gene)
   
-  # Convert to list of DNA sequences, name by gene
+  # GenBank (Sanger) data: convert to list of DNA sequences, name by gene
   genbank_genes_unaligned <-
     final_seqs_grouped %>%
     group_split %>%
@@ -1131,27 +1152,36 @@ combine_genbank_with_plastome <- function (
   names(genbank_genes_unaligned) <- group_keys(final_seqs_grouped) %>% pull(gene)
   
   ### Combine with plastome sequences ###
+  
+  # - Make vector of genes in common between Sanger and plastome sequences
   common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastid_genes_unaligned)) 
   
+  # - Make a list of accessions for genes in common between Sanger and plastome sequences
   common_genes <-
     common_gene_names %>%
     map(~c(genbank_genes_unaligned[[.]], plastid_genes_unaligned[[.]])) %>%
     set_names(common_gene_names)
   
+  # - Make a list of accessions in Sanger genes only (likely zero, but for completeness' sake)
   genbank_genes_only <- genbank_genes_unaligned %>%
     magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastid_genes_unaligned)))
   
+  # - Make a list of accessions in plastome sequences only
   plastome_genes_only <- plastid_genes_unaligned %>%
     magrittr::extract(setdiff(names(plastid_genes_unaligned), names(genbank_genes_unaligned)))
   
+  # Combine the lists
   c(common_genes, genbank_genes_only, plastome_genes_only)
+  
 }
 
 #' Make a voucher lookup table
 #'
-#' @param genbank_seqs_names_resolved Metadata of plastid (sanger) sequences
+#' @param genbank_seqs_names_resolved Metadata of plastid (Sanger) sequences
 #' from Genbank, with names resolved
-#' @param genbank_accessions_selection_multiple Selected genbank accessions
+#' @param genbank_accessions_selection_multiple Selected plastid (Sanger) accessions
+#' to use for tree with multiple tips per species
+#' @param plastid_selection_voucher Selected plastome accessions
 #' to use for tree with multiple tips per species
 #' @param target_genes Character vector of target gene names
 #'
@@ -1160,16 +1190,22 @@ combine_genbank_with_plastome <- function (
 make_voucher_table <- function(
   genbank_seqs_names_resolved,
   genbank_accessions_selection_multiple,
+  plastid_selection_voucher,
   target_genes
 ) {
   
   # Extract list of all accessions used in the final genbank accessions selection
   # (multiple sequences per species)
-  # This has already been filtered to one sequence per specimen per gene
-  all_accessions <- genbank_accessions_selection_multiple %>%
+  # - Sanger sequences: this has already been filtered to one sequence per specimen per gene
+  all_accessions_sanger <- genbank_accessions_selection_multiple %>%
     select(contains("accession")) %>%
     unlist %>%
     magrittr::extract(!is.na(.))
+  
+  # Plastome sequences: these are also already selected (best plastome per voucher per species)
+  all_accessions_plastome <- plastid_selection_voucher$accession %>% unique
+  
+  all_accessions <- c(all_accessions_sanger, all_accessions_plastome)
   
   # Double check that all vouchers appear no more than once per gene
   genbank_seqs_names_resolved %>%
@@ -1182,8 +1218,14 @@ make_voucher_table <- function(
     assert(within_bounds(1, length(target_genes)), n, error_fun = assertr::error_stop, success_fun = assertr::success_logical)
   
   # Make voucher-lookup table: assign a voucher ID to each accession within each species/gene combination
-  genbank_seqs_names_resolved %>%
-    select(gene, accession, species, voucher = specimen_voucher) %>% 
+  
+  # First, combine plastome and sanger data
+  bind_rows(
+    plastid_selection_voucher %>% 
+      select(gene, accession, species, voucher = specimen_voucher),
+    genbank_seqs_names_resolved %>%
+      select(gene, accession, species, voucher = specimen_voucher)
+  ) %>% 
     unique %>%
     filter(accession %in% all_accessions) %>%
     mutate(number = 1) %>%
@@ -1193,7 +1235,8 @@ make_voucher_table <- function(
     # Make sure no missing values (except for voucher)
     assert(not_na, gene, accession, species, voucher_id) %>%
     # Make sure combination of gene + species + voucher_id is unique
-    assert_rows(col_concat, is_uniq, gene, species, voucher_id, error_fun = assertr::error_stop)
+    assert_rows(col_concat, is_uniq, gene, species, voucher_id, error_fun = assertr::error_stop) %>%
+    ungroup
   
 }
 
