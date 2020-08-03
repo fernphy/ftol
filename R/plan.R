@@ -40,7 +40,7 @@ plan <- drake_plan(
   genbank_names_with_mult_syns_select_path = target("data_raw/genbank_names_with_mult_syns_select.csv", format = "file"),
   genbank_names_with_mult_syns_select = read_csv(genbank_names_with_mult_syns_select_path),
   
-  # Download individual plastid sequences from GenBank----
+  # Download individual plastid sequences from GenBank (Sanger sequences) ----
   
   # Download fern plastid gene fasta files
   # (target genes defined in plastid_make.R)
@@ -54,6 +54,12 @@ plan <- drake_plan(
     fetch_fern_metadata(gene, end_date = date_cutoff),
     transform = map(gene = !!target_genes)
   ),
+  
+  # Standardize names and filter Sanger sequences ----
+  
+  # Results in two versions of list: 
+  # - one sequence per species (`genbank_accessions_selection_single`), or
+  # - multiple sequences per species (`genbank_accessions_selection_multiple`)
   
   # Combine GenBank sequences with metadata 
   # (so fasta sequence is a list-column in genbank_seqs_combined_raw)
@@ -124,9 +130,15 @@ plan <- drake_plan(
   ),
   
   # Combine cleaned genes into single dataframe
-  genbank_seqs_rogues_removed_all_genes = target(
+  genbank_seqs_rogues_removed_all_genes_raw = target(
     bind_rows(genbank_seqs_rogues_removed, .id = "gene"),
     transform = combine(genbank_seqs_rogues_removed, .id = gene),
+  ),
+  
+  # - convert genes from number codes to gene names
+  genbank_seqs_rogues_removed_all_genes = rename_genes(
+    genbank_seqs_rogues_removed_all_genes_raw,
+    target_genes
   ),
   
   # Resolve names:
@@ -159,8 +171,7 @@ plan <- drake_plan(
   # - 3: specimens with longest combined non-rbcL genes
   genbank_accessions_selection = target(
     select_genbank_genes(
-      genbank_seqs_tibble = genbank_seqs_names_resolved, 
-      genes_used = target_genes, 
+      genbank_seqs_tibble = genbank_seqs_names_resolved,
       n_seqs_per_sp),
     transform = map(
       n_seqs_per_sp = c("single", "multiple"),

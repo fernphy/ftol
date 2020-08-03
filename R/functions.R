@@ -922,31 +922,19 @@ filter_genbank_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
 #' @param genbank_seqs_tibble Tibble; metadata for GenBank sequences
 #' including columns for `gene`, `species`, `specimen_voucher`, 
 #' `accession` (GenBank accession), and `length` (gene length in bp)
-#' @param genes_used Vector of gene names used.
 #' @param n_seqs_per_sp String; format of output data. If 'single', only one set 
 #' of sequences per species will be returned, prioritizing species with rbcL. 
 #' If 'multiple', all sequences will be returned (multiple seqs per species)
 #'
 #' @return Tibble in wide format joining genes based on species + voucher
 #' 
-select_genbank_genes <- function (genbank_seqs_tibble, genes_used, n_seqs_per_sp = c("single", "multiple")) {
+select_genbank_genes <- function (genbank_seqs_tibble, n_seqs_per_sp = c("single", "multiple")) {
   
   assertthat::assert_that(assertthat::is.string(n_seqs_per_sp))
   
   assertthat::assert_that(
     n_seqs_per_sp %in% c("single", "multiple"),
     msg = "'n_seqs_per_sp' must be either 'single' or 'multiple'")
-  
-  # Need to recode gene names from numbers to actual genes used.
-  # Note this depends on the order of `genes_used`!
-  genes_used <- genes_used %>% set_names(1:length(genes_used))
-  
-  genbank_seqs_tibble <-
-    genbank_seqs_tibble %>%
-    rename(gene_number = gene) %>%
-    mutate(
-      gene = recode(gene_number, !!!genes_used)
-    )
   
   ### Join genes based on voucher ###
   # Original genbank data is in "long" format, with one row per accession
