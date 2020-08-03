@@ -337,19 +337,19 @@ plan <- drake_plan(
     transform = map(
       plastid_genes_aligned_trimmed_renamed,
       .id = n_seqs_per_sp)
+  ),
+  
+  # Generate tree.
+  plastome_tree = target(
+   jntools::iqtree(
+     plastome_alignment,
+     m = "GTR+I+G", bb = 1000, nt = "AUTO",
+     redo = FALSE, echo = TRUE, wd = here::here("iqtree")),
+   transform = map(
+     plastome_alignment,
+     .id = n_seqs_per_sp)
   ) #,
   
-  # # Generate tree.
-  # plastome_tree = target(
-  #   jntools::iqtree(
-  #     plastome_alignment,
-  #     m = "GTR+I+G", bb = 1000, nt = "AUTO",
-  #     redo = FALSE, echo = TRUE, wd = here::here("iqtree")),
-  #   transform = map(
-  #     plastome_alignment,
-  #     .id = n_seqs_per_sp)
-  # ),
-  # 
   # # Dating analysis with treepl ----
   # 
   # # Root tree on bryophytes
