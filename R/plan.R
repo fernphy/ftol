@@ -315,13 +315,18 @@ plan <- drake_plan(
   ) %>% unique,
   
   # - then use the combined, resolved names to rename each alignment
-  # by species instead of accession
+  # by species (or species + voucher ID code) instead of accession
   plastid_genes_aligned_trimmed_renamed = target(
-    purrr::map(
-      plastid_genes_aligned_trimmed, rename_alignment,
-      name_metadata = resolved_names_all),
+    rename_alignment_list(
+      plastid_genes_aligned_trimmed, 
+      name_metadata),
     transform = map(
+      # maps this combination:
+      # plastid_genes_aligned_trimmed_single, plastid_genes_aligned_trimmed_multiple 
+      #                |                                        |  
+      #        resolved_names_all                        voucher_table
       plastid_genes_aligned_trimmed,
+      name_metadata = c(resolved_names_all, voucher_table),
       .id = n_seqs_per_sp)
   ),
   

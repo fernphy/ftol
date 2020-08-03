@@ -1881,18 +1881,36 @@ rename_alignment <- function(alignment, name_metadata) {
   
   lookup_tibble <-
     tibble(accession = rownames(alignment)) %>%
+    # Remove '_R_' that may be added to sequence names by MAFFT
     mutate(accession = str_remove_all(accession, "_R_")) %>%
     # All accessions within each gene should be unique
     assert(is_uniq, accession) %>%
     left_join(
       select(name_metadata, accession, species),
       by = "accession") %>%
+    # Replace spaces with underscores
     mutate(species = str_replace_all(species, " ", "_")) %>%
     assert(not_na, species)
   
   rownames(alignment) <- lookup_tibble$species
   
   alignment
+}
+
+
+#' Rename a list of alignments from accessions to species names
+#'
+#' @param alignment_list List of alignment to rename; each must be matrix of class "DNAbin"
+#' @param name_metadata Tibble with columns "accession" matching the
+#' accessions in the alignment and "species", which will be used for renaming
+#'
+#' @return List
+rename_alignment_list <- function(alignment_list, name_metadata) {
+  
+  purrr::map(
+    alignment_list, rename_alignment,
+    name_metadata = name_metadata)
+  
 }
 
 #' Remove the "_R_" from mafft-generated alignments
