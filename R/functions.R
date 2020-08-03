@@ -1183,15 +1183,13 @@ combine_genbank_with_plastome <- function (
 #' to use for tree with multiple tips per species
 #' @param plastid_selection_voucher Selected plastome accessions
 #' to use for tree with multiple tips per species
-#' @param target_genes Character vector of target gene names
 #'
 #' @return Dataframe
 #' 
 make_voucher_table <- function(
   genbank_seqs_names_resolved,
   genbank_accessions_selection_multiple,
-  plastid_selection_voucher,
-  target_genes
+  plastid_selection_voucher
 ) {
   
   # Extract list of all accessions used in the final genbank accessions selection
@@ -1205,7 +1203,7 @@ make_voucher_table <- function(
   # Plastome sequences: these are also already selected (best plastome per voucher per species)
   all_accessions_plastome <- plastid_selection_voucher$accession %>% unique
   
-  all_accessions <- c(all_accessions_sanger, all_accessions_plastome)
+  all_accessions <- c(all_accessions_sanger, all_accessions_plastome) %>% unique
   
   # Double check that all vouchers appear no more than once per gene
   genbank_seqs_names_resolved %>%
@@ -1226,17 +1224,20 @@ make_voucher_table <- function(
     genbank_seqs_names_resolved %>%
       select(gene, accession, species, voucher = specimen_voucher)
   ) %>% 
+    # Add "voucher ID" number for each voucher within a species
     unique %>%
+    # - if no voucher available, consider each accession unique
+    mutate(voucher = ifelse(is.na(voucher), accession, voucher)) %>%
     filter(accession %in% all_accessions) %>%
-    mutate(number = 1) %>%
-    group_by(species, gene) %>% 
-    mutate(voucher_id = cumsum(number)) %>%
-    select(-number) %>%
+    group_by(species) %>%
+    mutate(voucher_id = factor(voucher) %>% as.numeric) %>%
+    ungroup %>%
     # Make sure no missing values (except for voucher)
     assert(not_na, gene, accession, species, voucher_id) %>%
     # Make sure combination of gene + species + voucher_id is unique
     assert_rows(col_concat, is_uniq, gene, species, voucher_id, error_fun = assertr::error_stop) %>%
-    ungroup
+    # Rename species as species plus voucher ID
+    mutate(species = paste(species, voucher_id))
   
 }
 

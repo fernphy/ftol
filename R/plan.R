@@ -220,8 +220,7 @@ plan <- drake_plan(
   voucher_table = make_voucher_table(
     genbank_seqs_names_resolved,
     genbank_accessions_selection_multiple,
-    plastid_selection_voucher,
-    target_genes
+    plastid_selection_voucher
   ),
   
   # Combine genes from GenBank with genes from plastomes ----
