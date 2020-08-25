@@ -2927,7 +2927,7 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
     assertthat::assert_that(assertthat::is.number(cpu))
   assertthat::assert_that(is.logical(bwa))
   if(!is.null(other_args)) 
-    assertthat::assert_that(assertthat::is.string(other_args))
+    assertthat::assert_that(is.character(other_args))
   
   # Modify arguments for processx::run()
   wd <- fs::path_abs(wd)
@@ -3162,3 +3162,32 @@ intronerate <- function (echo = FALSE, wd, prefix, ...) {
     hybpiper_arguments, wd = wd, echo = echo)
   
 }
+
+#' Get statistics on the number of reads obtained by HybPiper
+#' 
+#' (just reads, not assembled genes)
+#'
+#' @param hybpiper_dir Path to HybPiper working directory
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+get_read_stats <- function (hybpiper_dir, ...) {
+  
+  get_total_seq_len <- function (dna) {
+    purrr::map_dbl(dna, length) %>% sum()
+  }
+  
+  tibble(
+    file = list.files(hybpiper_dir, pattern = "interleaved\\.fasta", recursive = TRUE, full.names = TRUE),
+    data = purrr::map(file, ape::read.FASTA)
+  ) %>%
+    mutate(
+      sample = purrr::map_chr(file, ~str_split(., "\\/") %>% map_chr(7)),
+      gene = purrr::map_chr(file, ~str_split(., "\\/") %>% map_chr(8)),
+      n_seq = purrr::map_dbl(data, length),
+      n_bp = purrr::map_dbl(data, get_total_seq_len)
+    ) %>%
+    select(sample, gene, n_seq, n_bp)
+  
+}
+

@@ -173,6 +173,11 @@ hybpiper_plan <- drake_plan (
     sequenceType = "dna",
     depends = plastid_hybpiper_results),
   
+  plastid_read_stats = get_read_stats(
+    hybpiper_dir = here::here("intermediates/hybpiper"),
+    depends = plastid_hybpiper_results
+  )
+  
 )
 
 # Combine plans ----
