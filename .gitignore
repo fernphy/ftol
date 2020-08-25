@@ -13,3 +13,4 @@ treepl
 results/
 *.tar.gz
 *.html
+intermediates
