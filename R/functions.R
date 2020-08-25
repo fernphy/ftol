@@ -2944,7 +2944,7 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
   
   # Run command
   processx::run(
-    "reads_first.py", 
+    "/apps/HybPiper/reads_first.py", 
     hybpiper_arguments, 
     wd = wd, echo = echo)
 }
@@ -3002,7 +3002,7 @@ get_seq_lengths <- function (echo = FALSE, wd, baitfile, namelistfile, sequenceT
   
   # Run command
   results <- processx::run(
-    "get_seq_lengths.py", 
+    "/apps/HybPiper/get_seq_lengths.py", 
     hybpiper_arguments, wd = wd, echo = echo)
   
   # Check for hybpiper error
@@ -3059,7 +3059,7 @@ hybpiper_stats <- function (echo = FALSE, wd, seq_lengths, namelistfile, ...) {
   
   # Run command
   results <- processx::run(
-    "hybpiper_stats.py", 
+    "/apps/HybPiper/hybpiper_stats.py", 
     hybpiper_arguments, wd = wd, echo = echo)
   
   # Check for hybpiper error
@@ -3117,7 +3117,7 @@ retrieve_sequences <- function (echo = FALSE, wd, baitfile, sequence_dir, sequen
   
   # Run command
   processx::run(
-    "retrieve_sequences.py", 
+    "/apps/HybPiper/retrieve_sequences.py", 
     hybpiper_arguments, wd = wd, echo = echo)
   
 }
@@ -3159,7 +3159,7 @@ intronerate <- function (echo = FALSE, wd, prefix, ...) {
   
   # Run command
   processx::run(
-    "intronerate.py", 
+    "/apps/HybPiper/intronerate.py", 
     hybpiper_arguments, wd = wd, echo = echo)
   
 }
