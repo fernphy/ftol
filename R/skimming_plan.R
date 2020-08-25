@@ -136,7 +136,14 @@ hybpiper_plan <- drake_plan (
       readfiles = paired_reads_list[[1]],
       prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
       cpu = 1, 
-      bwa = TRUE),
+      bwa = TRUE,
+      other_args = c(
+        "--cov_cutoff", "0",
+        "--ins_length", "50",
+        "--thresh", "0",
+        "--length_pct", "0",
+        "--depth_multiplier", "0"
+      )),
     dynamic = map(paired_reads_list)
   ),
   
