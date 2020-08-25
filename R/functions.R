@@ -2485,50 +2485,44 @@ get_fastq_files_for_trimmomatic <- function (fastq_raw_dir, fastq_pattern = "fas
 
 #' Make a tibble of arguments to pass to trimmomatic wrapper
 #' 
-#' Only works on paired fastq reads differentiated by 'R1' and 'R2', 
-#' and assumes that the first part of the name separated by underscores
-#' is the sample ID.
+#' Only works on paired fastq reads differentiated by 'R1' and 'R2'.
 #'
 #' @param fastq_files Vector of fastq files to use as input. Paths must
 #' be relative to working directory, AKA `here()`.
+#' @param ids Vector of genomic IDs matching part of fastq file names
 #' @param outdir Folder to write output files to.
 #'
 #' @return tibble
-#' @examples
 #' 
-#' make_trimmomatic_arg_table(c(
-#' "4938_S43_L001_R2_001.fastq.gz", 
-#' "4938_S43_L001_R1_001.fastq.gz", 
-#' "JNG3515_S73_L001_R2_001.fastq.gz", 
-#' "JNG3515_S73_L001_R1_001.fastq.gz"))
-#' 
-#' make_trimmomatic_arg_table(c(
-#' "4938_S43_L001_R2_001.fastq.gz", 
-#' "4938_S43_L001_R1_001.fastq.gz", 
-#' "JNG3515_S73_L001_R2_001.fastq.gz", 
-#' "JNG3516_S73_L001_R1_001.fastq.gz"))
-#'
-make_trimmomatic_arg_table <- function (fastq_files, outdir = NULL) {
+make_trimmomatic_arg_table <- function (fastq_files, ids, outdir = NULL) {
   
-  assert_that(is.character(fastq_files))
-  assert_that(is.character(outdir) | is.null(outdir))
+  assertthat::assert_that(is.character(fastq_files))
+  assertthat::assert_that(is.character(ids))
+  assertthat::assert_that(is.character(outdir) | is.null(outdir))
+  
+  extract_name <- function (name, ids) {
+    name %>% str_match(paste(ids, collapse = "|")) %>% magrittr::extract(1)
+  }
   
   table <-
     tibble(
-      input_forward = fastq_files %>% magrittr::extract(str_detect(., "_R1_")) %>% sort
+      input_forward = fastq_files %>% magrittr::extract(str_detect(., "_R1_")) %>% sort,
+      input_reverse = fastq_files %>% magrittr::extract(str_detect(., "_R2_")) %>% sort
     ) %>%
     mutate(
-      input_reverse = fastq_files %>% magrittr::extract(str_detect(., "_R2_")) %>% sort,
-      genomicID_forward = input_forward %>% path_file %>% str_split("_") %>% map_chr(first),
-      genomicID_reverse = input_reverse %>% path_file %>% str_split("_") %>% map_chr(first)
+      genomicID_forward = input_forward %>% fs::path_file() %>% map_chr(~extract_name(., ids = ids)),
+      genomicID_reverse = input_reverse %>% fs::path_file() %>% map_chr(~extract_name(., ids = ids))
     ) %>%
     verify(genomicID_forward == genomicID_reverse) %>%
+    assert(is_uniq, genomicID_forward, genomicID_reverse) %>%
+    assert(not_na, genomicID_forward, genomicID_reverse) %>%
     select(genomicID = genomicID_forward, starts_with("input")) %>%
+    assert(is_uniq, genomicID) %>%
     mutate(
-      output_paired_forward = glue("{genomicID}_R1.fastq"),
-      output_unpaired_forward = glue("{genomicID}_R1_unpaired.fastq"),
-      output_paired_reverse = glue("{genomicID}_R2.fastq"),
-      output_unpaired_reverse = glue("{genomicID}_R2_unpaired.fastq")
+      output_paired_forward = glue::glue("{genomicID}_R1.fastq"),
+      output_unpaired_forward = glue::glue("{genomicID}_R1_unpaired.fastq"),
+      output_paired_reverse = glue::glue("{genomicID}_R2.fastq"),
+      output_unpaired_reverse = glue::glue("{genomicID}_R2_unpaired.fastq")
     ) %>%
     select(
       inputFile1 = input_forward,
@@ -2548,7 +2542,6 @@ make_trimmomatic_arg_table <- function (fastq_files, outdir = NULL) {
   return(table)
   
 }
-
 
 #' Map trimmomatic over a list of fastq files.
 #' 
