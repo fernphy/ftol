@@ -154,15 +154,15 @@ hybpiper_plan <- drake_plan (
   
   plastid_lengths = get_seq_lengths(
     baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"), 
-    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt"), 
+    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(), 
     sequenceType = "dna",
     out_path = file_out("intermediates/hybpiper/plastid_lengths.txt"),
     wd = here::here("intermediates/hybpiper")
   ),
   
   plastid_stats = hybpiper_stats(
-    seq_lengths = file_in("intermediates/hybpiper/plastid_lengths.txt"), 
-    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt"),
+    seq_lengths = file_in("intermediates/hybpiper/plastid_lengths.txt") %>% here::here(), 
+    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(),
     wd = here::here("intermediates/hybpiper")
   ),
   

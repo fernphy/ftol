@@ -3056,7 +3056,6 @@ hybpiper_stats <- function (echo = FALSE, wd, seq_lengths, namelistfile, ...) {
   hybpiper_arguments <- c(seq_lengths, 
                           namelistfile)
   
-  
   # Run command
   results <- processx::run(
     "/apps/HybPiper/hybpiper_stats.py", 
