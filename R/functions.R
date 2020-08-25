@@ -2701,6 +2701,133 @@ trimmomatic_pe <- function (threads = NULL,
 
 # Hypbiper ----
 
+#' Get taxon name for a genbank accession number
+#'
+#' @param accession String; genbank accession number
+#' @param rank String; taxonomic level. Must be one of
+#' "superkingdom", "kingdom", "phylum", "subphylum",
+#' "class", "subclass", "order", "suborder"
+#' "family", "genus", "species"
+#'
+#' @return String
+#' @examples
+#' get_taxon_from_gb("KY427331") 
+get_taxon_from_gb <- function (accession, rank = "species") {
+  
+  # Sleep for 1/3 second to avoid triggering Error: Too Many Requests (HTTP 429)
+  # May have something to do with this?
+  # https://github.com/ropensci/taxize/issues/722
+  Sys.sleep(0.33)
+  
+  assertthat::assert_that(assertthat::is.string(accession))
+  assertthat::assert_that(assertthat::is.string(rank))
+  
+  # Check for ENTREZ KEY
+  assertthat::validate_that(
+    nchar(Sys.getenv("ENTREZ_KEY")) > 0,
+    msg = "Warning: ENTREZ_KEY not detected. See taxize::key_helpers()."
+  )
+  
+  taxonomy <-
+    taxize::genbank2uid(id = accession) %>%
+    taxize::classification(db = "ncbi") %>%
+    purrr::flatten()
+  
+  assertthat::assert_that(rank %in% taxonomy$rank)
+  taxonomy$name[taxonomy$rank == rank]
+}
+
+#' Construct plastid HybPiper target file
+#'
+#' @param gene_list Named list of genes, each which contains a list of DNA sequences
+#' of class DNAbin. Output of assemble_gene_set().
+#' @param accessions Vector of accessions.
+#' @param gene_names Vector of gene names.
+#' @param taxonomy_data Dataframe of taxonomic data for ferns following PPGI
+#' system. Hosted at http://bit.ly/ppgi_taxonomy
+#' @param out_path Path to write out HybPiper target file.
+#'
+#' @return List of class DNAbin
+#'
+#' @examples
+#' test_accessions <- c("KP136830", "KY427346")
+#' test_genes <- c("accD", "atpA", "psbA")
+#' test_gene_list <- assemble_gene_set(test_accessions, test_genes)
+#' ppgi_taxonomy <- read_csv("http://bit.ly/ppgi_taxonomy")
+#' make_plastid_target_file (test_gene_list, test_accessions, test_genes, ppgi_taxonomy, "test.fasta")
+#' 
+make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonomy_data, out_path) {
+  
+  # Get species names for accessions, join with PPGI taxonomy.
+  species <-
+    accessions %>%
+    set_names(.) %>%
+    map_chr(get_taxon_from_gb)
+  
+  species_taxonomy <-
+    tibble(species = species, accession = names(species)) %>%
+    mutate(genus = str_split(species, " ") %>% map_chr(1)) %>%
+    left_join(select(taxonomy_data, suborder, family, subfamily, genus))
+  
+  # Filter the list of plastid genes by taxonomy (must be a eupolypod II fern),
+  # then choose one sequence per genus that is the longest seq with least missing
+  # data.
+  plastid_phy_gene_list <- flatten(gene_list)
+  
+  hybpiper_target_data <-
+    tibble(seq = plastid_phy_gene_list, seq_name = names(plastid_phy_gene_list)) %>%
+    separate(seq_name, into = c("accession", "gene"), sep = "-", remove = FALSE) %>%
+    left_join(species_taxonomy) %>%
+    filter(suborder == "Aspleniineae") %>%
+    mutate(n_missing = map_dbl(seq, count_missing),
+           length = map_dbl(seq, length)) %>%
+    group_by(gene, genus) %>%
+    filter(length == max(length)) %>%
+    filter(n_missing == min(n_missing)) %>%
+    slice(1) %>%
+    ungroup()
+  
+  # These are the DNA sequences we will use as targets for HybPiper.
+  plastid_targets <- pull(hybpiper_target_data, seq) %>%
+    set_names(hybpiper_target_data$seq_name) %>%
+    map(as.character) %>%
+    ape::as.DNAbin()
+  
+  # Check that all names meet hybpiper formatting requirements
+  # (sample and gene separated by dash).
+  assertthat::assert_that(
+    str_split(names(plastid_targets), "-") %>% 
+      map_chr(1) %>% 
+      setdiff(accessions) %>%
+      length %>% 
+      magrittr::equals(0),
+    msg = "Target names don't match HybPiper format"
+  )
+  
+  assertthat::assert_that(
+    str_split(names(plastid_targets), "-") %>%
+      map_chr(2) %>%
+      setdiff(gene_names) %>%
+      length %>%
+      magrittr::equals(0),
+    msg = "Target names don't match HybPiper format"
+  )
+  
+  assertthat::assert_that(
+    str_split(names(plastid_targets), "-") %>%
+      map_dbl(length) %>%
+      unique %>%
+      magrittr::equals(2),
+    msg = "Target names don't match HybPiper format"
+  )
+  
+  # Write out target file for hybpiper
+  ape::write.FASTA(plastid_targets, out_path)
+  
+  plastid_targets
+  
+}
+
 # Get vector of trimmed reads for hybpiper
 get_reads <- function (data_dir, pattern, ...) {
   list.files(data_dir, pattern = pattern, full.names = TRUE) %>%
