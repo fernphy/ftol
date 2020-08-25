@@ -80,7 +80,9 @@ trimmomatic_plan <- drake_plan (
 format_plastid_targets_plan <- drake_plan(
   # Assemble set of 83 coding genes from GenBank plastome data
   # This part is memory intensive: requires ca. 60 gb per CPU
-  wei_gene_list = gbfetch::assemble_gene_set(wei_accessions, wei_genes),
+  
+  # Read in Wei genes downloaded separately
+  wei_gene_list =  readRDS("wei_gene_list.RDS"),
   
   # Make target file of 83 coding plastid genes
   plastid_dna_targets = make_plastid_target_file(
