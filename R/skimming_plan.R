@@ -59,7 +59,7 @@ trimmomatic_plan <- drake_plan (
       outputFile2P = trimmomatic_arg_table$outputFile2P,
       outputFile2U = trimmomatic_arg_table$outputFile2U,
       trim_settings = glue::glue(
-        "ILLUMINACLIP:{here('data_raw/fasta/TruSeq3-PE-2.fa')}:2:30:10 LEADING:20 TRAILING:20 SLIDINGWINDOW:4:20 MINLEN:50"
+        "ILLUMINACLIP:{here::here('data_raw/fasta/TruSeq3-PE-2.fa')}:2:30:10 LEADING:20 TRAILING:20 SLIDINGWINDOW:4:20 MINLEN:50"
       ),
       threads = 1,
       adapters = file_in("data_raw/fasta/TruSeq3-PE-2.fa")
@@ -105,13 +105,13 @@ hybpiper_plan <- drake_plan (
   
   # Get vector of trimmed reads for hybpiper
   forward_reads = get_reads(
-    data_dir = here("intermediates/trimmomatic/"),
+    data_dir = here::here("intermediates/trimmomatic/"),
     pattern = "R1.fastq",
     depends = trimmomatic_results_summary
   ),
   
   reverse_reads = get_reads(
-    data_dir = here("intermediates/trimmomatic/"),
+    data_dir = here::here("intermediates/trimmomatic/"),
     pattern = "R2.fastq",
     depends = trimmomatic_results_summary
   ),
@@ -126,7 +126,7 @@ hybpiper_plan <- drake_plan (
   
   plastid_hybpiper_results_each = target(
     reads_first(
-      wd = here("intermediates/hybpiper"),
+      wd = here::here("intermediates/hybpiper"),
       echo = FALSE,
       baitfile = file_in("intermediates/hybpiper/plastid_dna_targets.fasta"),
       # When paired_reads_list gets split up by dynamic mapping, it is split into lists.
@@ -143,30 +143,30 @@ hybpiper_plan <- drake_plan (
   ),
   
   plastid_samples = make_hybpiper_sample_file(
-    in_dir = here("intermediates/hybpiper"), 
+    in_dir = here::here("intermediates/hybpiper"), 
     pattern = "4938|JNG", 
     out_path = file_out("intermediates/hybpiper/plastid_samples.txt"),
     depends = plastid_hybpiper_results
   ),
   
   plastid_lengths = get_seq_lengths(
-    baitfile = here("intermediates/hybpiper/plastid_dna_targets.fasta"), 
+    baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"), 
     namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt"), 
     sequenceType = "dna",
     out_path = file_out("intermediates/hybpiper/plastid_lengths.txt"),
-    wd = here("intermediates/hybpiper")
+    wd = here::here("intermediates/hybpiper")
   ),
   
   plastid_stats = hybpiper_stats(
     seq_lengths = file_in("intermediates/hybpiper/plastid_lengths.txt"), 
     namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt"),
-    wd = here("intermediates/hybpiper")
+    wd = here::here("intermediates/hybpiper")
   ),
   
   plastid_genes = retrieve_sequences(
-    wd = here("intermediates/hybpiper/genes_recovered/"),
-    baitfile = here("intermediates/hybpiper/plastid_dna_targets.fasta"),
-    sequence_dir = here("intermediates/hybpiper"), 
+    wd = here::here("intermediates/hybpiper/genes_recovered/"),
+    baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"),
+    sequence_dir = here::here("intermediates/hybpiper"), 
     sequenceType = "dna",
     depends = plastid_hybpiper_results),
   
@@ -176,5 +176,5 @@ hybpiper_plan <- drake_plan (
 skimming_plan <- bind_plans(
   data_plan, 
   trimmomatic_plan,
-  format_plastid_targets_plan,
+  # format_plastid_targets_plan,
   hybpiper_plan)
