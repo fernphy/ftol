@@ -2737,6 +2737,16 @@ get_taxon_from_gb <- function (accession, rank = "species") {
   taxonomy$name[taxonomy$rank == rank]
 }
 
+# Count the number of missing bases in a DNA sequence
+# Here "missing" is anything other than A,C,T, or G
+#' @param seq List of class DNAbin of length one.
+count_missing <- function (seq) {
+  seq <- as.character(seq)
+  non_missing <- sum(str_count(seq, "a|t|c|g|A|T|C|G"))
+  total_chars <- sum(nchar(seq))
+  total_chars - non_missing
+}
+
 #' Construct plastid HybPiper target file
 #'
 #' @param gene_list Named list of genes, each which contains a list of DNA sequences
