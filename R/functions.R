@@ -2704,7 +2704,7 @@ trimmomatic_pe <- function (threads = NULL,
 # Get vector of trimmed reads for hybpiper
 get_reads <- function (data_dir, pattern, ...) {
   list.files(data_dir, pattern = pattern, full.names = TRUE) %>%
-    path_norm() %>%
+    fs::path_norm() %>%
     sort
 }
 
@@ -2716,10 +2716,10 @@ make_paired_reads_list <- function (
   tibble(forward_reads = forward_reads) %>%
     mutate(reverse_reads = reverse_reads,
            forward_prefix = 
-             path_file(forward_reads) %>%
+             fs::path_file(forward_reads) %>%
              str_remove(., forward_read_ending),
            reverse_prefix = 
-             path_file(reverse_reads) %>%
+             fs::path_file(reverse_reads) %>%
              str_remove(., reverse_read_ending)
     ) %>%
     # Make sure the read names are exactly the same except for the ending
@@ -2746,7 +2746,7 @@ make_paired_reads_list <- function (
 #' )
 make_hybpiper_sample_file <- function (in_dir, pattern, out_path, ...) {
   list.files(in_dir, pattern = pattern) %>%
-    write_lines(out_path)
+    readr::write_lines(out_path)
 }
 
 #' Run HybPiper reads_first.py
@@ -3026,5 +3026,3 @@ intronerate <- function (echo = FALSE, wd, prefix, ...) {
     hybpiper_arguments, wd = wd, echo = echo)
   
 }
-
-
