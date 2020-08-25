@@ -18,12 +18,11 @@ data_plan <- drake_plan (
   # Read in GoFlag metadata
   goflag_meta_path = target("data_raw/goflag/Pilot_Ferns_TargetCapture_Skimming.txt", format = "file"),
   goflag_meta = read_tsv(goflag_meta_path) %>%
-    janitor::clean_names() %>%
+    select(taxon = Taxon, targeted_capture_id = `Targeted Capture ID`, genome_skimming_id  = `Genome Skimming ID`) %>%
     filter(!is.na(taxon)),
   
   # extract vector of GoFlag sample IDs
   goflag_ids = goflag_meta %>%
-    select(taxon, targeted_capture_id, genome_skimming_id) %>%
     pivot_longer(names_to = "id_type", values_to = "id", -taxon) %>%
     pull(id)
   
