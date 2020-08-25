@@ -1,3 +1,6 @@
+# Fix PATH to add external dependencies
+Sys.setenv(PATH = paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":"))
+
 # Load packages, functions, and plan
 source("R/packages.R")
 source("R/functions.R")
