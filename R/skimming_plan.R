@@ -178,5 +178,5 @@ hybpiper_plan <- drake_plan (
 skimming_plan <- bind_plans(
   data_plan, 
   trimmomatic_plan,
-  # format_plastid_targets_plan,
+  format_plastid_targets_plan,
   hybpiper_plan)
