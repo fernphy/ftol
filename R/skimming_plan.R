@@ -147,7 +147,7 @@ hybpiper_plan <- drake_plan (
   
   plastid_samples = make_hybpiper_sample_file(
     in_dir = here::here("intermediates/hybpiper"), 
-    pattern = "4938|JNG", 
+    pattern = "UFL|UFG", 
     out_path = file_out("intermediates/hybpiper/plastid_samples.txt"),
     depends = plastid_hybpiper_results
   ),
