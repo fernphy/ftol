@@ -2699,4 +2699,332 @@ trimmomatic_pe <- function (threads = NULL,
     tidy_trimmomatic
 }
 
+# Hypbiper ----
+
+# Get vector of trimmed reads for hybpiper
+get_reads <- function (data_dir, pattern, ...) {
+  list.files(data_dir, pattern = pattern, full.names = TRUE) %>%
+    path_norm() %>%
+    sort
+}
+
+# Make list of readfiles for hybpiper readsfirst.py
+make_paired_reads_list <- function (
+  forward_reads, reverse_reads, 
+  forward_read_ending = "_R1.fastq",
+  reverse_read_ending = "_R2.fastq") {
+  tibble(forward_reads = forward_reads) %>%
+    mutate(reverse_reads = reverse_reads,
+           forward_prefix = 
+             path_file(forward_reads) %>%
+             str_remove(., forward_read_ending),
+           reverse_prefix = 
+             path_file(reverse_reads) %>%
+             str_remove(., reverse_read_ending)
+    ) %>%
+    # Make sure the read names are exactly the same except for the ending
+    verify(forward_prefix == reverse_prefix) %>%
+    mutate(readfiles = map2(forward_reads, reverse_reads, c)) %>%
+    pull(readfiles)
+}
+
+#' Make list of samples analyzed by HybPiper
+#' 
+#' Outputs a text file consisting of sample names, one per line.
+#'
+#' @param in_dir Directory containing hybpiper output, including one folder per sample.
+#' @param pattern Grep pattern to match hybpiper output folders.
+#' @param out_path Path to write sample list.
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#' @return Character vector; externally, a text file will be written to out_path.
+#' @example 
+#' eupoly2_samples <- make_hybpiper_sample_file(
+#'   in_dir = here("03_hybpiper"), 
+#'   pattern = "4938|JNG", 
+#'   out_path = file_out(here("03_hybpiper/eupoly2_samples.fasta"))
+#' )
+make_hybpiper_sample_file <- function (in_dir, pattern, out_path, ...) {
+  list.files(in_dir, pattern = pattern) %>%
+    write_lines(out_path)
+}
+
+#' Run HybPiper reads_first.py
+#'
+#' Extracts hits to target sequences from a (pair of) input read(s). This 
+#' requires HybPiper scripts to be on the user's PATH.
+#'
+#' @param wd String; working directory. All output will be written here.
+#' @param echo Logical; should STDOUT and STERR be printed?
+#' @param baitfile String; FASTA file containing bait sequences for each gene. 
+#' If there are multiple baits for a gene, the id must be of the form: >Taxon-geneName.
+#' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
+#' @param readfiles Character vector; One or more read files to start the pipeline. 
+#' If exactly two are specified, will assume it is paired Illumina reads.
+#' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
+#' @param prefix String; Directory name for pipeline output, default is to use 
+#' the FASTQ file name.
+#' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
+#' @param bwa Logical; Use BWA to search reads for hits to target. 
+#' Requires BWA and a bait file that is nucleotides!
+#' @param cpu Numeric; Limit the number of CPUs. Default is to use all cores available.
+#' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+#' @return A list with components specified in {\link[processx]{run}. 
+#' Externally, results of reads_first.py will be written in the working 
+#' directory.
+#'
+#' @examples
+reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, bwa = FALSE, cpu = NULL, other_args = NULL, ...) {
+  
+  # Make sure input types are correct
+  assertthat::assert_that(assertthat::is.readable(wd))
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.readable(baitfile))
+  assertthat::assert_that(is.character(readfiles))
+  if(!is.null(prefix)) 
+    assertthat::assert_that(assertthat::is.string(prefix))
+  if(!is.null(cpu)) 
+    assertthat::assert_that(assertthat::is.number(cpu))
+  assertthat::assert_that(is.logical(bwa))
+  if(!is.null(other_args)) 
+    assertthat::assert_that(assertthat::is.string(other_args))
+  
+  # Modify arguments for processx::run()
+  wd <- fs::path_abs(wd)
+  baitfile <- fs::path_abs(baitfile)
+  
+  hybpiper_arguments <- c("-b", baitfile, 
+                          "-r", readfiles,
+                          if(!is.null(prefix)) "--prefix", 
+                          prefix,
+                          if(!is.null(cpu)) "--cpu", 
+                          cpu,
+                          if(isTRUE(bwa)) "--bwa",
+                          other_args)
+  
+  # Run command
+  processx::run(
+    "reads_first.py", 
+    hybpiper_arguments, 
+    wd = wd, echo = echo)
+}
+
+#' Check the length of recovered genes by sample.
+#' 
+#' Runs HybPiper get_seq_lengths.py and returns results as a tibble.
+#' 
+#' @param echo Logical; should STDOUT and STERR be printed?
+#' @param wd String; working directory. This should contain the results of HybPiper runs
+#' (one folder per sample named by sample).
+#' @param baitfile String; path to FASTA file containing bait sequences for each gene. 
+#' If there are multiple baits for a gene, the id must be of the form: >Taxon-geneName.
+#' @param namelistfile String; path to file that contains a list of all the HybPiper 
+#' directories for each sample.
+#' @param out_path Optional; Path to write output of get_seq_lengths.py.
+#' @param sequenceType String; type of molecule used for the baitfile, either
+#' "dna" or "aa".
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+#' @return A tibble. The first row is the mean lengths of the target genes;
+#' other rows are gene lengths for each sample. If `out_path` is specified, a
+#' text file will be written with the output of get_seq_lengths.py.
+#'
+#' @examples
+#' plastid_lengths <- get_seq_lengths(
+#'   baitfile = here("01_trimmomatic/old/reads_paired/eupoly2_plastid_targets.fasta"), 
+#'   namelistfile = here("01_trimmomatic/old/reads_paired/samples.txt"),
+#'   out_path = here("01_trimmomatic/old/reads_paired/lengths.txt"),
+#'   sequenceType = "dna",
+#'   wd = here("01_trimmomatic/old/reads_paired/")
+#' )
+#' @references https://github.com/mossmatters/HybPiper/blob/master/reads_first.py
+#' 
+get_seq_lengths <- function (echo = FALSE, wd, baitfile, namelistfile, sequenceType, out_path = NULL, ...) {
+  
+  # Make sure input types are correct
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.readable(wd))
+  assertthat::assert_that(assertthat::is.readable(baitfile))
+  assertthat::assert_that(assertthat::is.readable(namelistfile))
+  assertthat::assert_that(
+    sequenceType %in% c("dna", "aa"), 
+    msg = "Must choose either 'dna' or 'aa' for sequenceType."
+  )
+  if(!is_null(out_path)) assertthat::assert_that(assertthat::is.string(out_path))
+  
+  # Modify arguments for processx::run()
+  wd <- fs::path_abs(wd)
+  hybpiper_arguments <- c(baitfile, 
+                          namelistfile,
+                          sequenceType)
+  
+  
+  # Run command
+  results <- processx::run(
+    "get_seq_lengths.py", 
+    hybpiper_arguments, wd = wd, echo = echo)
+  
+  # Check for hybpiper error
+  assertthat::assert_that(
+    !str_detect(results$stdout[1], "^\n\nUsage:"),
+    msg = "Error by HybPiper")
+  
+  # Write out and convert raw text to tibble
+  lengths_raw <- results$stdout
+  out_path <- ifelse(is_null(out_path), tempfile(), out_path)
+  # Don't use write_lines, it will add a trailing break
+  readr::write_file(lengths_raw, out_path)
+  readr::read_delim(out_path, delim = "\t")
+  
+}
+
+#' Check HybPiper summary statistics.
+#' 
+#' Runs HybPiper hybpiper_stats.py and returns results as a tibble.
+#' 
+#' @param echo Logical; should STDOUT and STERR be printed?
+#' @param wd String; working directory. This should contain the results of HybPiper runs
+#' (one folder per sample named by sample).
+#' @param seq_lengths String; path to text file containing lengths of each gene by sample
+#' (output of get_seq_lengths).
+#' @param namelistfile String; path to file that contains a list of all the HybPiper 
+#' directories for each sample.
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+#' @return A tibble. 
+#'
+#' @examples
+#' plastid_stats <- hybpiper_stats(
+#'   seq_lengths = here("01_trimmomatic/old/reads_paired/lengths.txt"), 
+#'   namelistfile = here("01_trimmomatic/old/reads_paired/samples.txt"),
+#'   wd = here("01_trimmomatic/old/reads_paired/")
+#' )
+#' @references https://github.com/mossmatters/HybPiper/wiki/Tutorial
+#' 
+hybpiper_stats <- function (echo = FALSE, wd, seq_lengths, namelistfile, ...) {
+  
+  # Make sure input types are correct
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.readable(wd))
+  assertthat::assert_that(assertthat::is.readable(seq_lengths))
+  assertthat::assert_that(assertthat::is.readable(namelistfile))
+  
+  # Modify arguments for processx::run()
+  wd <- fs::path_abs(wd)
+  hybpiper_arguments <- c(seq_lengths, 
+                          namelistfile)
+  
+  
+  # Run command
+  results <- processx::run(
+    "hybpiper_stats.py", 
+    hybpiper_arguments, wd = wd, echo = echo)
+  
+  # Check for hybpiper error
+  assertthat::assert_that(
+    !str_detect(results$stdout[1], "^\n\nUsage:"),
+    msg = "Error by HybPiper")
+  
+  # Convert raw text to tibble
+  lengths_raw <- results$stdout
+  out_path <- tempfile()
+  readr::write_file(lengths_raw, out_path)
+  readr::read_delim(out_path, delim = "\t")
+  
+}
+
+#' Retrieve sequences from HybPiper run
+#' 
+#' This script fetches the sequences recovered from the same gene 
+#' for many samples and generates an unaligned multi-FASTA file for each gene.
+#' 
+#' @param echo Logical; should STDOUT and STERR be printed?
+#' @param wd String; working directory. Fasta files will be written here.
+#' @param baitfile String; path to FASTA file containing bait sequences for each gene. 
+#' If there are multiple baits for a gene, the id must be of the form: >Taxon-geneName.
+#' @param sequence_dir String; directory containing the results of HybPiper runs
+#' (one folder per sample named by sample).
+#' @param sequenceType String; type of molecule to return, either
+#' "dna" or "aa". Can also choose "intron" or "supercontig" if intronerate
+#' was run previously on the HybPiper runs.
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+#' @return A list with components specified in {\link[processx]{run}. 
+#' Externally, one fasta file per gene will be written to the working directory.
+#'
+#' @references https://github.com/mossmatters/HybPiper/wiki/Tutorial
+#' 
+retrieve_sequences <- function (echo = FALSE, wd, baitfile, sequence_dir, sequenceType, ...) {
+  
+  # Make sure input types are correct
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.dir(wd))
+  assertthat::assert_that(assertthat::is.readable(baitfile))
+  assertthat::assert_that(assertthat::is.dir(sequence_dir))
+  assertthat::assert_that(
+    sequenceType %in% c("dna", "aa", "intron", "supercontig"), 
+    msg = "Must choose from 'dna', 'aa', 'intron', or 'supercontig' for sequenceType."
+  )
+  
+  # Modify arguments for processx::run()
+  wd <- fs::path_abs(wd)
+  hybpiper_arguments <- c(baitfile, 
+                          sequence_dir,
+                          sequenceType)
+  
+  # Run command
+  processx::run(
+    "retrieve_sequences.py", 
+    hybpiper_arguments, wd = wd, echo = echo)
+  
+}
+
+#' Retrieve intron sequences from HybPiper run
+#' 
+#' Given a completed run of reads_first.py for a sample, run this script to 
+#' generate "gene" sequences for each locus. The script will generate two new 
+#' sequence files for each gene:
+#' - supercontig: A sequence containing all assembled contigs with a unique 
+#' alignment to the reference protein, concatenated into one sequence.
+#' - introns: The supercontig with the exon sequences removed.
+#' 
+#' @param echo Logical; should STDOUT and STERR be printed?
+#' @param wd String; working directory. Fasta files will be written here.
+#' @param prefix String; name of output folder from reads_first containing
+#' hybpiper output.
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
+#'
+#' @return A list with components specified in {\link[processx]{run}. 
+#' Externally, one fasta file per gene will be written to the working directory.
+#'
+#' @references https://github.com/mossmatters/HybPiper/wiki/Tutorial
+#' 
+intronerate <- function (echo = FALSE, wd, prefix, ...) {
+  
+  # Make sure input types are correct
+  assertthat::assert_that(assertthat::is.string(prefix))
+  
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.dir(wd))
+  
+  # Modify arguments for processx::run()
+  wd <- fs::path_abs(wd)
+  
+  hybpiper_arguments <- c("--prefix", 
+                          prefix)
+  
+  # Run command
+  processx::run(
+    "intronerate.py", 
+    hybpiper_arguments, wd = wd, echo = echo)
+  
+}
+
 
