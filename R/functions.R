@@ -2733,8 +2733,10 @@ get_taxon_from_gb <- function (accession, rank = "species") {
     taxize::classification(db = "ncbi") %>%
     purrr::flatten()
   
-  assertthat::assert_that(rank %in% taxonomy$rank)
-  taxonomy$name[taxonomy$rank == rank]
+  if(rank %in% taxonomy$rank) return(taxonomy$name[taxonomy$rank == rank])
+  
+  NA_character_
+  
 }
 
 # Count the number of missing bases in a DNA sequence
@@ -2772,7 +2774,8 @@ make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonom
   species <-
     accessions %>%
     set_names(.) %>%
-    map_chr(get_taxon_from_gb)
+    map_chr(get_taxon_from_gb) %>%
+    assert(not_na, species)
   
   species_taxonomy <-
     tibble(species = species, accession = names(species)) %>%
