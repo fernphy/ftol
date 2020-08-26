@@ -2942,11 +2942,15 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
                           if(isTRUE(bwa)) "--bwa",
                           other_args)
   
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
+  
   # Run command
   processx::run(
     "reads_first.py", 
     hybpiper_arguments, 
-    wd = wd, echo = echo)
+    wd = wd, echo = echo, env = new_env)
 }
 
 #' Check the length of recovered genes by sample.
@@ -2999,11 +3003,14 @@ get_seq_lengths <- function (echo = FALSE, wd, baitfile, namelistfile, sequenceT
                           namelistfile,
                           sequenceType)
   
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
   
   # Run command
   results <- processx::run(
     "get_seq_lengths.py", 
-    hybpiper_arguments, wd = wd, echo = echo)
+    hybpiper_arguments, wd = wd, echo = echo, env = new_env)
   
   # Check for hybpiper error
   assertthat::assert_that(
@@ -3056,10 +3063,14 @@ hybpiper_stats <- function (echo = FALSE, wd, seq_lengths, namelistfile, ...) {
   hybpiper_arguments <- c(seq_lengths, 
                           namelistfile)
   
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
+  
   # Run command
   results <- processx::run(
     "hybpiper_stats.py", 
-    hybpiper_arguments, wd = wd, echo = echo)
+    hybpiper_arguments, wd = wd, echo = echo, env = new_env)
   
   # Check for hybpiper error
   assertthat::assert_that(
@@ -3114,10 +3125,14 @@ retrieve_sequences <- function (echo = FALSE, wd, baitfile, sequence_dir, sequen
                           sequence_dir,
                           sequenceType)
   
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
+
   # Run command
   processx::run(
     "retrieve_sequences.py", 
-    hybpiper_arguments, wd = wd, echo = echo)
+    hybpiper_arguments, wd = wd, echo = echo, env = new_env)
   
 }
 
@@ -3156,10 +3171,14 @@ intronerate <- function (echo = FALSE, wd, prefix, ...) {
   hybpiper_arguments <- c("--prefix", 
                           prefix)
   
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
+  
   # Run command
   processx::run(
     "intronerate.py", 
-    hybpiper_arguments, wd = wd, echo = echo)
+    hybpiper_arguments, wd = wd, echo = echo, env = new_env)
   
 }
 
