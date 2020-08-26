@@ -2717,7 +2717,7 @@ get_taxon_from_gb <- function (accession, rank = "species") {
   # Sleep for 1/3 second to avoid triggering Error: Too Many Requests (HTTP 429)
   # May have something to do with this?
   # https://github.com/ropensci/taxize/issues/722
-  Sys.sleep(0.33)
+  Sys.sleep(1)
   
   assertthat::assert_that(assertthat::is.string(accession))
   assertthat::assert_that(assertthat::is.string(rank))
