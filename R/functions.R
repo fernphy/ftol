@@ -2730,7 +2730,7 @@ get_taxon_from_gb <- function (accession, rank = "species") {
   
   taxonomy <-
     taxize::genbank2uid(id = accession) %>%
-    taxize::classification(db = "ncbi") %>%
+    taxize::classification(db = "ncbi", max_tries = 10) %>%
     purrr::flatten()
   
   if(rank %in% taxonomy$rank) return(taxonomy$name[taxonomy$rank == rank])
@@ -2774,11 +2774,11 @@ make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonom
   species <-
     accessions %>%
     set_names(.) %>%
-    map_chr(get_taxon_from_gb) %>%
-    assert(not_na, species)
+    map_chr(get_taxon_from_gb)
   
   species_taxonomy <-
     tibble(species = species, accession = names(species)) %>%
+    assert(not_na, species) %>%
     mutate(genus = str_split(species, " ") %>% map_chr(1)) %>%
     left_join(select(taxonomy_data, suborder, family, subfamily, genus))
   
