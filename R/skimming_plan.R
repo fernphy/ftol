@@ -135,15 +135,8 @@ hybpiper_plan <- drake_plan (
       # The character vector we want for `readfiles` is the first element of each list
       readfiles = paired_reads_list[[1]],
       prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
-      cpu = 1, 
-      bwa = TRUE,
-      other_args = c(
-        "--cov_cutoff", "0",
-        "--ins_length", "50",
-        "--thresh", "0",
-        "--length_pct", "0",
-        "--depth_multiplier", "0"
-      )),
+      cpu = 24, 
+      bwa = TRUE),
     dynamic = map(paired_reads_list)
   ),
   
