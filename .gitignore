@@ -14,3 +14,4 @@ results/
 *.tar.gz
 *.html
 intermediates
+temp
