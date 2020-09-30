@@ -4,6 +4,7 @@
 .Ruserdata
 .Renviron
 data_raw
+data
 *_cache
 renv
 working*
