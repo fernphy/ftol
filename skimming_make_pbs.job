@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l nodes=1:ppn=6
+#PBS -l nodes=1:ppn=24
 #PBS -l walltime=10:00:00:00
 #PBS -p -200
 #PBS -N make_skimming
