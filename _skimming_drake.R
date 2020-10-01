@@ -17,19 +17,19 @@ options(clustermq.scheduler = "multicore")
 # (choose either parallel or serial, comment-out the other)
 
 # - parallel
-# drake_config(
-#   skimming_plan,
-#   verbose = 1, 
-#   parallelism = "clustermq",
-#   jobs = 6, # Change to match number of cores available!
-#   cache = skimming_cache,
-#   seed = 0
-# )
-
-# - serial
 drake_config(
-  skimming_plan, 
-  verbose = 1, 
-  cache = skimming_cache, 
+  skimming_plan,
+  verbose = 1,
+  parallelism = "clustermq",
+  jobs = 48, # Change to match number of cores available!
+  cache = skimming_cache,
   seed = 0
 )
+
+# - serial
+# drake_config(
+#   skimming_plan, 
+#   verbose = 1, 
+#   cache = skimming_cache, 
+#   seed = 0
+# )
