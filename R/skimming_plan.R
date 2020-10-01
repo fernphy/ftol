@@ -84,13 +84,23 @@ format_plastid_targets_plan <- drake_plan(
   # Read in Wei genes downloaded separately
   wei_gene_list =  readRDS("wei_gene_list.RDS"),
   
-  # Make target file of 83 coding plastid genes
+  # Make DNA target file of 83 coding plastid genes
   plastid_dna_targets = make_plastid_target_file(
     gene_list = wei_gene_list,
     accessions = wei_accessions,
     gene_names = wei_genes,
     taxonomy_data = ppgi_taxonomy,
     out_path = file_out("intermediates/hybpiper/plastid_dna_targets.fasta")
+  ),
+  
+  # Make AA target file of 83 coding plastid genes
+  plastid_aa_targets = map(wei_accessions, ~fetch_aa(., wei_genes)) %>%
+    # collapse list of list of amino acid sequences into a single list
+    do.call(c, .),
+  
+  plastid_aa_targets_out = ape::write.FASTA(
+    plastid_aa_targets, 
+    file_out("intermediates/hybpiper/blastx/plastid_aa_targets.fasta")
   )
   
 )
@@ -135,12 +145,32 @@ hybpiper_plan <- drake_plan (
       # The character vector we want for `readfiles` is the first element of each list
       readfiles = paired_reads_list[[1]],
       prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
-      cpu = 24, 
+      cpu = 1, 
       bwa = TRUE),
     dynamic = map(paired_reads_list)
   ),
   
   plastid_hybpiper_results = target(
+    c(plastid_hybpiper_results_each),
+    dynamic = group(plastid_hybpiper_results_each)
+  ),
+  
+  # Do the same but use blastx
+  plastid_hybpiper_results_blastx_each = target(
+    reads_first(
+      wd = here::here("intermediates/hybpiper/blastx"),
+      echo = FALSE,
+      baitfile = file_in("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"),
+      # When paired_reads_list gets split up by dynamic mapping, it is split into lists.
+      # The character vector we want for `readfiles` is the first element of each list
+      readfiles = paired_reads_list[[1]],
+      prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
+      cpu = 1, 
+      bwa = FALSE),
+    dynamic = map(paired_reads_list)
+  ),
+  
+  plastid_hybpiper_results_blastx = target(
     c(plastid_hybpiper_results_each),
     dynamic = group(plastid_hybpiper_results_each)
   ),
@@ -152,6 +182,13 @@ hybpiper_plan <- drake_plan (
     depends = plastid_hybpiper_results
   ),
   
+  plastid_samples_blastx = make_hybpiper_sample_file(
+    in_dir = here::here("intermediates/hybpiper/blastx"), 
+    pattern = "UFL|UFG", 
+    out_path = file_out("intermediates/hybpiper/blastx/plastid_samples.txt"),
+    depends = plastid_hybpiper_results_blastx
+  ),
+  
   plastid_lengths = get_seq_lengths(
     baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"), 
     namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(), 
@@ -160,10 +197,24 @@ hybpiper_plan <- drake_plan (
     wd = here::here("intermediates/hybpiper")
   ),
   
+  plastid_lengths_blastx = get_seq_lengths(
+    baitfile = here::here("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"), 
+    namelistfile = file_in("intermediates/hybpiper/blastx/plastid_samples.txt") %>% here::here(), 
+    sequenceType = "aa",
+    out_path = file_out("intermediates/hybpiper/blastx/plastid_lengths.txt"),
+    wd = here::here("intermediates/hybpiper/blastx")
+  ),
+  
   plastid_stats = hybpiper_stats(
     seq_lengths = file_in("intermediates/hybpiper/plastid_lengths.txt") %>% here::here(), 
     namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(),
     wd = here::here("intermediates/hybpiper")
+  ),
+  
+  plastid_stats_blastx = hybpiper_stats(
+    seq_lengths = file_in("intermediates/hybpiper/blastx/plastid_lengths.txt") %>% here::here(), 
+    namelistfile = file_in("intermediates/hybpiper/blastx/plastid_samples.txt") %>% here::here(),
+    wd = here::here("intermediates/hybpiper/blastx")
   ),
   
   plastid_genes = retrieve_sequences(
@@ -173,9 +224,21 @@ hybpiper_plan <- drake_plan (
     sequenceType = "dna",
     depends = plastid_hybpiper_results),
   
+  plastid_genes_blastx = retrieve_sequences(
+    wd = here::here("intermediates/hybpiper/blastx/genes_recovered/"),
+    baitfile = here::here("intermediates/hybpiper/blastx/plastid_dna_targets.fasta"),
+    sequence_dir = here::here("intermediates/hybpiper/blastx"), 
+    sequenceType = "aa",
+    depends = plastid_hybpiper_results_blastx),
+  
   plastid_read_stats = get_read_stats(
     hybpiper_dir = here::here("intermediates/hybpiper"),
     depends = plastid_hybpiper_results
+  ),
+  
+  plastid_read_stats_blastx = get_read_stats(
+    hybpiper_dir = here::here("intermediates/hybpiper/blastx"),
+    depends = plastid_hybpiper_results_blastx
   )
   
 )
