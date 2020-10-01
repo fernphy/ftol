@@ -156,6 +156,10 @@ hybpiper_plan <- drake_plan (
   ),
   
   # Do the same but use blastx
+  # Note that it takes ca. 28 min per sample with 1 CPU, 18 min with 2 CPU, 
+  # 13 min with 6 CPU, and 7 min with 10 CPU
+  # So for a large number of samples (eg 40) it is better to run 40 CPU in 
+  # parallel on 40 samples with 1 CPU each
   plastid_hybpiper_results_blastx_each = target(
     reads_first(
       wd = here::here("intermediates/hybpiper/blastx"),
@@ -226,7 +230,7 @@ hybpiper_plan <- drake_plan (
   
   plastid_genes_blastx = retrieve_sequences(
     wd = here::here("intermediates/hybpiper/blastx/genes_recovered/"),
-    baitfile = here::here("intermediates/hybpiper/blastx/plastid_dna_targets.fasta"),
+    baitfile = here::here("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"),
     sequence_dir = here::here("intermediates/hybpiper/blastx"), 
     sequenceType = "aa",
     depends = plastid_hybpiper_results_blastx),
