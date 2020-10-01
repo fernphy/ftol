@@ -1977,7 +1977,7 @@ fetch_aa <- function (accession, target_genes, limit_missing = 10) {
   
   # Extract CDS with translations
   # Filter to only target genes, specify name as accession-gene
-  cds <- gb_parsed[[1]][["FEATURES"]][names(seq[[1]][["FEATURES"]]) == "CDS"] %>%
+  cds <- gb_parsed[[1]][["FEATURES"]][names(gb_parsed[[1]][["FEATURES"]]) == "CDS"] %>%
     map_df(~pivot_wider(., values_from = Qualifier, names_from = Location)) %>%
     filter(gene %in% target_genes) %>% 
     select(gene, translation) %>% 
