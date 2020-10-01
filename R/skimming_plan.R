@@ -171,8 +171,8 @@ hybpiper_plan <- drake_plan (
   ),
   
   plastid_hybpiper_results_blastx = target(
-    c(plastid_hybpiper_results_each),
-    dynamic = group(plastid_hybpiper_results_each)
+    c(plastid_hybpiper_results_blastx_each),
+    dynamic = group(plastid_hybpiper_results_blastx_each)
   ),
   
   plastid_samples = make_hybpiper_sample_file(
