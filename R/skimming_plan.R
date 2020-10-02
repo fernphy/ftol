@@ -243,6 +243,12 @@ hybpiper_plan <- drake_plan (
   plastid_read_stats_blastx = get_read_stats(
     hybpiper_dir = here::here("intermediates/hybpiper/blastx"),
     depends = plastid_hybpiper_results_blastx
+  ),
+  
+  plastid_read_fragments_aligned = align_hybpiper_reads_to_ref(
+    hybpiper_dir = here::here("intermediates/hybpiper/blastx"),
+    ref_dir = here::here("intermediates/plastid_genes_ref"),
+    depends = plastid_read_stats_blastx
   )
   
 )

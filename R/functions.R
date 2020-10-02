@@ -3274,3 +3274,62 @@ get_read_stats <- function (hybpiper_dir, ...) {
   
 }
 
+
+# Retrieve read fragments from hybpiper ----
+
+
+#' Align short reads to a reference alignment
+#' 
+#' Aligned using mafft as described here:
+#' https://mafft.cbrc.jp/alignment/software/addsequences.html#fragments
+#'
+#' @param reads_path Path to fasta file with reads
+#' @param ref_path Path to reference alignment
+#' @param n_thread Number of threads to use
+#'
+#' @return List of class "DNAbin"
+#' 
+align_to_ref <- function (reads_path, ref_path, n_thread = 1) {
+  system2(
+    command = "mafft",
+    args = c(
+      "--auto",
+      "--adjustdirection",
+      "--addfragments", reads_path,
+      "--reorder",
+      "--thread", n_thread,
+      ref_path
+    ),
+    stdout = TRUE,
+    stderr = FALSE) %>%
+    textConnection %>%
+    ape::read.FASTA()
+}
+
+align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir) {
+  
+  reads_data_raw <- 
+    tibble(reads_file = list.files(hybpiper_dir, pattern = "interleaved\\.fasta", recursive = TRUE, full.names = TRUE)) %>%
+    mutate(
+      sample = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(8)),
+      gene = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(9))
+    )
+  
+  ref_data <- 
+    tibble(ref_file = list.files(ref_dir, pattern = "\\.fasta", recursive = TRUE, full.names = TRUE)) %>%
+    mutate(
+      gene = purrr::map_chr(ref_file, ~str_split(., "\\/") %>% map_chr(last)) %>% fs::path_ext_remove()
+    )
+  
+  # Make sure all ref genes are in reads genes
+  assertthat::assert_that(
+    all(reads_data_raw$gene %in% reads_data$gene)
+  )
+  
+  # Join sorted reads file paths and reference fasta file paths by gene, run alignment
+  left_join(reads_data_raw, ref_data, by = "gene") %>%
+    filter(!is.na(ref_file)) %>% 
+    mutate(ref_aln = map2(reads_file, ref_file, ~align_to_ref(.x, .y, n_thread = 10)))
+  
+}
+
