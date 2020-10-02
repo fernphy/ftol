@@ -232,7 +232,7 @@ hybpiper_plan <- drake_plan (
     wd = here::here("intermediates/hybpiper/blastx/genes_recovered/"),
     baitfile = here::here("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"),
     sequence_dir = here::here("intermediates/hybpiper/blastx"), 
-    sequenceType = "aa",
+    sequenceType = "dna",
     depends = plastid_hybpiper_results_blastx),
   
   plastid_read_stats = get_read_stats(
