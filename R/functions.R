@@ -2005,12 +2005,12 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
   
   # Make sure there is only 1 hit for that accession
-  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  
-  assertthat::assert_that(
-    num_hits == 1,
-    msg = "Did not find exactly one accession")
-  
+  # num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
+  # 
+  # assertthat::assert_that(
+  #   num_hits == 1,
+  #   msg = "Did not find exactly one accession")
+  # 
   # Download complete GenBank record and write it to a temporary file
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, "gb_records.txt")
@@ -2023,6 +2023,8 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   gb_parsed <- read_gb(temp_file) %>% 
     magrittr::extract2("result") %>%
     flatten()
+  
+  fs::file_delete(temp_file)
   
   # Extract full DNA sequence ---
   dna <- gb_parsed[["ORIGIN"]]
