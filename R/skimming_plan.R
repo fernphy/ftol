@@ -82,18 +82,16 @@ format_plastid_targets_plan <- drake_plan(
   # Assemble set of coding genes from GenBank plastome data
   plastid_targets = map(wei_accessions, ~fetch_genes_from_plastome(., wei_genes)),
   
-  plastid_aa_targets = transpose(plastid_targets)[["aa"]] %>% do.call(c, .),
-  
-  plastid_dna_targets = transpose(plastid_targets)[["dna"]] %>% flatten %>% jntools::flatten_DNA_list(),
-  
+  # Collapse amino acid targets into single list, write it out
   plastid_aa_targets_out = ape::write.FASTA(
-    plastid_aa_targets, 
-    file_out("intermediates/hybpiper/blastx/plastid_aa_targets.fasta")
+    transpose(plastid_targets)[["aa"]] %>% do.call(c, .),
+    file_out("intermediates/hybpiper/plastid_aa_targets.fasta")
   ),
   
-  plastid_dna_targets_out = ape::write.FASTA(
-    plastid_aa_targets, 
-    file_out("intermediates/hybpiper/plastid_dna_targets.fasta")
+  # Write out plastid DNA targets as one fasta file per gene
+  plastid_dna_targets_out = write_dna_targets_by_gene(
+    plastid_targets, 
+    here::here("intermediates/plastid_genes_ref")
   )
   
 )
@@ -101,9 +99,6 @@ format_plastid_targets_plan <- drake_plan(
 # 03_hybpiper ----
 #
 # Run hybpiper.
-#
-# Run in parallel with one CPU per sample, should take ca. 1 hr per sample.
-# So if we run with 8 CPUs, will take ca. 6 hours.
 # Hybpiper will produce one folder for each sample in 03_hybpiper.
 
 hybpiper_plan <- drake_plan (
@@ -127,49 +122,31 @@ hybpiper_plan <- drake_plan (
     reverse_reads
   ),
   
-  # Plastid genes (85 coding genes adapted from Wei et al 2017)
-  
+  # Map HybPiper 'reads_first' over the reads by sample.
+  # Note (with blastx) it takes ca. 28 min per sample with 1 CPU, 18 min with 2 CPU, 
+  # 13 min with 6 CPU, and 7 min with 10 CPU
+  # So for a large number of samples (eg 40) it is better to run 40 CPU in 
+  # parallel on 40 samples with 1 CPU each
   plastid_hybpiper_results_each = target(
     reads_first(
       wd = here::here("intermediates/hybpiper"),
       echo = FALSE,
-      baitfile = file_in("intermediates/hybpiper/plastid_dna_targets.fasta"),
+      # Use amino-acids baitfile
+      baitfile = file_in("intermediates/hybpiper/plastid_aa_targets.fasta"),
       # When paired_reads_list gets split up by dynamic mapping, it is split into lists.
       # The character vector we want for `readfiles` is the first element of each list
       readfiles = paired_reads_list[[1]],
       prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
       cpu = 1, 
-      bwa = TRUE),
-    dynamic = map(paired_reads_list)
-  ),
-  
-  plastid_hybpiper_results = target(
-    c(plastid_hybpiper_results_each),
-    dynamic = group(plastid_hybpiper_results_each)
-  ),
-  
-  # Do the same but use blastx
-  # Note that it takes ca. 28 min per sample with 1 CPU, 18 min with 2 CPU, 
-  # 13 min with 6 CPU, and 7 min with 10 CPU
-  # So for a large number of samples (eg 40) it is better to run 40 CPU in 
-  # parallel on 40 samples with 1 CPU each
-  plastid_hybpiper_results_blastx_each = target(
-    reads_first(
-      wd = here::here("intermediates/hybpiper/blastx"),
-      echo = FALSE,
-      baitfile = file_in("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"),
-      # When paired_reads_list gets split up by dynamic mapping, it is split into lists.
-      # The character vector we want for `readfiles` is the first element of each list
-      readfiles = paired_reads_list[[1]],
-      prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
-      cpu = 1, 
+      # use blastx, not BWA
       bwa = FALSE),
     dynamic = map(paired_reads_list)
   ),
   
-  plastid_hybpiper_results_blastx = target(
-    c(plastid_hybpiper_results_blastx_each),
-    dynamic = group(plastid_hybpiper_results_blastx_each)
+  # Combine results
+  plastid_hybpiper_results = target(
+    c(plastid_hybpiper_results_each),
+    dynamic = group(plastid_hybpiper_results_each)
   ),
   
   plastid_samples = make_hybpiper_sample_file(
@@ -179,27 +156,12 @@ hybpiper_plan <- drake_plan (
     depends = plastid_hybpiper_results
   ),
   
-  plastid_samples_blastx = make_hybpiper_sample_file(
-    in_dir = here::here("intermediates/hybpiper/blastx"), 
-    pattern = "UFL|UFG", 
-    out_path = file_out("intermediates/hybpiper/blastx/plastid_samples.txt"),
-    depends = plastid_hybpiper_results_blastx
-  ),
-  
   plastid_lengths = get_seq_lengths(
-    baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"), 
+    baitfile = here::here("intermediates/hybpiper/plastid_aa_targets.fasta"), 
     namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(), 
-    sequenceType = "dna",
+    sequenceType = "aa",
     out_path = file_out("intermediates/hybpiper/plastid_lengths.txt"),
     wd = here::here("intermediates/hybpiper")
-  ),
-  
-  plastid_lengths_blastx = get_seq_lengths(
-    baitfile = here::here("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"), 
-    namelistfile = file_in("intermediates/hybpiper/blastx/plastid_samples.txt") %>% here::here(), 
-    sequenceType = "aa",
-    out_path = file_out("intermediates/hybpiper/blastx/plastid_lengths.txt"),
-    wd = here::here("intermediates/hybpiper/blastx")
   ),
   
   plastid_stats = hybpiper_stats(
@@ -208,40 +170,24 @@ hybpiper_plan <- drake_plan (
     wd = here::here("intermediates/hybpiper")
   ),
   
-  plastid_stats_blastx = hybpiper_stats(
-    seq_lengths = file_in("intermediates/hybpiper/blastx/plastid_lengths.txt") %>% here::here(), 
-    namelistfile = file_in("intermediates/hybpiper/blastx/plastid_samples.txt") %>% here::here(),
-    wd = here::here("intermediates/hybpiper/blastx")
-  ),
-  
   plastid_genes = retrieve_sequences(
-    wd = here::here("intermediates/hybpiper/genes_recovered/"),
-    baitfile = here::here("intermediates/hybpiper/plastid_dna_targets.fasta"),
+    wd = here::here("intermediates/hybpiper/genes_recovered"),
+    baitfile = here::here("intermediates/hybpiper/plastid_aa_targets.fasta"),
     sequence_dir = here::here("intermediates/hybpiper"), 
     sequenceType = "dna",
     depends = plastid_hybpiper_results),
-  
-  plastid_genes_blastx = retrieve_sequences(
-    wd = here::here("intermediates/hybpiper/blastx/genes_recovered/"),
-    baitfile = here::here("intermediates/hybpiper/blastx/plastid_aa_targets.fasta"),
-    sequence_dir = here::here("intermediates/hybpiper/blastx"), 
-    sequenceType = "dna",
-    depends = plastid_hybpiper_results_blastx),
   
   plastid_read_stats = get_read_stats(
     hybpiper_dir = here::here("intermediates/hybpiper"),
     depends = plastid_hybpiper_results
   ),
   
-  plastid_read_stats_blastx = get_read_stats(
-    hybpiper_dir = here::here("intermediates/hybpiper/blastx"),
-    depends = plastid_hybpiper_results_blastx
-  ),
-  
+  # Align read fragments to reference
   plastid_read_fragments_aligned = align_hybpiper_reads_to_ref(
-    hybpiper_dir = here::here("intermediates/hybpiper/blastx"),
+    hybpiper_dir = here::here("intermediates/hybpiper"),
     ref_dir = here::here("intermediates/plastid_genes_ref"),
-    depends = plastid_read_stats_blastx
+    depends1 = plastid_hybpiper_results,
+    depends2 = plastid_dna_targets_out
   )
   
 )

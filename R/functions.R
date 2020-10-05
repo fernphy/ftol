@@ -2111,6 +2111,33 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   
 }
 
+#' Write out plastid DNA targets by gene
+#'
+#' @param plastid_targets Output of mapping fetch_genes_from_plastome() over
+#' a list of accessions
+#' @param out_folder Folder to write out fasta sequences.
+#'
+write_dna_targets_by_gene <- function (plastid_targets, out_folder) {
+  
+  dna_list <-
+    tibble(dna = transpose(plastid_targets)[["dna"]] %>% flatten) %>%
+    mutate(
+      name = names(dna),
+      gene = str_split(name, "-") %>% map_chr(2)) %>%
+    group_split(gene) %>%
+    set_names(map(., "gene") %>% map(unique)) %>%
+    transpose %>%
+    magrittr::extract2("dna") %>%
+    map(jntools::flatten_DNA_list)
+  
+  walk2(dna_list, names(dna_list), ~ape::write.FASTA(.x, glue::glue("{out_folder}/{.y}.fasta")))
+  
+  # Return hash of DNA list for tracking
+  digest::digest(dna_list)
+  
+}
+
+
 # Dating with treePL ----
 
 #' Read in calibration and configure dates for treepl
@@ -3414,7 +3441,7 @@ align_to_ref <- function (reads_path, ref_path, n_thread = 1) {
     ape::read.FASTA()
 }
 
-align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir) {
+align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir, ...) {
   
   reads_data_raw <- 
     tibble(reads_file = list.files(hybpiper_dir, pattern = "interleaved\\.fasta", recursive = TRUE, full.names = TRUE)) %>%
