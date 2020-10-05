@@ -7,10 +7,6 @@ data_plan <- drake_plan (
   wei_genes_path = target("data_raw/wei_2017_coding_genes.txt", format = "file"),
   wei_genes = read_lines(wei_genes_path),
   
-  # Read in Wei et al. 2017 plastome accessions.
-  wei_accessions_path = target("data_raw/wei_2017_accessions.txt", format = "file"),
-  wei_accessions = read_lines(wei_accessions_path),
-  
   # Read in PPGI taxonomic system.
   ppgi_taxonomy_path = target("data_raw/ppgi_taxonomy_mod.csv", format = "file"),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
@@ -80,8 +76,8 @@ trimmomatic_plan <- drake_plan (
 format_plastid_targets_plan <- drake_plan(
   
   # Assemble set of coding genes from GenBank plastome data
+  # using map(accessions, ~fetch_genes_from_plastome(., wei_genes))
   # Run this command locally as juno seems to have a hard time keeping a connection
-  # plastid_targets = map(wei_accessions, ~fetch_genes_from_plastome(., wei_genes)),
   plastid_targets = readRDS(file_in("temp/plastid_targets.RDS") %>% here::here()),
   
   # Collapse amino acid targets into single list, write it out
