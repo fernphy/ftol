@@ -1942,6 +1942,175 @@ concatenate_rbcL_with_other_plastid_genes <- function (plastid_genes_aligned_tri
   
 }
 
+#' Join parts of a DNA sequence together
+#' using the range description in a GenBank flatfile
+#' 
+#' Helper function used by fetch_genes_from_plastome()
+#'
+#' @param seq Character vector of length 1; complete DNA sequence in format, e.g.,
+#' "atgca"
+#' @param ranges Character vector of length 1; ranges of the DNA sequence to join
+#' together. Formatted as e.g., "1..3,8..10,20..40". No spaces allowed.
+#'
+#' @return Character vector of length 1
+#' 
+join_cds <- function(seq, ranges) {
+  
+  # Make sure only allowed characters are present
+  assertthat::assert_that(
+    str_detect(ranges, "[^0-9|..|,|<|>]") == FALSE,
+    msg = "CDS range not properly specified"
+  )
+  
+  # Convert range description string into list,
+  # one item per range
+  ranges_list <- 
+    # Remove any characters other than '..', ',' or 0-9
+    # (such as '<' or '>')
+    str_remove_all(ranges, "[^0-9|..|,]") %>%
+    str_split(",") %>% 
+    magrittr::extract2(1) %>% 
+    map(~str_split(., "\\.\\.") %>% magrittr::extract2(1))
+  
+  # Extract starts and ends of each range
+  starts <- map_chr(ranges_list, 1)
+  ends <-  map_chr(ranges_list, 2)
+  
+  # Convert sequence into character vector with one character each
+  seq_vec <- str_split(seq, "")[[1]]
+  
+  # Extract the selected ranges, squash back together
+  map2(starts, ends, ~magrittr::extract(seq_vec, .x:.y)) %>%
+    unlist() %>%
+    str_flatten()
+}
+
+#' Fetch a set of coding genes from (typically) a plastome
+#'
+#' @param accession GenBank accession number of the plastome
+#' @param target_genes Character vector: list of target genes to extract
+#' @param limit_missing Maximum number of missing amino acids to allow in the
+#' coding sequence; those exceeding this number will be dropped
+#'
+#' @return List including
+#' - dna: The DNA coding sequence of the gene, list of class "DNAbin"
+#' - aa: The amino acid sequence of the gene, list of class "AAbin"
+#' - duplicates: Dataframe of genes that appear more than once in the
+#' plastome and are excluded from 'dna' and 'aa'.
+#'
+fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 10) {
+  
+  # Download and read in GenBank flatfile ---
+  # Get GenBank ID for the accession
+  uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
+  
+  # Make sure there is only 1 hit for that accession
+  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
+  
+  assertthat::assert_that(
+    num_hits == 1,
+    msg = "Did not find exactly one accession")
+  
+  # Download complete GenBank record and write it to a temporary file
+  temp_dir <- tempdir()
+  temp_file <- fs::path(temp_dir, "gb_records.txt")
+  
+  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
+  
+  # Parse GenBank record
+  # suppress "Sample 1 in 1 done" message
+  read_gb <- quietly(read.gb::read.gb)
+  gb_parsed <- read_gb(temp_file) %>% 
+    magrittr::extract2("result") %>%
+    flatten()
+  
+  # Extract full DNA sequence ---
+  dna <- gb_parsed[["ORIGIN"]]
+  
+  # Make sure it only includes IUPAC bases
+  unique_bases <- dna %>% str_split("") %>% magrittr::extract2(1) %>% unique()
+  
+  iupac <- c("A", "C", "G", "T", "U", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V", "N") %>%
+    c(., str_to_lower(.))
+  
+  assertthat::assert_that(
+    all(unique_bases %in% iupac),
+    msg = "DNA sequence includes non-IUPAC bases")
+  
+  # Extract CDS with DNA sequence and translations ---
+  cds_all <- 
+    # Extract CDS from parsed flat-file (includes translation and DNA range)
+    gb_parsed[["FEATURES"]][names(gb_parsed[["FEATURES"]]) == "CDS"] %>%
+    map_df(~pivot_wider(., values_from = Qualifier, names_from = Location)) %>%
+    # Filter to only target genes
+    filter(gene %in% target_genes) %>% 
+    select(gene, CDS, translation) %>%
+    group_by(gene) %>%
+    # Count number of entries per gene for each CDS
+    add_count() %>%
+    ungroup # Be sure to ungroup before using assertr!
+  
+  duplicates <- filter(cds_all, n > 1)
+  
+  cds <-
+    # Filter out any genes with >1 CDS
+    cds_all %>%
+    filter(n == 1) %>%
+    select(-n) %>%
+    # Verify that parentheses are paired, and there are no more than two nested parentheses
+    mutate(
+      n_open_paren = str_count(CDS, "\\("),
+      n_close_paren = str_count(CDS, "\\(")) %>%
+    verify(n_open_paren == n_close_paren) %>%
+    verify(n_open_paren <= 2) %>%
+    select(-n_open_paren, -n_close_paren) %>%
+    # Get rid of "join" and closing parentheses
+    mutate(CDS = str_remove_all(CDS, "join\\(|\\)")) %>%
+    # Parse CDNA range
+    separate(CDS, into = c("complement", "range"), sep = "\\(", fill = "left") %>%
+    mutate(range = str_remove_all(range, ",$")) %>%
+    # Get rid of extra spaces and commas in translation
+    mutate(translation = str_remove_all(translation, " |,")) %>%
+    # Filter remaining by number of missing residues
+    mutate(
+      aa_len = nchar(translation),
+      # Set sequence name as accession-gene (format required by hybpiper)
+      seq_name = paste(all_of(accession), gene, sep = "-"),
+      n_aa_missing = str_count(translation, "X")
+    ) %>%
+    filter(n_aa_missing < limit_missing) %>%
+    # Add DNA sequence
+    mutate(dna_seq = map_chr(range, ~join_cds(all_of(dna), .x))) %>%
+    # Check that DNA sequence length matches AA length
+    # (should be within 1 AA of 1 codon)
+    mutate(
+      dna_len = nchar(dna_seq),
+      check_aa_low = aa_len >= floor((dna_len - 3) / 3),
+      check_aa_high = aa_len <= ceiling((dna_len + 3) / 3),
+    ) %>%
+    assert(isTRUE, check_aa_low, check_aa_high)
+  
+  # Convert AA and DNA to APE format
+  aa <- ape::as.AAbin(as.list(cds$translation)) %>%
+    set_names(cds$seq_name)
+  
+  dna <-
+    cds$dna_seq %>%
+    map(~str_split(., "")) %>%
+    map(ape::as.DNAbin) %>%
+    set_names(cds$seq_name)
+  
+  # Reverse-complement those DNA sequences that need it
+  dna[which(cds$complement == "complement")] <- dna[which(cds$complement == "complement")] %>% map(ape::complement)
+  
+  list(
+    dna = dna,
+    aa = aa,
+    duplicates = duplicates
+  )
+  
+}
+
 # Dating with treePL ----
 
 #' Read in calibration and configure dates for treepl

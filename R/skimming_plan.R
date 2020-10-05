@@ -78,29 +78,22 @@ trimmomatic_plan <- drake_plan (
 # 02_format_targets ----
 
 format_plastid_targets_plan <- drake_plan(
-  # Assemble set of 83 coding genes from GenBank plastome data
-  # This part is memory intensive: requires ca. 60 gb per CPU
   
-  # Read in Wei genes downloaded separately
-  wei_gene_list =  readRDS("wei_gene_list.RDS"),
+  # Assemble set of coding genes from GenBank plastome data
+  plastid_targets = map(wei_accessions, ~fetch_genes_from_plastome(., wei_genes)),
   
-  # Make DNA target file of 83 coding plastid genes
-  plastid_dna_targets = make_plastid_target_file(
-    gene_list = wei_gene_list,
-    accessions = wei_accessions,
-    gene_names = wei_genes,
-    taxonomy_data = ppgi_taxonomy,
-    out_path = file_out("intermediates/hybpiper/plastid_dna_targets.fasta")
-  ),
+  plastid_aa_targets = transpose(plastid_targets)[["aa"]] %>% do.call(c, .),
   
-  # Make AA target file of 83 coding plastid genes
-  plastid_aa_targets = map(wei_accessions, ~fetch_aa(., wei_genes)) %>%
-    # collapse list of list of amino acid sequences into a single list
-    do.call(c, .),
+  plastid_dna_targets = transpose(plastid_targets)[["dna"]] %>% flatten %>% jntools::flatten_DNA_list(),
   
   plastid_aa_targets_out = ape::write.FASTA(
     plastid_aa_targets, 
     file_out("intermediates/hybpiper/blastx/plastid_aa_targets.fasta")
+  ),
+  
+  plastid_dna_targets_out = ape::write.FASTA(
+    plastid_aa_targets, 
+    file_out("intermediates/hybpiper/plastid_dna_targets.fasta")
   )
   
 )
