@@ -2038,7 +2038,7 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
     msg = "DNA sequence includes non-IUPAC bases")
   
   # Extract CDS with DNA sequence and translations ---
-  cds_all <- 
+  cds_with_dups <- 
     # Extract CDS from parsed flat-file (includes translation and DNA range)
     gb_parsed[["FEATURES"]][names(gb_parsed[["FEATURES"]]) == "CDS"] %>%
     map_df(~pivot_wider(., values_from = Qualifier, names_from = Location)) %>%
@@ -2050,11 +2050,11 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
     add_count() %>%
     ungroup # Be sure to ungroup before using assertr!
   
-  duplicates <- filter(cds_all, n > 1)
+  duplicates <- filter(cds_with_dups, n > 1)
   
-  cds <-
+  cds_with_all_aa <-
     # Filter out any genes with >1 CDS
-    cds_all %>%
+    cds_with_dups %>%
     filter(n == 1) %>%
     select(-n) %>%
     # Verify that parentheses are paired, and there are no more than two nested parentheses
@@ -2085,10 +2085,16 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
     # (should be within 1 AA of 1 codon)
     mutate(
       dna_len = nchar(dna_seq),
-      check_aa_low = aa_len >= floor((dna_len - 3) / 3),
-      check_aa_high = aa_len <= ceiling((dna_len + 3) / 3),
-    ) %>%
-    assert(isTRUE, check_aa_low, check_aa_high)
+      expect_aa_low = floor((dna_len - 3) / 3),
+      check_aa_low = aa_len >= expect_aa_low,
+      expect_aa_high = ceiling((dna_len + 3) / 3),
+      check_aa_high = aa_len <= expect_aa_high
+    )
+    
+  cds <- cds_with_all_aa %>%
+    filter(check_aa_low, check_aa_high)
+  
+  aa_length_errors <- anti_join(cds_with_all_aa, cds, by = "gene")
   
   # Convert AA and DNA to APE format
   aa <- ape::as.AAbin(as.list(cds$translation)) %>%
@@ -2106,7 +2112,8 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   list(
     dna = dna,
     aa = aa,
-    duplicates = duplicates
+    duplicates = duplicates,
+    length_errors = aa_length_errors
   )
   
 }
