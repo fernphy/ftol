@@ -78,7 +78,8 @@ format_plastid_targets_plan <- drake_plan(
   # Assemble set of coding genes from GenBank plastome data
   # using map(accessions, ~fetch_genes_from_plastome(., wei_genes))
   # Run this command locally as juno seems to have a hard time keeping a connection
-  plastid_targets = readRDS(file_in("temp/plastid_targets.RDS") %>% here::here()),
+  plastid_targets_path = target("temp/plastid_targets.RDS", format = "file"),
+  plastid_targets = readRDS(plastid_targets_path),
   
   # Collapse amino acid targets into single list, write it out
   plastid_aa_targets_out = ape::write.FASTA(
