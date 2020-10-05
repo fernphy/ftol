@@ -1942,67 +1942,6 @@ concatenate_rbcL_with_other_plastid_genes <- function (plastid_genes_aligned_tri
   
 }
 
-#' Fetch an amino acid sequence from a GenBank accession
-#' 
-#' Mostly meant for extracting AA sequences from partial or whole
-#' genomes or plastomes
-#'
-#' @param accession GenBank accession
-#' @param target_genes Character vector of target genes to extract
-#' @param limit_missing Number of maximum number of missing amino acid residues
-#' to allow per sequence. Sequences with more than this will be excluded.
-#'
-#' @return List of class 'AAbin'. Sequences will be named 'accession-gene'.
-#'
-fetch_aa <- function (accession, target_genes, limit_missing = 10) {
-  
-  # Get GenBank ID for the accession
-  uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
-  
-  # Make sure there is only 1 hit for that accession
-  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  
-  assertthat::assert_that(
-    num_hits == 1,
-    msg = "Did not find exactly one accession")
-  
-  # Download complete GenBank record and write it to a temporary file
-  temp_dir <- tempdir()
-  temp_file <- fs::path(temp_dir, "gb_records.txt")
-  
-  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
-  # Parse GenBank record
-  gb_parsed <- read.gb::read.gb(temp_file)
-  
-  # Extract CDS with translations
-  # Filter to only target genes, specify name as accession-gene
-  cds <- gb_parsed[[1]][["FEATURES"]][names(gb_parsed[[1]][["FEATURES"]]) == "CDS"] %>%
-    map_df(~pivot_wider(., values_from = Qualifier, names_from = Location)) %>%
-    filter(gene %in% target_genes) %>% 
-    select(gene, translation) %>% 
-    # get rid of extra spaces and commas in translation
-    mutate(translation = str_remove_all(translation, " |,")) %>%
-    # drop exact duplicates
-    unique() %>%
-    # filter remaining by number of missing residues,
-    # keep only the single longest sequence
-    mutate(
-      seq_len = nchar(translation),
-      # set sequence name as accession-gene (format required by hybpiper)
-      seq_name = paste(all_of(accession), gene, sep = "-"),
-      n_missing = str_count(translation, "X")
-    ) %>%
-    filter(n_missing < limit_missing) %>%
-    group_by(gene) %>%
-    slice_max(seq_len, with_ties = FALSE)
-  
-  # Convert to APE format
-  ape::as.AAbin(as.list(cds$translation)) %>%
-    set_names(cds$seq_name)
-  
-}
-
 # Dating with treePL ----
 
 #' Read in calibration and configure dates for treepl
