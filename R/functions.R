@@ -3457,8 +3457,8 @@ align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir, ...) {
   reads_data_raw <- 
     tibble(reads_file = list.files(hybpiper_dir, pattern = "interleaved\\.fasta", recursive = TRUE, full.names = TRUE)) %>%
     mutate(
-      sample = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(8)),
-      gene = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(9))
+      sample = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(7)),
+      gene = purrr::map_chr(reads_file, ~str_split(., "\\/") %>% map_chr(8))
     )
   
   ref_data <- 
@@ -3469,7 +3469,7 @@ align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir, ...) {
   
   # Make sure all ref genes are in reads genes
   assertthat::assert_that(
-    all(reads_data_raw$gene %in% reads_data$gene)
+    all(reads_data_raw$gene %in% ref_data$gene)
   )
   
   # Join sorted reads file paths and reference fasta file paths by gene, run alignment
