@@ -2139,7 +2139,10 @@ write_dna_targets_by_gene <- function (plastid_targets, out_folder) {
     magrittr::extract2("dna") %>%
     map(jntools::flatten_DNA_list) %>%
     # Align the genes
-    map(~ips::mafft(x = ., options = "--adjustdirection", exec = "/usr/bin/mafft"))
+    map(~ips::mafft(x = ., options = "--adjustdirection", exec = "/usr/bin/mafft")) %>%
+    # Trim ends (don't allow more than 50% missing)
+    map(~ips::trimEnds(x = ., min.n.seq = 0.5))
+    
   
   walk2(dna_list, names(dna_list), ~ape::write.FASTA(.x, glue::glue("{out_folder}/{.y}.fasta")))
   
