@@ -187,7 +187,12 @@ hybpiper_plan <- drake_plan (
     ref_dir = here::here("intermediates/plastid_genes_ref"),
     depends1 = plastid_hybpiper_results,
     depends2 = plastid_dna_targets_out
-  )
+  ),
+  
+  # Extract consensus short reads (also excludes outliers)
+  consensus_short_reads = extract_extract_short_reads_consensus_from_hybpiper(
+    plastid_lengths = plastid_lengths,
+    plastid_read_fragments_aligned = plastid_read_fragments_aligned)
   
 )
 
