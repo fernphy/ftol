@@ -3556,7 +3556,7 @@ find_extreme_reads <- function (short_read, ref_seqs, short_read_marker, mean_di
   if(class(short_read) == "raw")
     short_read <- short_read %>%
       as.character.DNAbin() %>% 
-      as.DNAbin() %>%
+      ape::as.DNAbin() %>%
       as.list %>%
       set_names(short_read_marker)
   
@@ -3733,7 +3733,9 @@ extract_extract_short_reads_consensus_from_hybpiper <- function(plastid_lengths,
       by = c("sample", "gene")) %>%
     slice(1:2) %>%
     # Extract consensus short reads
-    mutate(short_reads_con = map(ref_aln, extract_short_reads_consensus) %>% set_names(sample))
+    mutate(short_reads_con = map(ref_aln, extract_short_reads_consensus) %>% set_names(sample)) %>%
+    # Drop reference alignmnent
+    select(-ref_aln)
   
   # To export as DNAbin:
   # c(res$short_reads_con) %>% map(as.list) %>% jntools::flatten_DNA_list()
