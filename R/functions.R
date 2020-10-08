@@ -3555,7 +3555,7 @@ find_extreme_reads <- function (short_read, ref_seqs, short_read_marker, mean_di
   # Convert back to 'DNAbin' and set names as the value of `short_read_marker`
   if(class(short_read) == "raw")
     short_read <- short_read %>%
-      as.character.DNAbin() %>% 
+      ape::as.character.DNAbin() %>% 
       ape::as.DNAbin() %>%
       as.list %>%
       set_names(short_read_marker)
