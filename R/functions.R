@@ -3731,7 +3731,6 @@ extract_extract_short_reads_consensus_from_hybpiper <- function(plastid_lengths,
     anti_join(
       plastid_lengths_long %>% filter(length < 1),
       by = c("sample", "gene")) %>%
-    slice(1:2) %>%
     # Extract consensus short reads
     mutate(short_reads_con = map(ref_aln, extract_short_reads_consensus) %>% set_names(sample)) %>%
     # Drop reference alignmnent
