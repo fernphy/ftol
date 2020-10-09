@@ -3482,10 +3482,7 @@ align_hybpiper_reads_to_ref <- function (hybpiper_dir, ref_dir, ...) {
   
 }
 
-
 #' Trim gap-only ends from an alignment
-#' 
-#' Helper function for extract_extract_short_reads_consensus_from_hybpiper()
 #'
 #' @param alignment List of class DNAbin
 #' @return List of class DNAbin
@@ -3507,8 +3504,6 @@ trim_gap_ends <- function (alignment) {
 }
 
 #' Convert gaps in an alignment to NA
-#' 
-#' Helper function for extract_extract_short_reads_consensus_from_hybpiper()
 #'
 #' @param alignment List of class DNAbin
 #'
@@ -3534,61 +3529,54 @@ convert_gap_to_na <- function(alignment) {
   
 }
 
-#' Find extreme reads from a set of short reads
-#'
-#' Helper function for extract_extract_short_reads_consensus_from_hybpiper()
+#' Determine if a short read is "extreme" relative to a set of reference reads
 #' 
+#' The short read will be considered "extreme" if the distances from that read
+#' to each reference read is > mean_dist + 2*std_dev for a majority of distances.
+#'
 #' @param short_read List of class "DNAbin": a given short read to test
 #' @param ref_seqs List of class "DNAbin": reference sequences
-#' @param short_read_marker Pattern used to identify short reads; should match to
-#' only names of short reads, and not reference sequences
 #' @param mean_dist Mean DNA distance of reference sequences
 #' @param std_dev Standard deviation in DNA distances of ref. sequences
+#' @param model Method to use for calculating DNA distances. See ape::dist.dna()
 #'
-#' @return Character vector; names of short reads with "extreme" values (
-#' more than 2 SD above the mean distance of reference sequences)
+#' @return Logical value: TRUE if extreme, FALSE if not.
 #' 
-find_extreme_reads <- function (short_read, ref_seqs, short_read_marker, mean_dist, std_dev) {
+is_extreme_read <- function (short_read, ref_seqs, mean_dist, std_dev, model = "raw") {
   
-  # When this function is used inside a loop, the `short_read` gets
-  # converted to 'raw' (instead of DNAbin), and we lose the names.
-  # Convert back to 'DNAbin' and set names as the value of `short_read_marker`
-  if(class(short_read) == "raw")
-    short_read <- short_read %>%
-      ape::as.character.DNAbin() %>% 
-      ape::as.DNAbin() %>%
-      as.list %>%
-      set_names(short_read_marker)
+  # Calculate a distance matrix including the short read plus ref seqs
+  dist_mat <-
+    c(short_read, ref_seqs) %>%
+    ape::dist.dna(model = model, as.matrix = TRUE, pairwise.deletion = TRUE)
   
-  # Combine short read with reference sequence
-  c(short_read, ref_seqs) %>%
-    # Calculate distances, return as tibble
-    dist_dna %>%
-    # Classify as "extreme" any sequences > 2*SD beyond mean ref distance for majority
-    # of comparisons
-    mutate(upper = mean_dist + 2*std_dev) %>%
-    filter(distance > upper) %>%
-    select(-upper) %>% 
-    pivot_longer(values_to = "item", names_to = "names", -distance) %>%
-    count(item) %>%
-    # Filter to sequences with names indicating they are from short reads
-    filter(str_detect(item, short_read_marker)) %>%
-    # Filter to sequences that have extreme values in majority of comparisons
-    filter(n > length(ref_seqs) / 2) %>%
-    pull(item)
+  # Make logical vector of distances from short read to references that are "extreme"
+  is_extreme <-
+    # dist_mat includes all distances, but we only care about distances from the short read to ref seqs.
+    # The first row (or column) is the distances from the short read to all other reads.
+    # The first item is a self-match, so exclude that.
+    dist_mat[1,2:ncol(dist_mat)] %>%
+    # Check how many of these distances are "extreme"  (> mean + 2*std_dev of reference distances)
+    magrittr::is_greater_than(mean_dist + 2*std_dev)
+  
+  # Sum number of extreme distances without NAs 
+  # (NAs due to complete non-overlap of short read and ref due to gaps)
+  sum(is_extreme, na.rm = TRUE) %>%
+    # Only consider the short read "extreme" if a majority of distances to refs are extreme,
+    # after excluding NAs
+    magrittr::is_greater_than(length(is_extreme[!is.na(is_extreme)]) / 2)
   
 }
+
 
 #' Calculate pair-wise DNA distances 
 #' 
 #' and return results as a tibble with one row per unique sequence pair
-#' 
-#' Helper function for extract_extract_short_reads_consensus_from_hybpiper()
 #'
 #' @param alignment List of class DNAbin
+#' @param model Method to use for calculating DNA distances. See ape::dist.dna()
 #'
 #' @return Tibble
-dist_dna <- function (alignment) {
+dist_dna <- function (alignment, model = "raw") {
   
   # Make sure there are no spaces in alignment names
   assertthat::assert_that(
@@ -3596,7 +3584,7 @@ dist_dna <- function (alignment) {
     msg = "alignment names must not contain space character")
   
   # Calculate distances
-  ape::dist.dna(alignment, model = "K80", pairwise.deletion = TRUE, as.matrix = TRUE) %>%
+  ape::dist.dna(alignment, model = model, pairwise.deletion = TRUE, as.matrix = TRUE) %>%
     # Convert to tibble with one row per non-self comparison
     as.data.frame %>%
     rownames_to_column("item_1") %>%
@@ -3616,10 +3604,12 @@ dist_dna <- function (alignment) {
 
 #' Extract consensus of short reads from an alignment
 #' 
-#' Outlier short reads (those with distance > mean + 2SD) will be excluded, and
-#' the consensus of the remaining short reads calculated.
+#' Often HybPiper produces "left over" reads when short reads map to the reference,
+#' but there aren't enough to assemble contigs into a continuous gene. This function
+#' excludes any outlier reads, then computes a simple consensus from those remaining.
 #' 
-#' Helper function for extract_extract_short_reads_consensus_from_hybpiper()
+#' Outliers are short reads with distance > mean + 2SD from reference sequences, for
+#' a majority of reference sequences.
 #'
 #' @param alignment List of class "DNAbin": an alignment including reference
 #' sequences and short reads
@@ -3647,8 +3637,8 @@ extract_short_reads_consensus <- function (alignment, short_read_marker = ":") {
   # Extract reference sequences from alignment
   ref_seqs <- alignment[str_detect(names(alignment), short_read_marker, negate = TRUE)]
   
-  # Calculate ref seq distances
-  ref_seqs_dist <- dist_dna(ref_seqs)
+  # Calculate ref seq distances (make sure model matches with extreme reads!)
+  ref_seqs_dist <- dist_dna(ref_seqs, model = "raw")
   
   # Calculate SD and mean of reference distances
   std_dev <- sd(ref_seqs_dist$distance, na.rm = TRUE)
@@ -3657,19 +3647,22 @@ extract_short_reads_consensus <- function (alignment, short_read_marker = ":") {
   # Extract short reads from alignment
   short_reads <- alignment[str_detect(names(alignment), short_read_marker)]
   
+  # Split into list of DNAbin lists
+  short_reads <- split(short_reads, factor(names(short_reads)))
+  
   if(length(short_reads) == 0) return (NULL)
   
   # Find extreme reads by checking each combination of
   # short read + ref_seqs (avoids calculating entire distance matrix)
-  extreme_reads <- map(
+  extreme_reads <- map_lgl(
     short_reads, 
-    ~find_extreme_reads(
+    ~is_extreme_read(
       ., 
       ref_seqs = ref_seqs, 
-      short_read_marker = short_read_marker, 
       mean_dist = mean_dist, 
-      std_dev = std_dev)) %>%
-    purrr::compact() %>%
+      std_dev = std_dev,
+      model = "raw")) %>%
+    magrittr::extract(map_lgl(., isTRUE)) %>%
     names()
   
   # Filter alignment to only short reads, calculate consensus
@@ -3691,21 +3684,19 @@ extract_short_reads_consensus <- function (alignment, short_read_marker = ":") {
   
 }
 
-#' Extract consensus short reads from a Hybpiper run
+#' Set up samples to extract consensus short reads from a Hybpiper run
 #' 
-#' Often HybPiper produces "left over" reads when short reads map to the reference,
-#' but there aren't enough to assemble contigs into a continuous gene. This function
-#' excludes any outlier reads, then computes a simple consensus from those remaining.
-#' 
-#' It only does this for samples where Hybpiper couldn't assemble any portion of a gene.
+#' Subsamples Hybpiper output to only samples where Hybpiper couldn't assemble 
+#' any portion of a gene so it can be used to extract consensus reads with 
+#' extract_short_reads_consensus().
 #'
 #' @param plastid_lengths Tibble: lengths of genes recovered by hybpiper
 #' @param plastid_read_fragments_aligned Tibble, including column "ref_aln" with
 #' alignments including reference sequences and short reads. Output of align_hybpiper_reads_to_ref().
 #'
-#' @return Tibble with column "short_reads_con" containing consensus short reads.
+#' @return Tibble
 #' 
-extract_extract_short_reads_consensus_from_hybpiper <- function(plastid_lengths, plastid_read_fragments_aligned) {
+setup_reads_to_extract <- function(plastid_lengths, plastid_read_fragments_aligned) {
   
   # Convert plastid lengths to long format
   plastid_lengths_long <-
@@ -3730,14 +3721,6 @@ extract_extract_short_reads_consensus_from_hybpiper <- function(plastid_lengths,
   plastid_read_fragments_aligned %>%
     anti_join(
       plastid_lengths_long %>% filter(length < 1),
-      by = c("sample", "gene")) %>%
-    # Extract consensus short reads
-    mutate(short_reads_con = map(ref_aln, extract_short_reads_consensus) %>% set_names(sample)) %>%
-    # Drop reference alignmnent
-    select(-ref_aln)
-  
-  # To export as DNAbin:
-  # c(res$short_reads_con) %>% map(as.list) %>% jntools::flatten_DNA_list()
+      by = c("sample", "gene"))
   
 }
-
