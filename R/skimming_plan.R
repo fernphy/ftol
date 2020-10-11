@@ -195,9 +195,9 @@ hybpiper_plan <- drake_plan (
   each_extracted_reads_consensus = target(
     mutate(
       plastid_read_fragments_aligned, 
-      short_reads_con = map(ref_aln, extract_short_reads_consensus)) %>%
+      short_reads_con = purrr::map(ref_aln, extract_short_reads_consensus)) %>%
       select(-ref_aln),
-    dynamic = map(reads_to_extract)
+    dynamic = map(plastid_read_fragments_aligned)
   ),
   
   # - combine results
