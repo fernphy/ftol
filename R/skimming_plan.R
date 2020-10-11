@@ -190,14 +190,11 @@ hybpiper_plan <- drake_plan (
   ),
   
   # Extract consensus short reads (also excludes outliers):
-  # - first, setup dataframe including only genes that couldn't be assembled by hybpiper
-  reads_to_extract = setup_reads_to_extract(plastid_lengths, plastid_read_fragments_aligned),
-  
-  # - loop over the dataframe and extract consensus short reads for each
+  # - loop over the dataframe of aligned reads and extract consensus short reads for each
   # (this can be run in parallel to speed things up using settings in "_skimming_drake.R")
   each_extracted_reads_consensus = target(
     mutate(
-      reads_to_extract, 
+      plastid_read_fragments_aligned, 
       short_reads_con = map(ref_aln, extract_short_reads_consensus)) %>%
       select(-ref_aln),
     dynamic = map(reads_to_extract)
