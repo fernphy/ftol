@@ -3624,6 +3624,15 @@ extract_short_reads_consensus <- function (alignment, short_read_marker = ":") {
     is.list(alignment), 
     msg = "alignment must be a list")
   
+  # Check that at least one short read and one reference read are present
+  assertthat::assert_that(
+    any(str_detect(names(alignment), short_read_marker)),
+    msg = "No short reads detected")
+  
+  assertthat::assert_that(
+    any(str_detect(names(alignment), short_read_marker, negate = TRUE)),
+    msg = "No reference sequences detected")
+  
   # Remove duplicate reads
   dups <- duplicated(alignment)
   alignment <- alignment[!dups]
@@ -3665,12 +3674,20 @@ extract_short_reads_consensus <- function (alignment, short_read_marker = ":") {
     magrittr::extract(map_lgl(., isTRUE)) %>%
     names()
   
-  # Filter alignment to only short reads, calculate consensus
+  # Filter alignment to only short reads
+  alignment_filtered <-
   alignment %>%
-    # Filter out extreme reads
-    magrittr::extract(!names(.) %in% extreme_reads) %>%
     # Keep only short reads
     magrittr::extract(str_detect(names(.), short_read_marker)) %>%
+    # Filter out extreme reads
+    magrittr::extract(!names(.) %in% extreme_reads)
+  
+  # Early exit if nothing is left (all short reads are "extreme")
+  if(length(alignment_filtered) == 0) return(NULL)
+  
+  # Calculate consensus
+  alignment_filtered %>%
+    # Convert to matrix
     as.matrix() %>%
     # Trim ends that are only gaps
     trim_gap_ends %>%
