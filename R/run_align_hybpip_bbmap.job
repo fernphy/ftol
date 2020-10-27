@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=10
+#PBS -l walltime=10:00:00:00
+#PBS -p -200
+#PBS -N bbmap
+#PBS -j oe
+#PBS -m abe
+#PBS -M joelnitta@gmail.com
+#PBS -V
+cd ftol
+### start docker daemon
+start-dockerd.sh
+### wait for docker daemon to get up and running
+sleep 30
+bash R/run_align_hybpip_bbmap.sh
+stop-dockerd.sh

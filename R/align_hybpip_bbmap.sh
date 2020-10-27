@@ -21,14 +21,16 @@ SAM=${SAMPLE}-${GENE}.sam
 # Format name of consenus FASTA output
 CON=${SAMPLE}-${GENE}-con.fasta
 
-# Run BBMAP
+# Run BBMAP, direct output to log named by sample + gene
 docker run --rm -w /data/intermediates/bbmap --user root \
   -v /home/joelnitta/ftol/:/data \
+  --name test \
   quay.io/biocontainers/bbmap:38.87--h1296035_0 bbmap.sh \
   in=$FASTA \
   out=$SAM \
+  t=1 \
   ref=/data/intermediates/ref_dna/$REF.fasta \
-  \nodisk
+  \nodisk 2> ./intermediates/bbmap/${SAMPLE}-${GENE}-log.txt
 
 # activate kindel
 source ~/miniconda2/etc/profile.d/conda.sh
