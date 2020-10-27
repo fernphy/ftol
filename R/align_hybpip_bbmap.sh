@@ -28,6 +28,7 @@ docker run --rm -w /data/intermediates/bbmap --user root \
   in=$FASTA \
   out=$SAM \
   t=1 \
+  -Xmx5g \
   ref=/data/intermediates/ref_dna/$REF.fasta \
   \nodisk 2> ./intermediates/bbmap/${SAMPLE}-${GENE}-log.txt
 
