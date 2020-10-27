@@ -24,7 +24,6 @@ CON=${SAMPLE}-${GENE}-con.fasta
 # Run BBMAP, direct output to log named by sample + gene
 docker run --rm -w /data/intermediates/bbmap --user root \
   -v /home/joelnitta/ftol/:/data \
-  --name test \
   quay.io/biocontainers/bbmap:38.87--h1296035_0 bbmap.sh \
   in=$FASTA \
   out=$SAM \
