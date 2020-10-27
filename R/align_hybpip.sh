@@ -1,12 +1,8 @@
 #!/bin/bash
 
-while getopts s:g: flag
-do
-  case "${flag}" in
-    s) SAMPLE=${OPTARG};;
-    g) GENE=${OPTARG};;
-  esac
-done
+# Split input into sample and gene, separated by colon
+SAMPLE=$(echo $1 | cut -d ":" -f 1)
+GENE=$(echo $1 | cut -d ":" -f 2)
 
 # Extract name of reference bait matched by BLASTX 
 # (e.g., MH173078-psaA)
