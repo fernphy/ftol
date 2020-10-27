@@ -35,8 +35,8 @@ docker run --rm -w /data/intermediates/bbmap --user root \
 source ~/miniconda2/etc/profile.d/conda.sh
 conda activate kindel
 
-# Extract consensus from SAM with min-depth of 1
-kindel consensus ~/ftol/intermediates/bbmap/$SAM --min-depth 1 >  ~/ftol/intermediates/bbmap/$CON
+# Extract consensus from SAM with min-depth of 1, trim Ns from alignment ends
+kindel consensus ~/ftol/intermediates/bbmap/$SAM --min-depth 1 -t >  ~/ftol/intermediates/bbmap/$CON
 
 # Remove temporary files
 rm ~/ftol/intermediates/bbmap/$SAM
