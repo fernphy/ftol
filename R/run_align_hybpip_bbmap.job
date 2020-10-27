@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l nodes=1:ppn=10
-#PBS -l walltime=10:00:00:00
+#PBS -l walltime=2:00:00:00
 #PBS -p -200
 #PBS -N bbmap
 #PBS -j oe
