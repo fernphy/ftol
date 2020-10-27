@@ -39,4 +39,4 @@ conda activate kindel
 kindel consensus ~/ftol/intermediates/bbmap/$SAM --min-depth 1 -t >  ~/ftol/intermediates/bbmap/$CON
 
 # Remove temporary files
-rm ~/ftol/intermediates/bbmap/$SAM
+rm -f ~/ftol/intermediates/bbmap/$SAM
