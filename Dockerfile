@@ -114,4 +114,66 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	make && \
 	cp trimal /usr/local/bin
 
+######################
+### conda packages ###
+######################
+
+# install miniconda
+ENV MINICONDA_VERSION py37_4.8.3
+ENV CONDA_DIR $HOME/miniconda3
+
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-Linux-x86_64.sh -O ~/miniconda.sh && \
+    chmod +x ~/miniconda.sh && \
+    ~/miniconda.sh -b -p $CONDA_DIR && \
+    rm ~/miniconda.sh
+
+# make non-activate conda commands available
+ENV PATH=$CONDA_DIR/bin:$PATH
+
+# make conda activate command available from /bin/bash --login shells
+RUN echo ". $CONDA_DIR/etc/profile.d/conda.sh" >> ~/.profile
+
+# make conda activate command available from /bin/bash --interative shells
+RUN conda init bash
+
+# build conda environment: kindel
+
+ENV APPNAME kindel
+
+COPY conda/$APPNAME-environment.yml /tmp/
+
+ENV ENV_PREFIX /env/$APPNAME
+RUN conda update --name base --channel defaults conda && \
+    conda env create --prefix $ENV_PREFIX --file /tmp/$APPNAME-environment.yml --force && \
+    conda clean --all --yes
+
+# make shell script to run conda app
+# e.g., kindel can be run with `kindel`
+
+RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
+  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
+  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
+  echo "$APPNAME \"\$@\"" >> /usr/local/bin/$APPNAME  && \
+  chmod u+x /usr/local/bin/$APPNAME
+
+# build conda environment: bbmap
+
+ENV APPNAME bbmap
+
+COPY conda/$APPNAME-environment.yml /tmp/
+
+ENV ENV_PREFIX /env/$APPNAME
+RUN conda update --name base --channel defaults conda && \
+    conda env create --prefix $ENV_PREFIX --file /tmp/$APPNAME-environment.yml --force && \
+    conda clean --all --yes
+
+# make shell script to run conda app
+# NOTE: the actual command within conda to run bbmap is bbmap.sh
+
+RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
+  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
+  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
+  echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME  && \
+  chmod u+x /usr/local/bin/$APPNAME
+
 WORKDIR /home/rstudio/
