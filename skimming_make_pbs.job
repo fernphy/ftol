@@ -13,6 +13,6 @@ start-dockerd.sh
 ### wait for docker daemon to get up and running
 sleep 30
 ### mount ~ so symlinks to ~/project_data work
-docker run --rm -v ~/:/home/rstudio/ -w /home/rstudio/ftol joelnitta/eupoly2_capture:4.0.0 Rscript -e "drake::r_make('_skimming_drake.R')"
+docker run --rm -v ~/:/home/rstudio/ -w /home/rstudio/ftol joelnitta/ftol:4.0.0 Rscript -e "drake::r_make('_skimming_drake.R')"
 ### stop docker daemon
 stop-dockerd.sh
