@@ -154,7 +154,7 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
   echo "$APPNAME \"\$@\"" >> /usr/local/bin/$APPNAME  && \
-  chmod u+x /usr/local/bin/$APPNAME
+  chmod 755 /usr/local/bin/$APPNAME
 
 # build conda environment: bbmap
 
@@ -174,6 +174,6 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
   echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME  && \
-  chmod u+x /usr/local/bin/$APPNAME
+  chmod 755 /usr/local/bin/$APPNAME
 
 WORKDIR /home/rstudio/
