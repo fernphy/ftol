@@ -3505,7 +3505,11 @@ get_hybpip_consensus <- function (sample, plastid_targets) {
     "-nodisk"
   )
   
-  bbmap_res <- processx::run("bbmap", args)
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/usr/local/bin", sep = ":")
+  
+  bbmap_res <- processx::run("bbmap", args, env = new_env)
   
   # Process bbmap stderr to get table of reads mapped, 
   # number of input reads, number of input bases
@@ -3534,7 +3538,11 @@ get_hybpip_consensus <- function (sample, plastid_targets) {
     "-t"
   )
   
-  kindel_res <- processx::run("kindel", args)
+  # Specify paths in new environment
+  new_env <- Sys.getenv()
+  new_env["PATH"] <- paste(Sys.getenv("PATH"), "/usr/local/bin", sep = ":")
+  
+  kindel_res <- processx::run("kindel", args, env = new_env)
   
   # Write out standard output so it can be read in with ape::read.FASTA
   con_raw <- kindel_res$stdout %>%
