@@ -182,22 +182,11 @@ hybpiper_plan <- drake_plan (
   ),
   
   # Align read fragments to reference
-  plastid_read_fragments_aligned = align_hybpiper_reads_to_ref(
-    hybpiper_dir = here::here("intermediates/hybpiper"),
-    ref_dir = here::here("intermediates/plastid_genes_ref"),
-    depends1 = plastid_hybpiper_results,
-    depends2 = plastid_dna_targets_out
-  ),
-  
-  # Extract consensus short reads (also excludes outliers):
-  # - loop over the dataframe of aligned reads and extract consensus short reads for each
+  # - loop over the list of samples
   # (this can be run in parallel to speed things up using settings in "_skimming_drake.R")
   each_extracted_reads_consensus = target(
-    mutate(
-      plastid_read_fragments_aligned, 
-      short_reads_con = purrr::map(ref_aln, extract_short_reads_consensus)) %>%
-      select(-ref_aln),
-    dynamic = map(plastid_read_fragments_aligned)
+    get_hybpip_consensus(sample = plastid_samples, plastid_targets),
+    dynamic = map(plastid_samples)
   ),
   
   # - combine results

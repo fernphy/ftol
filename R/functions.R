@@ -3424,3 +3424,149 @@ get_read_stats <- function (hybpiper_dir, ...) {
 }
 
 # Retrieve read fragments from hybpiper ----
+
+#' Extract the consensus sequence of short reads sorted by HybPiper
+#' 
+#' Requires bbmap and kindel to be installed and on the PATH.
+#'
+#' @param sample Name of sample. Should be the same as the name of the sample
+#' used as input to Hypiper. Assumes hybiper has been run, with output in the
+#' "intermediates/hybpiper" folder.
+#' @param plastid_targets List of lists, one per target gene. Each list includes
+#' - dna: The DNA coding sequence of the gene, list of class "DNAbin"
+#' - aa: The amino acid sequence of the gene, list of class "AAbin"
+#' - duplicates: Dataframe of genes that appear more than once in the
+#' plastome and are excluded from 'dna' and 'aa'.
+#' Output of map(accessions, ~fetch_genes_from_plastome(., wei_genes))
+#'
+#' @examples
+#' source("_skimming_drake.R")
+#' # Load plastid_targets
+#' loadd(plastid_targets, cache = skimming_cache)
+#' # sample with fewest reads
+#' sample <- "UFG_393201_P03_WC08"
+#' get_hybpip_consensus("UFG_393201_P03_WC08", plastid_targets)
+get_hybpip_consensus <- function (sample, plastid_targets) {
+  
+  # Make temp working folder
+  temp_dir <- fs::dir_create(fs::path(tempdir(), digest::digest(sample)))
+  
+  # Load list of all DNA targets, format
+  # as tibble named by accession-gene
+  target_dna <-
+    tibble(dna = transpose(plastid_targets)[["dna"]] %>% flatten) %>%
+    mutate(
+      name = names(dna),
+      gene = str_split(name, "-") %>% map_chr(2),
+      dna = map2(dna, name, ~set_names(.x, .y))
+    )
+  
+  # Fetch the names of target sequences matched to the sample by hybpiper
+  ref_names <- list.files(
+    paste0("intermediates/hybpiper/", sample), 
+    pattern = "baits.fasta", 
+    full.names = TRUE, recursive = TRUE) %>%
+    map(ape::read.FASTA) %>%
+    map_chr(names)
+  
+  # Construct pseudo reference genome based on the matched targets
+  pseudo_ref_genome <- filter(target_dna, name %in% ref_names) %>%
+    pull(dna) %>%
+    set_names(nm = NULL) %>%
+    jntools::flatten_DNA_list()
+  
+  # Write out pseudo reference genome
+  ape::write.FASTA(pseudo_ref_genome, fs::path(temp_dir, "ref.fasta"))
+  
+  # Load all the sorted reads from HybPiper for this sample, combine
+  short_reads <- list.files(
+    paste0("intermediates/hybpiper/", sample), 
+    pattern = "interleaved.fasta", 
+    full.names = TRUE, recursive = TRUE) %>%
+    map(ape::read.FASTA) %>%
+    jntools::flatten_DNA_list()
+  
+  # Write out sorted reads for mapping
+  ape::write.FASTA(short_reads, fs::path(temp_dir, "reads.fasta"))
+  
+  # Run bbmap: maps reads to reference
+  args <- c(
+    # input short reads
+    glue('in={fs::path(temp_dir, "reads.fasta")}'),
+    # reference genome to map reads
+    glue('ref={fs::path(temp_dir, "ref.fasta")}'),
+    # output path to write aligned reads (SAM)
+    glue('out={fs::path(temp_dir, "align.sam")}'),
+    # use one thread
+    "t=1",
+    # reserve 1gb memory
+    "-Xmx1g",
+    # don't write out the index file to disk
+    "-nodisk"
+  )
+  
+  bbmap_res <- processx::run("bbmap", args)
+  
+  # Process bbmap stderr to get table of reads mapped, 
+  # number of input reads, number of input bases
+  bbmap_stderr_raw <- write_lines(bbmap_res$stderr, fs::path(temp_dir, "bbmap.stderr"))
+  bbmap_stderr_lines <- read_lines(bbmap_stderr_raw)
+  skip_val <- str_detect(bbmap_stderr_lines, "Read 1 data") %>% which %>% magrittr::subtract(1)
+  max_val <- str_detect(bbmap_stderr_lines, "Total time") %>% which %>% magrittr::subtract(skip_val + 6)
+  
+  map_stats <- read_tsv(bbmap_stderr_raw, skip = skip_val, n_max = max_val) %>%
+    janitor::clean_names() %>%
+    rename(category = read_1_data) %>%
+    mutate(category = str_remove_all(category, ":"))
+  
+  n_input_reads <- str_match_all(bbmap_res$stderr, "Reads Used: +\t([0-9]+)") %>% purrr::pluck(1,2)
+  n_input_bp <- str_match_all(bbmap_res$stderr, "Reads Used:[^\\(]+\\(([0-9]+) ") %>% purrr::pluck(1,2)
+  
+  # Run kindel: extracts consensus from alignment
+  args <- c(
+    # kindel subcommand: produce consensus
+    "consensus",
+    # input alignment file
+    fs::path(temp_dir, "align.sam"),
+    # set required read depth to 1 (the minimum)
+    "--min-depth", "1",
+    # trim ambiguous bases from ends
+    "-t"
+  )
+  
+  kindel_res <- processx::run("kindel", args)
+  
+  # Write out standard output so it can be read in with ape::read.FASTA
+  con_raw <- kindel_res$stdout %>%
+    # remove some text from the sequence names added by kindel
+    str_remove_all("_cns <unknown description>")
+  
+  write_lines(con_raw, fs::path(temp_dir, "con.fasta"))
+  
+  # Read back in with ape
+  consensus <- ape::read.FASTA(fs::path(temp_dir, "con.fasta"))
+  
+  # Reformat sequence names to "sample-gene"
+  new_names <- paste(
+    sample,
+    names(consensus) %>% str_match("-(.+)$") %>% magrittr::extract(,2),
+    sep = "-"
+  )
+  
+  names(consensus) <- new_names
+  
+  # Combine results into tibble
+  results <- tibble(
+    consensus = list(consensus),
+    map_stats = list(map_stats),
+    n_input_reads = n_input_reads,
+    n_input_bp = n_input_bp,
+    sample = sample
+  )
+  
+  # Delete temporary files
+  fs::dir_delete(temp_dir)
+  
+  return(results)
+  
+}
