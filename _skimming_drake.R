@@ -21,7 +21,7 @@ drake_config(
   skimming_plan,
   verbose = 1,
   parallelism = "clustermq",
-  jobs = 24, # Change to match number of cores available!
+  jobs = 20, # Change to match number of cores available!
   cache = skimming_cache,
   seed = 0
 )
