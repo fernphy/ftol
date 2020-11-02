@@ -38,6 +38,9 @@ RUN apt-get update \
     libmagick++-dev \
     mafft \
     ncbi-blast+ \
+    fastp \
+    time \
+    parallel
   && apt-get clean
 
 ####################################
@@ -113,6 +116,19 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	cd $APP_NAME/source && \
 	make && \
 	cp trimal /usr/local/bin
+
+### HybPiper ###
+# Use my fork until PR gets submitted and merged (or chmod won't work).
+WORKDIR $APPS_HOME
+ENV APP_NAME=HybPiper
+ENV DEST=$APPS_HOME/$APP_NAME
+RUN git clone https://github.com/joelnitta/$APP_NAME.git \
+  && chmod +x $DEST/*.py
+ENV PATH="$PATH:$DEST/"
+
+# Silence parallel citation warning
+RUN mkdir /root/.parallel \
+  && touch /root/.parallel/will-cite
 
 ######################
 ### conda packages ###
