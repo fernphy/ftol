@@ -25,7 +25,7 @@ dependencies:
   - pip:
     - argh==0.26.2
     - biopython==1.78
-    - kindel==0.4.2
+    - kindel==0.4.3
     - numpy==1.19.2
     - ordereddict==1.1
     - pandas==1.1.3
