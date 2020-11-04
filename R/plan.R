@@ -197,7 +197,7 @@ plan <- drake_plan(
   plastid_selection = select_plastid_seqs(
     plastid_seqs_list, 
     plastome_metadata_renamed, 
-    filter_type = "species"
+    filter_by = "species"
     ),
   
   # Reformat as list of unaligned genes.
