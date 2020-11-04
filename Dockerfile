@@ -14,6 +14,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libgdal-dev for R package sf
 # libzmq3-dev for R package rzmq -> clustermq
 # libmagick++-dev for R package magick -> phytools
+
+# curl, python-dev-is-python2 for hybpiper (also OK with 3)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     gcc \
@@ -41,6 +43,7 @@ RUN apt-get update \
     fastp \
     time \
     parallel \
+    python-dev-is-python2 \
     curl \
   && apt-get clean
 
