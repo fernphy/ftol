@@ -115,7 +115,9 @@ hybpiper_plan <- drake_plan (
       prefix = paired_reads_list[[1]][[1]] %>% fs::path_file() %>% str_remove_all("_R.\\.fastq"),
       cpu = 1, 
       # use blastx, not BWA
-      bwa = FALSE),
+      bwa = FALSE,
+      # don't run exonerate or try to assemble genes
+      other_args = c("--no-exonerate", "--no-assemble")),
     dynamic = map(paired_reads_list)
   ),
   
@@ -125,42 +127,8 @@ hybpiper_plan <- drake_plan (
     dynamic = group(plastid_hybpiper_results_each)
   ),
   
-  plastid_samples = make_hybpiper_sample_file(
-    in_dir = here::here("intermediates/hybpiper"), 
-    pattern = "UFL|UFG", 
-    out_path = file_out("intermediates/hybpiper/plastid_samples.txt"),
-    depends = plastid_hybpiper_results
-  ),
-  
-  plastid_lengths = get_seq_lengths(
-    baitfile = here::here("intermediates/hybpiper/plastid_aa_targets.fasta"), 
-    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(), 
-    sequenceType = "aa",
-    out_path = file_out("intermediates/hybpiper/plastid_lengths.txt"),
-    wd = here::here("intermediates/hybpiper")
-  ),
-  
-  plastid_stats = hybpiper_stats(
-    seq_lengths = file_in("intermediates/hybpiper/plastid_lengths.txt") %>% here::here(), 
-    namelistfile = file_in("intermediates/hybpiper/plastid_samples.txt") %>% here::here(),
-    wd = here::here("intermediates/hybpiper")
-  ),
-  
-  plastid_genes = retrieve_sequences(
-    wd = here::here("intermediates/hybpiper/genes_recovered"),
-    baitfile = here::here("intermediates/hybpiper/plastid_aa_targets.fasta"),
-    sequence_dir = here::here("intermediates/hybpiper"), 
-    sequenceType = "dna",
-    depends = plastid_hybpiper_results),
-  
-  plastid_read_stats = get_read_stats(
-    hybpiper_dir = here::here("intermediates/hybpiper"),
-    depends = plastid_hybpiper_results
-  ),
-  
   # Align read fragments to reference
   # - loop over the list of samples
-  # (this can be run in parallel to speed things up using settings in "_skimming_drake.R")
   each_extracted_reads_consensus = target(
     get_hybpip_consensus(sample = plastid_samples, plastid_targets),
     dynamic = map(plastid_samples)
