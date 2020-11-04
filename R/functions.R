@@ -2666,6 +2666,106 @@ get_clade_mrca <- function (phy, tips, clade_select) {
   )
 }
 
+# fastp ----
+
+#' Parse a JSON file output by fastp into a dataframe
+#'
+#' @param file Path to the JSON file
+#' @param sample_name Sample name (will be automatically
+#' detected from  files named like 's_1_1_sequence_trim_report.json'
+#' if not provided)
+#'
+#' @return Dataframe (tibble)
+#' 
+parse_fastp_sum <- function (file, sample_name = NULL) {
+  
+  # Parse JSON with jsonlite package
+  data <- jsonlite::fromJSON(file)
+  
+  if(is.null(sample_name)) sample_name <- fs::path_file(file) %>% str_remove_all("_sequence_trim_report.json")
+  
+  # Extract data of interest as tibbles
+  before_filtering <- as_tibble(data[["summary"]][["before_filtering"]]) %>%
+    rename_with(~paste0(.x, "_before"))
+  
+  after_filtering <- as_tibble(data[["summary"]][["after_filtering"]]) %>%
+    rename_with(~paste0(.x, "_after"))
+  
+  filtering_result <- as_tibble(data[["filtering_result"]])
+  
+  duplication_rate <- tibble(duplication_rate = data[["duplication"]][["rate"]])
+  
+  # Combine the tibbles
+  bind_cols(
+    sample = sample_name,
+    before_filtering,
+    after_filtering,
+    filtering_result,
+    duplication_rate
+  )
+  
+}
+
+#' Run fastp
+#' 
+#' Trims adapters and low-quality bases on fastp default settings, assuming
+#' paired-end input.
+#' 
+#' For more about fastp, see:
+#' https://github.com/OpenGene/fastp
+#' 
+#' Trimmed reads along with an html report will be be written to `out_dir`.
+#'
+#' @param sample String indicating unique sample name (other than suffix specifying
+#' forward and reverse reads)
+#' @param data_dir Location of samples (actual samples may be nested within this)
+#' @param out_dir Location to write out filtered reads
+#' @param f_suffix Suffix specifying forward reads
+#' @param r_suffix Suffix specifying reverse reads
+#'
+#' @return Tibble; stats from trimming reads
+#' @export
+#'
+#' @examples
+fastp <- function(sample, data_dir = "data_raw", out_dir = "intermediates/fastp/", f_suffix = "R1_001", r_suffix = "R2_001") {
+  
+  # Find paths to raw F and R reads
+  raw_forward <- list.files(data_dir, full.names = TRUE, pattern = glue(".*{sample}.*{f_suffix}"), recursive = TRUE)
+  raw_reverse <- list.files(data_dir, full.names = TRUE, pattern = glue(".*{sample}.*{r_suffix}"), recursive = TRUE)
+  
+  # Verify that input paths are OK
+  assertthat::assert_that(length(raw_forward) == 1, msg = "Sample does not match exactly one forward raw read")
+  assertthat::assert_that(length(raw_reverse) == 1, msg = "Sample does not match exactly one reverse raw read")
+  assertthat::assert_that(assertthat::is.readable(raw_forward))
+  assertthat::assert_that(assertthat::is.readable(raw_reverse))
+  
+  # Specify temporary file for writing trimming report in json format
+  temp_json <- fs::path(tempdir(), glue("{sample}.json"))
+  
+  # Set up fastp arguments
+  args <- c(
+    "-i", raw_forward,
+    "-I", raw_reverse,
+    "-o", glue::glue("{out_dir}/{sample}_R1.fastq"),
+    "-O", glue::glue("{out_dir}/{sample}_R2.fastq"),
+    "-j", temp_json,
+    "-h", glue::glue("{out_dir}/{sample}.html")
+  )
+  
+  # Run fastp
+  processx::run("fastp", args)
+  
+  # Parse json report into tibble
+  res <- parse_fastp_sum(temp_json, sample)
+  
+  # Cleanup
+  fs::file_delete(temp_json)
+  
+  # Return tibble
+  res
+  
+}
+
 # Hypbiper ----
 
 #' Get taxon name for a genbank accession number
