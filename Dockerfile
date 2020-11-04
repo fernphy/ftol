@@ -41,7 +41,17 @@ RUN apt-get update \
     fastp \
     time \
     parallel \
+    curl \
   && apt-get clean
+
+########################
+### python libraries ###
+########################
+
+# biopython for Hybpiper
+
+RUN curl https://bootstrap.pypa.io/get-pip.py | python \
+  && pip install biopython
 
 ####################################
 ### Install R packages with renv ###
