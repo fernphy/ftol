@@ -391,7 +391,7 @@ plan <- drake_plan(
   plastome_tree = jntools::iqtree(
      plastome_alignment,
      m = "GTR+I+G", bb = 1000, nt = "AUTO",
-     redo = FALSE, echo = TRUE, wd = here::here("iqtree")
+     redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree")
   ) #,
   
   # # Dating analysis with treepl ----
@@ -417,7 +417,7 @@ plan <- drake_plan(
   #     plsimaniter = "200000", # preliminary output suggested > 100000
   #     seed = 7167,
   #     thorough = TRUE,
-  #     wd = here::here("treepl"),
+  #     wd = here::here("intermediates/treepl"),
   #     nthreads = 1,
   #     echo = TRUE
   #   ),
@@ -437,7 +437,7 @@ plan <- drake_plan(
   #     plsimaniter = "200000", # preliminary output suggested > 100000
   #     seed = 7167,
   #     thorough = TRUE,
-  #     wd = here::here("treepl"),
+  #     wd = here::here("intermediates/treepl"),
   #     nthreads = 1,
   #     echo = TRUE
   #   ),
@@ -459,7 +459,7 @@ plan <- drake_plan(
   #     plsimaniter = "200000", # preliminary output suggested > 100000
   #     seed = 7167,
   #     thorough = TRUE,
-  #     wd = here::here("treepl"),
+  #     wd = here::here("intermediates/treepl"),
   #     nthreads = 7,
   #     echo = TRUE
   #   ),
