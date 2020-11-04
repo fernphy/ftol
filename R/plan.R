@@ -57,10 +57,6 @@ plan <- drake_plan(
   
   # Standardize names and filter Sanger sequences ----
   
-  # Results in two versions of list: 
-  # - one sequence per species (`genbank_accessions_selection_single`), or
-  # - multiple sequences per species (`genbank_accessions_selection_multiple`)
-  
   # Combine GenBank sequences with metadata 
   # (so fasta sequence is a list-column in genbank_seqs_combined_raw)
   genbank_seqs_combined_raw = target(
@@ -160,22 +156,13 @@ plan <- drake_plan(
   
   # Select final GenBank accessions.
   #
-  # From here, there will be two datasets: targets with "multiple" include
-  # multiple specimens per species; targets with "single" include a single 
-  # specimen per species
-  # 
-  # For "single",
-  # select one specimen per species, prioritizing in order
+  # Select one specimen per species, prioritizing in order
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
-  genbank_accessions_selection = target(
-    select_genbank_genes(
+  genbank_accessions_selection = select_genbank_genes(
       genbank_seqs_tibble = genbank_seqs_names_resolved,
-      n_seqs_per_sp),
-    transform = map(
-      n_seqs_per_sp = c("single", "multiple"),
-      .id = n_seqs_per_sp)
+      n_seqs_per_sp = "single"
   ),
   
   # Download core set of plastid genes from plastomes ----
@@ -207,32 +194,14 @@ plan <- drake_plan(
   plastid_seqs_list = readd(plastid_seqs, cache = plastid_cache),
   
   # Select final accessions / genes, only include genes and accessions with > 50% occupancy
-  # `_species`: best representative accession per species
-  # `_voucher`: best representative accession per voucher per species (so, some with multiple tips/species)
-  plastid_selection = target(
-    select_plastid_seqs(
+  plastid_selection = select_plastid_seqs(
     plastid_seqs_list, 
     plastome_metadata_renamed, 
-    filter_type),
-    transform = map(
-      filter_type = c("species", "voucher"),
-      .id = filter_type
-    )),
+    filter_type = "species"
+    ),
   
   # Reformat as list of unaligned genes.
-  plastid_genes_unaligned = target(
-    extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
-    transform = map(
-      plastid_selection,
-      .id = filter_type
-    )),
-  
-  # Make voucher lookup table for concatenating genes by specimen voucher
-  voucher_table = make_voucher_table(
-    genbank_seqs_names_resolved,
-    genbank_accessions_selection_multiple,
-    plastid_selection_voucher
-  ),
+  plastid_genes_unaligned = extract_seqs_by_gene(plastid_seqs_list, plastid_selection),
   
   # Combine genes from GenBank with genes from plastomes ----
   
@@ -249,60 +218,35 @@ plan <- drake_plan(
   ),
   
   # Filter out species already in plastomes from Sanger sequences
-  # (for "single" [one tip per species] dataset only)
-  genbank_accessions_selection_filtered = target(
+  genbank_accessions_selection_filtered = 
     filter_out_plastome_species(
-      plastid_genes_unaligned = plastid_genes_unaligned_species,
+      plastid_genes_unaligned = plastid_genes_unaligned,
       plastome_metadata_renamed = plastome_metadata_renamed,
-      genbank_accessions_selection,
-      filter
+      genbank_accessions_selection = genbank_accessions_selection,
+      filter = TRUE
     ),
-    transform = map(
-      genbank_accessions_selection,
-      # filter is TRUE for single seq per species, FALSE for multiple seqs per species
-      filter = c(TRUE, FALSE), 
-      .id = n_seqs_per_sp
-    )
-  ),
   
   # Combine genes from GenBank with genes from plastomes (still unaligned).
-  plastid_genes_unaligned_combined = target(
+  plastid_genes_unaligned_combined = 
     combine_genbank_with_plastome(
       raw_fasta_all_genes = raw_fasta_all_genes_renamed,
       genbank_accessions_selection_filtered,
       plastid_genes_unaligned
-    ),
-    transform = map(
-      # maps this combination:
-      # genbank_accessions_selection_filtered_single, genbank_accessions_selection_filtered_multiple 
-      #                |                                                 |  
-      # plastid_genes_unaligned_species,              plastid_genes_unaligned_voucher
-      genbank_accessions_selection_filtered,
-      plastid_genes_unaligned,
-      .id = n_seqs_per_sp)
   ),
   
   # Align each gene.
-  plastid_genes_aligned = target(
-    purrr::map(
+  plastid_genes_aligned = purrr::map(
       plastid_genes_unaligned_combined,
       ~ips::mafft(
         x = .,
         options = "--adjustdirection",
-        exec = "/usr/bin/mafft")),
-    transform = map(
-      plastid_genes_unaligned_combined,
-      .id = n_seqs_per_sp)
+        exec = "/usr/bin/mafft")
   ),
   
   # Trim alignments.
-  plastid_genes_aligned_trimmed = target(
-    purrr::map(
+  plastid_genes_aligned_trimmed = purrr::map(
       plastid_genes_aligned,
-      trimal_auto),
-    transform = map(
-      plastid_genes_aligned,
-      .id = n_seqs_per_sp)
+      trimal_auto
   ),
   
   # Rename sequences in each gene as species
@@ -315,39 +259,20 @@ plan <- drake_plan(
   ) %>% unique,
   
   # - then use the combined, resolved names to rename each alignment
-  # by species (or species + voucher ID code) instead of accession
-  plastid_genes_aligned_trimmed_renamed = target(
-    rename_alignment_list(
-      plastid_genes_aligned_trimmed, 
-      name_metadata),
-    transform = map(
-      # maps this combination:
-      # plastid_genes_aligned_trimmed_single, plastid_genes_aligned_trimmed_multiple 
-      #                |                                        |  
-      #        resolved_names_all                        voucher_table
-      plastid_genes_aligned_trimmed,
-      name_metadata = c(resolved_names_all, voucher_table),
-      .id = n_seqs_per_sp)
+  # by species instead of accession
+  plastid_genes_aligned_trimmed_renamed = rename_alignment_list(
+    alignment_list = plastid_genes_aligned_trimmed, 
+    name_metadata = resolved_names_all
   ),
   
   # Concatenate alignments by species name.
-  plastome_alignment = target(
-    concatenate_genes(
-      plastid_genes_aligned_trimmed_renamed),
-    transform = map(
-      plastid_genes_aligned_trimmed_renamed,
-      .id = n_seqs_per_sp)
-  ),
+  plastome_alignment = concatenate_genes(plastid_genes_aligned_trimmed_renamed),
   
   # Generate tree.
-  plastome_tree = target(
-   jntools::iqtree(
+  plastome_tree = jntools::iqtree(
      plastome_alignment,
      m = "GTR+I+G", bb = 1000, nt = "AUTO",
-     redo = FALSE, echo = TRUE, wd = here::here("iqtree")),
-   transform = map(
-     plastome_alignment,
-     .id = n_seqs_per_sp)
+     redo = FALSE, echo = TRUE, wd = here::here("iqtree")
   ) #,
   
   # # Dating analysis with treepl ----
