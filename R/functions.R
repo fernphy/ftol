@@ -2951,6 +2951,8 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
 #' - duplicates: Dataframe of genes that appear more than once in the
 #' plastome and are excluded from 'dna' and 'aa'.
 #' Output of map(accessions, ~fetch_genes_from_plastome(., wei_genes))
+#' @param ... Other arguments not used by this function but meant for tracking
+#' with `drake`.
 #'
 #' @examples
 #' source("_skimming_drake.R")
@@ -2959,7 +2961,7 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
 #' # sample with fewest reads
 #' sample <- "UFG_393201_P03_WC08"
 #' get_hybpip_consensus("UFG_393201_P03_WC08", plastid_targets)
-get_hybpip_consensus <- function (sample, plastid_targets) {
+get_hybpip_consensus <- function (sample, plastid_targets, ...) {
   
   # Make temp working folder
   temp_dir <- fs::dir_create(fs::path(tempdir(), digest::digest(sample)))

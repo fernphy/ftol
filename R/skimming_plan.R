@@ -130,8 +130,11 @@ hybpiper_plan <- drake_plan (
   # Align read fragments to reference
   # - loop over the list of samples
   each_extracted_reads_consensus = target(
-    get_hybpip_consensus(sample = plastid_samples, plastid_targets),
-    dynamic = map(plastid_samples)
+    get_hybpip_consensus(
+      sample = seq_cap_samples, 
+      plastid_targets = plastid_targets,
+      depends = plastid_hybpiper_results),
+    dynamic = map(seq_cap_samples)
   ),
   
   # - combine results
