@@ -40,7 +40,7 @@ RUN apt-get update \
     ncbi-blast+ \
     fastp \
     time \
-    parallel
+    parallel \
   && apt-get clean
 
 ####################################
