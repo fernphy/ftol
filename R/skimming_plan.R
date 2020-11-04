@@ -16,12 +16,7 @@ data_plan <- drake_plan (
   goflag_meta = read_tsv(goflag_meta_path) %>%
     select(taxon = Taxon, targeted_capture_id = `Targeted Capture ID`, genome_skimming_id  = `Genome Skimming ID`) %>%
     filter(!is.na(taxon)),
-  
-  # extract vector of GoFlag sample IDs
-  goflag_ids = goflag_meta %>%
-    pivot_longer(names_to = "id_type", values_to = "id", -taxon) %>%
-    pull(id)
-  
+
 )
 
 # 01_fastp ----
