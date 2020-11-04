@@ -24,49 +24,26 @@ data_plan <- drake_plan (
   
 )
 
-# 01_trimmomatic ----
+# 01_fastp ----
 
-# Trim raw fastq files with trimmomatic.
-trimmomatic_plan <- drake_plan (
+# Trim raw fastq files with fastp
+trimming_plan <- drake_plan (
   
-  # Read in vector of raw fastq.gz files with absolute paths and
-  # make table of arguments to feed into trimmomatic.
-  raw_reads_dir = target("data_raw/goflag/", format = "file"),
+  # Combine GoFlag target capture and skimming samples into single vector
+  seq_cap_samples = c(goflag_meta$targeted_capture_id, goflag_meta$genome_skimming_id),
   
-  fastq_files = get_fastq_files_for_trimmomatic(
-    fastq_raw_dir = raw_reads_dir,
-    fastq_pattern = "fastq.gz"
+  # Run fastp on each sample.
+  # Writes trimmed fastq files to intermediates/fastp/
+  # and returns a dataframe with trimming stats.
+  trim_results_each = target(
+    fastp(seq_cap_samples),
+    dynamic = map(seq_cap_samples)
   ),
   
-  trimmomatic_arg_table = make_trimmomatic_arg_table(
-    fastq_files = fastq_files,
-    ids = goflag_ids,
-    outdir = here::here("intermediates/trimmomatic/")
-  ),
-  
-  # Run trimmomatic on all demultiplexed raw reads, 
-  # save the raw stdout and stderr to a tibble.
-  trimmomatic_results_raw = target(
-    trimmomatic_pe(
-      inputFile1 = trimmomatic_arg_table$inputFile1,
-      inputFile2 = trimmomatic_arg_table$inputFile2,
-      outputFile1P = trimmomatic_arg_table$outputFile1P,
-      outputFile1U = trimmomatic_arg_table$outputFile1U,
-      outputFile2P = trimmomatic_arg_table$outputFile2P,
-      outputFile2U = trimmomatic_arg_table$outputFile2U,
-      trim_settings = glue::glue(
-        "ILLUMINACLIP:{here::here('data_raw/fasta/TruSeq3-PE-2.fa')}:2:30:10 LEADING:20 TRAILING:20 SLIDINGWINDOW:4:20 MINLEN:50"
-      ),
-      threads = 1,
-      adapters = file_in("data_raw/fasta/TruSeq3-PE-2.fa")
-    ),
-    dynamic = map(trimmomatic_arg_table
-    )
-  ),
-  
-  trimmomatic_results_summary = target(
-    bind_rows(trimmomatic_results_raw),
-    dynamic = group(trimmomatic_results_raw)
+  # Combine results into single summary dataframe
+  trim_results_summary = target(
+    bind_rows(trim_results_each),
+    dynamic = group(trim_results_each)
   )
   
 )
@@ -104,15 +81,15 @@ hybpiper_plan <- drake_plan (
   
   # Get vector of trimmed reads for hybpiper
   forward_reads = get_reads(
-    data_dir = here::here("intermediates/trimmomatic/"),
+    data_dir = here::here("intermediates/fastp/"),
     pattern = "R1.fastq",
-    depends = trimmomatic_results_summary
+    depends = trim_results_summary
   ),
   
   reverse_reads = get_reads(
-    data_dir = here::here("intermediates/trimmomatic/"),
+    data_dir = here::here("intermediates/fastp/"),
     pattern = "R2.fastq",
-    depends = trimmomatic_results_summary
+    depends = trim_results_summary
   ),
   
   # Make list of paired reads for HybPiper
@@ -200,6 +177,7 @@ hybpiper_plan <- drake_plan (
 # Combine plans ----
 skimming_plan <- bind_plans(
   data_plan, 
-  trimmomatic_plan,
+  trimming_plan,
   format_plastid_targets_plan,
-  hybpiper_plan)
+  hybpiper_plan
+  )
