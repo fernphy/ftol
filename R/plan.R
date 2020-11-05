@@ -248,12 +248,6 @@ plan <- drake_plan(
     file_out("intermediates/hybpiper/plastid_aa_targets.fasta")
   ),
   
-  # Write out plastid DNA targets as one fasta file per gene
-  plastid_dna_targets_out = write_dna_targets_by_gene(
-    plastid_targets, 
-    here::here("intermediates/plastid_genes_ref")
-  ),
-  
   # Part 3: Run HybPiper to sort reads into genes
   
   # Get vector of trimmed reads for hybpiper

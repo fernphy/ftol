@@ -2054,38 +2054,6 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   
 }
 
-#' Write out plastid DNA targets by gene
-#'
-#' @param plastid_targets Output of mapping fetch_genes_from_plastome() over
-#' a list of accessions
-#' @param out_folder Folder to write out fasta sequences.
-#'
-write_dna_targets_by_gene <- function (plastid_targets, out_folder) {
-  
-  dna_list <-
-    tibble(dna = transpose(plastid_targets)[["dna"]] %>% flatten) %>%
-    mutate(
-      name = names(dna),
-      gene = str_split(name, "-") %>% map_chr(2)) %>%
-    group_split(gene) %>%
-    set_names(map(., "gene") %>% map(unique)) %>%
-    transpose %>%
-    magrittr::extract2("dna") %>%
-    map(jntools::flatten_DNA_list) %>%
-    # Align the genes
-    map(~ips::mafft(x = ., options = "--adjustdirection", exec = "/usr/bin/mafft")) %>%
-    # Trim ends (don't allow more than 50% missing)
-    map(~ips::trimEnds(x = ., min.n.seq = 0.5))
-    
-  
-  walk2(dna_list, names(dna_list), ~ape::write.FASTA(.x, glue::glue("{out_folder}/{.y}.fasta")))
-  
-  # Return hash of DNA list for tracking
-  digest::digest(dna_list)
-  
-}
-
-
 # Dating with treePL ----
 
 #' Read in calibration and configure dates for treepl
