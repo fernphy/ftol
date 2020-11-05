@@ -17,7 +17,7 @@ options(clustermq.scheduler = "multicore")
 drake_config(
   plan,
   parallelism = "clustermq",
-  jobs = 6, # Change to match number of cores available!
+  jobs = 32, # Change to match number of cores available!
   cache = plastid_cache,
   seed = 0
 )
