@@ -16,3 +16,5 @@ results/
 *.html
 intermediates
 temp
+dockerd.log
+dockerd.pid
