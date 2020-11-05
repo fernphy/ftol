@@ -18,3 +18,4 @@ intermediates
 temp
 dockerd.log
 dockerd.pid
+make.o*
