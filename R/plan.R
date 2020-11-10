@@ -386,90 +386,64 @@ plan <- drake_plan(
      plastome_alignment,
      m = "GTR+I+G", bb = 1000, nt = "AUTO",
      redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree")
-  ) #,
+  ),
   
-  # # Dating analysis with treepl ----
-  # 
-  # # Root tree on bryophytes
-  # plastome_tree_rooted = target(
-  #   ape::root(
-  #     plastome_tree,
-  #     c("Anthoceros_angustus", "Marchantia_polymorpha", "Physcomitrium_patens")),
-  #   transform = map(
-  #     plastome_tree,
-  #     .id = n_seqs_per_sp)
-  # ),
-  # 
-  # # Run initial treepl search to identify smoothing parameter
-  # treepl_cv_results = target(
-  #   run_treepl_cv(
-  #     phy = plastome_tree_rooted,
-  #     alignment = plastome_alignment,
-  #     calibration_dates = plastome_calibration_dates,
-  #     cvstart = "1000",
-  #     cvstop = "0.000001",
-  #     plsimaniter = "200000", # preliminary output suggested > 100000
-  #     seed = 7167,
-  #     thorough = TRUE,
-  #     wd = here::here("intermediates/treepl"),
-  #     nthreads = 1,
-  #     echo = TRUE
-  #   ),
-  #   transform = map(
-  #     plastome_tree_rooted,
-  #     plastome_alignment,
-  #     .id = n_seqs_per_sp)
-  # ),
-  # 
-  # # Run priming analysis to determine optimal states for other parameters
-  # treepl_priming_results = target(
-  #   run_treepl_prime(
-  #     phy = plastome_tree_rooted,
-  #     alignment = plastome_alignment,
-  #     calibration_dates = plastome_calibration_dates,
-  #     cv_results = treepl_cv_results,
-  #     plsimaniter = "200000", # preliminary output suggested > 100000
-  #     seed = 7167,
-  #     thorough = TRUE,
-  #     wd = here::here("intermediates/treepl"),
-  #     nthreads = 1,
-  #     echo = TRUE
-  #   ),
-  #   transform = map(
-  #     plastome_tree_rooted,
-  #     plastome_alignment,
-  #     treepl_cv_results,
-  #     .id = n_seqs_per_sp)
-  # ),
-  # 
-  # # Run treePL dating analysis
-  # treepl_dating_results = target(
-  #   run_treepl(
-  #     phy = plastome_tree_rooted,
-  #     alignment = plastome_alignment,
-  #     calibration_dates = plastome_calibration_dates,
-  #     cv_results = treepl_cv_results,
-  #     priming_results = treepl_priming_results,
-  #     plsimaniter = "200000", # preliminary output suggested > 100000
-  #     seed = 7167,
-  #     thorough = TRUE,
-  #     wd = here::here("intermediates/treepl"),
-  #     nthreads = 7,
-  #     echo = TRUE
-  #   ),
-  #   transform = map(
-  #     plastome_tree_rooted,
-  #     plastome_alignment,
-  #     treepl_cv_results,
-  #     treepl_priming_results,
-  #     .id = n_seqs_per_sp)
-  # ),
-  # 
-  # # Generate reports ----
-  # 
-  # species_tree = rmarkdown::render(
-  #   knitr_in("reports/species_tree/species_tree.Rmd"),
-  #   output_file = "species_tree.md",
-  #   quiet = TRUE)
+  # Dating analysis with treepl ----
+
+  # Root tree on bryophytes
+  plastome_tree_rooted = ape::root(
+      plastome_tree,
+      c("Anthoceros_angustus", "Marchantia_polymorpha", "Physcomitrium_patens")),
   
+  # Run initial treepl search to identify smoothing parameter
+  treepl_cv_results = run_treepl_cv(
+      phy = plastome_tree_rooted,
+      alignment = plastome_alignment,
+      calibration_dates = plastome_calibration_dates,
+      cvstart = "1000",
+      cvstop = "0.000001",
+      plsimaniter = "200000", # preliminary output suggested > 100000
+      seed = 7167,
+      thorough = TRUE,
+      wd = here::here("intermediates/treepl"),
+      nthreads = 1,
+      echo = TRUE
+    ),
+
+  # Run priming analysis to determine optimal states for other parameters
+  treepl_priming_results = run_treepl_prime(
+      phy = plastome_tree_rooted,
+      alignment = plastome_alignment,
+      calibration_dates = plastome_calibration_dates,
+      cv_results = treepl_cv_results,
+      plsimaniter = "200000", # preliminary output suggested > 100000
+      seed = 7167,
+      thorough = TRUE,
+      wd = here::here("intermediates/treepl"),
+      nthreads = 1,
+      echo = TRUE
+    ),
+
+  # Run treePL dating analysis
+  plastome_tree_dated = run_treepl(
+      phy = plastome_tree_rooted,
+      alignment = plastome_alignment,
+      calibration_dates = plastome_calibration_dates,
+      cv_results = treepl_cv_results,
+      priming_results = treepl_priming_results,
+      plsimaniter = "200000", # preliminary output suggested > 100000
+      seed = 7167,
+      thorough = TRUE,
+      wd = here::here("intermediates/treepl"),
+      nthreads = 7,
+      echo = TRUE
+    ),
+
+  # Generate reports ----
+
+  species_tree = rmarkdown::render(
+    knitr_in("reports/species_tree/species_tree.Rmd"),
+    output_file = "species_tree.md",
+    quiet = TRUE)
+
 )
