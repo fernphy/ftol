@@ -45,6 +45,7 @@ RUN apt-get update \
     parallel \
     python-dev-is-python3 \
     curl \
+    fasttree \
   && apt-get clean
 
 ########################
