@@ -1,9 +1,7 @@
-Species Tree
+Fern Tree of Life (FTOL)
 ================
 
-The species tree includes one sample per species.
-
-The current species tree includes 4,496 tips (**Fig. 1**).
+The current FTOL includes 4,495 tips (**Fig. 1**).
 
 Overall coverage (percent of species in the tree out of all accepted
 species) is 36% (**Fig. 2**). Coverage by major clade (order or
