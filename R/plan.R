@@ -438,6 +438,19 @@ plan <- drake_plan(
       nthreads = 7,
       echo = TRUE
     ),
+  
+  # Output trees and alignments to results
+  plastome_tree_out = ape::write.tree(plastome_tree_rooted, "results/releases/ftol_plastid.tre"),
+  
+  plastome_tree_dated_out = ape::write.tree(plastome_tree_dated, "results/releases/ftol_plastid_dated.tre"),
+  
+  plastome_alignment_concat_out = ape::write.FASTA(plastome_alignment, "results/releases/ftol_plastid_concat.fasta"),
+  
+  ftol_readme = rmarkdown::render(
+    knitr_in("reports/results_readme/results_readme.Rmd"),
+    output_file = "results/releases/README.md",
+    quiet = TRUE
+  ),
 
   # Generate reports ----
 
