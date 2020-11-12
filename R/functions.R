@@ -340,8 +340,8 @@ join_genbank_fasta_with_meta <- function (seqs, metadata, ...) {
 #' fasta <- gbfetch::fetch_sequences("Crepidomanes minutum rbcl")
 #' fasta_data <- gbfetch::fetch_metadata("Crepidomanes minutum rbcl")
 #' fasta_combined <- combine_rbcl_fasta_with_meta(fasta, fasta_data)
-#' resolve_genbank_names_auto(fasta_combined, col_plants)
-resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
+#' resolve_sanger_names_auto(fasta_combined, col_plants)
+resolve_sanger_names_auto <- function (combined_metadata, col_plants) {
   
   ### Attempt to resolve names to World Ferns
   # (note that GenBank names only include species without author)
@@ -518,7 +518,7 @@ resolve_genbank_names_auto <- function (combined_metadata, col_plants) {
 #'
 #' @return Tibble with resolved names and sequences
 #' 
-resolve_genbank_names_final <- function (
+resolve_sanger_names_final <- function (
   names_resolved_auto, names_resolved_to_other_sources, name_resolution_syns_to_use,
   combined_metadata) {
   
@@ -891,7 +891,7 @@ tidy_genbank_metadata <- function(data) {
 #' tracking with drake
 #'
 #' @return Tibble
-filter_genbank_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
+filter_sanger_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
   
   # Check for genera missing from ppgi, warn before dropping
   genus_not_in_ppgi <-
@@ -1060,30 +1060,30 @@ rename_genes <- function (raw_fasta_all_genes, genes_used) {
 
 #' Filter out species in plastome data from Sanger data
 #'
-#' @param plastid_genes_unaligned List of unaligned plastome genes
+#' @param plastome_genes_unaligned List of unaligned plastome genes
 #' @param plastome_metadata_renamed Plastome metadata after standardizing names
-#' @param genbank_accessions_selection Selected GenBank (Sanger) sequences to use
+#' @param sanger_accessions_selection Selected GenBank (Sanger) sequences to use
 #' @param filter Logical; should filtering be done or not?
 #'
-#' @return genbank_accessions_selection, with species in plastome data filtered out (if `filter` = TRUE) 
+#' @return sanger_accessions_selection, with species in plastome data filtered out (if `filter` = TRUE) 
 #' 
-filter_out_plastome_species <- function (plastid_genes_unaligned, plastome_metadata_renamed, genbank_accessions_selection, filter) {
+filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_metadata_renamed, sanger_accessions_selection, filter) {
   
   # Don't do any filtering if `filter` is false
-  if(filter == FALSE) return (genbank_accessions_selection)
+  if(filter == FALSE) return (sanger_accessions_selection)
   
   ### Make list of species in selected plastome genes ###
   # (not the same as plastome_metadata_renamed, since that was ALL plastomes, and
   # we need a list of species names of only the plastomes that will actually be used)
   plastid_genes_unaligned_species_list <-
-    map_df(plastid_genes_unaligned, ~names(.) %>% tibble(accession = .), .id = "gene") %>%
+    map_df(plastome_genes_unaligned, ~names(.) %>% tibble(accession = .), .id = "gene") %>%
     left_join(plastome_metadata_renamed, by = "accession") %>%
     select(gene, accession, species) %>%
     assert(not_na, species)
   
   # Filter out species from GenBank (Sanger) accessions that are already in plastome data
   anti_join(
-    genbank_accessions_selection, 
+    sanger_accessions_selection, 
     plastid_genes_unaligned_species_list,
     by = "species"
   )
@@ -1094,20 +1094,20 @@ filter_out_plastome_species <- function (plastid_genes_unaligned, plastome_metad
 #' extracted from plastomes
 #'
 #' @param raw_fasta_all_genes Tibble of DNA sequence data downloaded from GenBank
-#' @param genbank_accessions_selection Final selection of accessions to use after removing rogues
-#' @param plastid_genes_unaligned List of unaligned genes extracted from plastomes
+#' @param sanger_accessions_selection Final selection of accessions to use after removing rogues
+#' @param plastome_genes_unaligned List of unaligned genes extracted from plastomes
 #'
 #' @return List of class DNAbin
 #' 
-combine_genbank_with_plastome <- function (
+combine_sanger_with_plastome <- function (
   raw_fasta_all_genes,
-  genbank_accessions_selection,
-  plastid_genes_unaligned
+  sanger_accessions_selection,
+  plastome_genes_unaligned
 ) {
   
   # Convert final selected GenBank (Sanger) accessions to long format
   final_gb_accessions <-
-    genbank_accessions_selection %>%
+    sanger_accessions_selection %>%
     select(species, specimen_voucher, contains("accession")) %>%
     pivot_longer(
       cols = contains("accession"),
@@ -1142,21 +1142,21 @@ combine_genbank_with_plastome <- function (
   ### Combine with plastome sequences ###
   
   # - Make vector of genes in common between Sanger and plastome sequences
-  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastid_genes_unaligned)) 
+  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastome_genes_unaligned)) 
   
   # - Make a list of accessions for genes in common between Sanger and plastome sequences
   common_genes <-
     common_gene_names %>%
-    map(~c(genbank_genes_unaligned[[.]], plastid_genes_unaligned[[.]])) %>%
+    map(~c(genbank_genes_unaligned[[.]], plastome_genes_unaligned[[.]])) %>%
     set_names(common_gene_names)
   
   # - Make a list of accessions in Sanger genes only (likely zero, but for completeness' sake)
   genbank_genes_only <- genbank_genes_unaligned %>%
-    magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastid_genes_unaligned)))
+    magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastome_genes_unaligned)))
   
   # - Make a list of accessions in plastome sequences only
-  plastome_genes_only <- plastid_genes_unaligned %>%
-    magrittr::extract(setdiff(names(plastid_genes_unaligned), names(genbank_genes_unaligned)))
+  plastome_genes_only <- plastome_genes_unaligned %>%
+    magrittr::extract(setdiff(names(plastome_genes_unaligned), names(genbank_genes_unaligned)))
   
   # Combine the lists
   c(common_genes, genbank_genes_only, plastome_genes_only)
@@ -1296,7 +1296,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 }
 
 #' Helper function to filter accessions missing > 50% of genes
-#' and genes absent from > 50% of sequences used in select_plastid_seqs()
+#' and genes absent from > 50% of sequences used in select_plastome_seqs()
 #'
 #' @param seq_list List of sequences
 #'
@@ -1308,7 +1308,7 @@ get_gene_lengths <- function (seq_list) {
 }
 
 #' Helper function to to filter accessions missing > 50% of genes
-#' and genes absent from > 50% of sequences used in select_plastid_seqs()
+#' and genes absent from > 50% of sequences used in select_plastome_seqs()
 #'
 #' @param gene_lengths_best Dataframe of 'best' (ie, least missing data)
 #' plastid genes
@@ -1373,7 +1373,7 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' @param filter_by Should the list be selected by the best representative
 #' accession per species, genus, or voucher?
 #'
-select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by = c("species", "genus", "voucher")) {
+select_plastome_seqs <- function (plastid_seq_list, plastome_metadata, filter_by = c("species", "genus", "voucher")) {
   
   assertthat::assert_that(assertthat::is.string(filter_by))
   
@@ -1537,13 +1537,13 @@ select_plastid_seqs <- function (plastid_seq_list, plastome_metadata, filter_by 
 #'
 #' @param plastid_seq_list  List of plastid genes. Each list item is
 #' a named list of gene sequences for a plastome accession.
-#' @param plastid_selection Tibble of selected plastomes to use.
+#' @param plastome_selection Tibble of selected plastomes to use.
 #'
 #' @return List of unaligned genes.
 #' 
-extract_seqs_by_gene <- function (plastid_seq_list, plastid_selection) {
+extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
   plastid_seq_list %>%
-    magrittr::extract(unique(plastid_selection$plastid_seq_name)) %>%
+    magrittr::extract(unique(plastome_selection$plastid_seq_name)) %>%
     transpose %>%
     map(~purrr::compact(.) %>% purrr::reduce(c))
 }
@@ -1706,7 +1706,7 @@ resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
 #' All spaces in species names replaced with underscores (for proper
 #' handling in phy. analysis)
 #'
-#' @param plastid_genes_unaligned Unaligned plastid genes from plastomes
+#' @param plastome_genes_unaligned Unaligned plastid genes from plastomes
 #' @param plastome_metadata_renamed Plastome metadata with resolved names
 #' @param pterido_rbcl_clean_seqs Unaligned rbcL sequences from genbank with
 #' resolved names
@@ -1716,10 +1716,10 @@ resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
 #' @export
 #'
 #' @examples
-combine_rbcL <- function(plastid_genes_unaligned, plastome_metadata_renamed, pterido_rbcl_clean_seqs) {
+combine_rbcL <- function(plastome_genes_unaligned, plastome_metadata_renamed, pterido_rbcl_clean_seqs) {
   
   # Extract rbcL from the plastome genes list, and rename by species
-  plastome_rbcL <- plastid_genes_unaligned[["rbcL"]]
+  plastome_rbcL <- plastome_genes_unaligned[["rbcL"]]
   
   plastome_rbcL_names <-
     tibble(accession = names(plastome_rbcL)) %>%

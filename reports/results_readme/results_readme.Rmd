@@ -22,11 +22,11 @@ knitr::opts_chunk$set(
 # Load objects build during analysis from drake cache
 loadd(
   list = c(
-    "plastome_tree_dated",
-    "plastome_calibration_dates",
-    "plastid_selection",
+    "plastid_tree_dated",
+    "plastid_calibration_dates",
+    "plastome_selection",
     "plastome_outgroups",
-    "plastome_alignment",
+    "plastid_alignment",
     "plastid_genes_aligned_trimmed_renamed",
     "resolved_names_all"),
   cache = plastid_cache)
@@ -38,15 +38,15 @@ loadd(
 
 # Combined alignment size
 # - number of species
-n_concat_species <- plastome_alignment %>% nrow() %>% scales::number(big.mark = ",")
+n_concat_species <- plastid_alignment %>% nrow() %>% scales::number(big.mark = ",")
 # - number of base pairs
-n_concat_bases <- plastome_alignment %>% ncol() %>% scales::number(big.mark = ",")
+n_concat_bases <- plastid_alignment %>% ncol() %>% scales::number(big.mark = ",")
 # - percent missing data
-base_freqs <- ape::base.freq(plastome_alignment, all = TRUE)
+base_freqs <- ape::base.freq(plastid_alignment, all = TRUE)
 p_concat_missing <- sum(base_freqs[c("n", "-", "?")]) %>% scales::percent(accuracy = 0.01)
 
 # Number of species in tree
-n_tip <- ape::Ntip(plastome_tree_dated) %>% scales::number(big.mark = ",")
+n_tip <- ape::Ntip(plastid_tree_dated) %>% scales::number(big.mark = ",")
 
 # Some of the outgroup species names changed from `plastome_outgroups` data
 # to the final tree:
@@ -62,7 +62,7 @@ plastome_outgroups_correct_names <- inner_join(
 
 # Make table of tips in tree with ingroup/outgroup status
 tree_groups <-
-tibble(species = plastome_tree_dated$tip.label) %>%
+tibble(species = plastid_tree_dated$tip.label) %>%
   mutate(species = str_replace_all(species, "_", " ")) %>%
   left_join(plastome_outgroups_correct_names, by = "species") %>%
   mutate(status = replace_na(status, "ingroup"))
@@ -73,7 +73,7 @@ n_outgroup_tips <- tree_groups %>% filter(status == "outgroup") %>% pull(species
 # Count number of genes and species in plastome dataset
 # - first exclude outgroups
 plastid_selection_ferns <-
-plastid_selection %>%
+plastome_selection %>%
   anti_join(plastome_outgroups, by = "accession")
 
 n_plastome_genes <- plastid_selection_ferns %>% pull(gene) %>% n_distinct()
@@ -100,7 +100,7 @@ Files in this data release include:
 
 The approach leverages the fact that only a handful of genes have been intensively sequenced in ferns, and account for the vast majority of sequences on GenBank: *rbcL*, *atpA*, *atpB*, and *rps4*. These four genes (ca. 5 kb total) provide maximum phylogenetic breadth, but lack the resolving power necessary to infer a robustly supported tree across all ferns. Therefore, single-copy genes are also sampled from fern plastomes (currently `r n_plastome_genes` genes for `r n_plastome_species` species), and combined with the Sanger sequences to create a mostly empty supermatrix. The plastome data provide a well-supported backbone, which is filled in by the much more diverse Sanger sequences.
 
-The workflow is implemented in R v`r paste0(R.version$major, ".", R.version$minor)` [@RCoreTeam2020] with the Drake package v`r packageVersion("drake")` [@MichaelLandau2018]. After downloading plastid genes and genomes, taxonomic name resolution (detection of synonyms) is carried out using the [Catalog of Life (COL)](https://www.catalogueoflife.org/) as a taxonomic standard. Next, rogue taxa are detected by an all-by-all BLAST search [@Camacho2009]; any sequences whose top three hits match a different family are excluded. One specimen per species is selected prioritizing those that come from the same specimen with maximum combined length. Genes are then aligned individually using MAFFT [@Katoh2002], then concatenated into a supermatrix (only sequences originating from the same specimen are concatenated). The tree is inferred with IQTREE [@Nguyen2015], and dated with treePL [@Smith2012] using `r nrow(plastome_calibration_dates)` fossil calibration points.
+The workflow is implemented in R v`r paste0(R.version$major, ".", R.version$minor)` [@RCoreTeam2020] with the Drake package v`r packageVersion("drake")` [@MichaelLandau2018]. After downloading plastid genes and genomes, taxonomic name resolution (detection of synonyms) is carried out using the [Catalog of Life (COL)](https://www.catalogueoflife.org/) as a taxonomic standard. Next, rogue taxa are detected by an all-by-all BLAST search [@Camacho2009]; any sequences whose top three hits match a different family are excluded. One specimen per species is selected prioritizing those that come from the same specimen with maximum combined length. Genes are then aligned individually using MAFFT [@Katoh2002], then concatenated into a supermatrix (only sequences originating from the same specimen are concatenated). The tree is inferred with IQTREE [@Nguyen2015], and dated with treePL [@Smith2012] using `r nrow(plastid_calibration_dates)` fossil calibration points.
 
 All code is available at https://github.com/joelnitta/ftol.
 
