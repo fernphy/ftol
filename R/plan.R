@@ -40,10 +40,6 @@ plan <- drake_plan(
   genbank_names_with_mult_syns_select_path = target("data_raw/genbank_names_with_mult_syns_select.csv", format = "file"),
   genbank_names_with_mult_syns_select = read_csv(genbank_names_with_mult_syns_select_path),
   
-  # Names of Wei et al. 2017 protein-coding genes (83 genes)
-  wei_genes_path = target("data_raw/wei_2017_coding_genes.txt", format = "file"),
-  wei_genes = read_lines(wei_genes_path),
-  
   # GoFlag (short reads from seq-capture and genome skimming) metadata
   goflag_meta_path = target("data_raw/goflag/Pilot_Ferns_TargetCapture_Skimming.txt", format = "file"),
   goflag_meta = read_tsv(goflag_meta_path) %>%
@@ -237,7 +233,7 @@ plan <- drake_plan(
   # Part 2: Format "targets" (genes to extract from short read data)
   
   # Assemble set of coding genes from GenBank plastome data
-  # using map(accessions, ~fetch_genes_from_plastome(., wei_genes))
+  # using map(accessions, ~fetch_genes_from_plastome(., target_sanger_genes))
   # Run this command locally as juno seems to have a hard time keeping a connection
   plastid_targets_path = target("temp/plastid_targets.RDS", format = "file"),
   plastid_targets = readRDS(plastid_targets_path),
