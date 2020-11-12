@@ -448,7 +448,7 @@ plan <- drake_plan(
   
   ftol_readme = rmarkdown::render(
     knitr_in("reports/results_readme/results_readme.Rmd"),
-    output_file = "results/releases/README.md",
+    output_file = here::here("results/releases/README.md"),
     quiet = TRUE
   ),
 
