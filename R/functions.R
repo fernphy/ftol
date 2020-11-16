@@ -3112,3 +3112,23 @@ make_acc_ref_table <- function(
   
 }
 
+#' Make a table of gene partitions
+#'
+#' @param gene_list List of gene alignments that are
+#' used for concatenation
+#'
+#' @return Tibble of start and end positions of each gene
+#' in the concatenated data
+#' 
+make_gene_part_table <- function(gene_list) {
+  tibble(
+    gene = names(gene_list),
+    length = map_dbl(gene_list, ncol)) %>%
+    mutate(
+      end = cumsum(length),
+      start = end - (length - 1)
+    ) %>%
+    select(gene, start, end) %>%
+    assert(is_uniq, gene)
+}
+
