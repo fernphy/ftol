@@ -438,12 +438,32 @@ plan <- drake_plan(
     ),
 
   # Output trees and alignments to results
-  plastid_tree_out = ape::write.tree(plastid_tree_rooted, "results/releases/ftol_plastid.tre"),
+  plastid_tree_out = ape::write.tree(
+    plastid_tree_rooted, 
+    file_out("results/releases/ftol_plastid.tre")),
 
-  plastid_tree_dated_out = ape::write.tree(plastid_tree_dated, "results/releases/ftol_plastid_dated.tre"),
+  plastid_tree_dated_out = ape::write.tree(
+    plastid_tree_dated, 
+    file_out("results/releases/ftol_plastid_dated.tre")),
 
-  plastid_alignment_concat_out = ape::write.FASTA(plastid_alignment, "results/releases/ftol_plastid_concat.fasta"),
+  plastid_alignment_concat_out = ape::write.FASTA(
+    plastid_alignment, 
+    file_out("results/releases/ftol_plastid_concat.fasta")),
 
+  plastid_acc_data = make_acc_ref_table(
+    plastid_genes_aligned_trimmed = plastid_genes_aligned_trimmed,
+    sanger_seqs_names_resolved = sanger_seqs_names_resolved,
+    plastome_metadata_renamed = plastome_metadata_renamed),
+  
+  plastid_acc_data_out = write_csv(
+    plastid_acc_data, 
+    file_out("results/releases/ftol_plastid_accs.csv")),
+  
+  plastid_genes_aligned_trimmed_renamed_out = saveRDS(
+    plastid_genes_aligned_trimmed_renamed,
+    file_out("results/releases/ftol_plastid_list.RDS")
+  ),
+  
   ftol_readme = rmarkdown::render(
     knitr_in("reports/results_readme/results_readme.Rmd"),
     output_file = here::here("results/releases/README.md"),

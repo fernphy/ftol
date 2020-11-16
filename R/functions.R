@@ -3053,3 +3053,62 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
   return(results)
   
 }
+
+# Reporting ----
+
+#' Make a table mapping accession numbers to species and genes
+#'
+#' @param plastid_genes_aligned_trimmed List of plastid sequences used for phylogenetic
+#' analysis. Aligned and trimmed, named by GenBank accession.
+#' @param sanger_seqs_names_resolved Metadata with resolved species names and accession
+#' numbers for Sanger sequences, including some not used in phylo. analysis.
+#' @param plastome_metadata_renamed Metadata with resolved species names and accession
+#' numbers for plastome sequences, including some not used in phylo. analysis.
+#'
+#' @return Tibble
+#' 
+make_acc_ref_table <- function(
+  plastid_genes_aligned_trimmed,
+  sanger_seqs_names_resolved,
+  plastome_metadata_renamed
+) {
+  
+  # Get a vector of all accession numbers in the final plastid alignment
+  plastid_accs <- map(plastid_genes_aligned_trimmed, rownames) %>%
+    set_names(NULL) %>%
+    unlist()
+  
+  # combine sanger and plastome data
+  sanger_plastome_dat <-
+    bind_rows(
+      select(sanger_seqs_names_resolved, accession, species, gene),
+      select(plastome_metadata_renamed, accession, species, plastome_title = title)
+    )
+  
+  # Build table of accession numbers, species, gene, and "title" for full plastome sequences
+  acc_data <-
+    tibble(
+      accession = plastid_accs
+    ) %>%
+    mutate(
+      accession = str_remove_all(accession, "_R_")
+    ) %>%
+    unique() %>%
+    left_join(sanger_plastome_dat, by = "accession") %>%
+    assert(not_na, species) %>%
+    # Make sure the combination of gene/accession is unique
+    assert_rows(col_concat, is_uniq, accession, gene)
+  
+  # Verify that all rows have either 'gene' or 'title'
+  acc_data %>%
+    filter(is.na(plastome_title)) %>%
+    assert(not_na, gene, success_fun = success_logical, error_fun = error_stop)
+  
+  acc_data %>%
+    filter(is.na(gene)) %>%
+    assert(not_na, plastome_title, success_fun = success_logical, error_fun = error_stop)
+  
+  acc_data
+  
+}
+

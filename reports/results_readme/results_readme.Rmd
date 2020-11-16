@@ -28,7 +28,8 @@ loadd(
     "plastome_outgroups",
     "plastid_alignment",
     "plastid_genes_aligned_trimmed_renamed",
-    "resolved_names_all"),
+    "resolved_names_all",
+    "plastid_acc_data"),
   cache = plastid_cache)
 
 ```
@@ -82,7 +83,7 @@ n_plastome_species <- plastid_selection_ferns %>% pull(species) %>% n_distinct()
 
 # Fern Tree of Life (FTOL) Data Release README
 
-This README.md file was generated on `r format(Sys.time(), '%d %B, %Y')` by Joel Nitta
+This README.md file was generated on `r format(Sys.time(), '%d %B, %Y')`
 
 The goal of the FTOL project is to generate a maximally sampled phylogenetic tree for all extant fern species. It will be continuously updated as new data become available. Each release of the tree and associated metadata has a version number available on the [project github repository](https://github.com/joelnitta/ftol).
 
@@ -90,17 +91,21 @@ The goal of the FTOL project is to generate a maximally sampled phylogenetic tre
 
 Files in this data release include:
 
-- `ftol_plastid_concat.fasta`: Concatenated alignment of plastid genes used for phylogenetic analysis. `r n_concat_species` species x `r n_concat_bases` base pairs, including `r length(plastid_genes_aligned_trimmed_renamed)` genes. `r p_concat_missing` missing data.
+- `ftol_plastid_accs.csv`: Table of GenBank accessions used for phylogenetic analysis. Columns include `accession` (GenBank accession number), `species` (species name after taxonomic standardization), `gene` (gene name; NA for accessions from full plastomes), and `plastome_title` (GenBank accession for full plastomes; NA for Sanger sequences). `r nrow(plastid_acc_data) %>% scales::number(big.mark = ",")` rows x `r ncol(plastid_acc_data)` columns.
 
-- `ftol_plastid.tre`: Fern tree of life (FTOL) based on plastid genes, not dated. `r n_tip` species (one tip per species), including `r n_ingroup_tips` ingroup and `r n_outgroup_tips` outgroup taxa.
+- `ftol_plastid_list.RDS`: List of plastid sequences used for phylogenetic analysis. Each item of the list is an alignment (list of class 'DNAbin') corresponding to a single gene, with sequences named by species. All sequences aligned with MAFFT and trimmed with TrimAl. R data object saved in the RDS file format. 
 
-- `ftol_plastid_dated.tre`: Fern tree of life (FTOL) based on plastid genes, with divergence times estimated using fossil calibration points. Taxon sampling same as `ftol_plastid.tre`.
+- `ftol_plastid_concat.fasta`: Concatenated alignment of plastid genes used for phylogenetic analysis. `r n_concat_species` species x `r n_concat_bases` base pairs, including `r length(plastid_genes_aligned_trimmed_renamed)` genes. `r p_concat_missing` missing data. FASTA format.
+
+- `ftol_plastid.tre`: Fern tree of life (FTOL) based on plastid genes, not dated. `r n_tip` species (one tip per species), including `r n_ingroup_tips` ingroup and `r n_outgroup_tips` outgroup taxa. Branch lengths in units of expected change per site. Newick format.
+
+- `ftol_plastid_dated.tre`: Fern tree of life (FTOL) based on plastid genes, with divergence times estimated using fossil calibration points. Taxon sampling same as `ftol_plastid.tre`. Branch lengths in millions of years. Newick format.
 
 ## Methods Summary
 
 The approach leverages the fact that only a handful of genes have been intensively sequenced in ferns, and account for the vast majority of sequences on GenBank: *rbcL*, *atpA*, *atpB*, and *rps4*. These four genes (ca. 5 kb total) provide maximum phylogenetic breadth, but lack the resolving power necessary to infer a robustly supported tree across all ferns. Therefore, single-copy genes are also sampled from fern plastomes (currently `r n_plastome_genes` genes for `r n_plastome_species` species), and combined with the Sanger sequences to create a mostly empty supermatrix. The plastome data provide a well-supported backbone, which is filled in by the much more diverse Sanger sequences.
 
-The workflow is implemented in R v`r paste0(R.version$major, ".", R.version$minor)` [@RCoreTeam2020] with the Drake package v`r packageVersion("drake")` [@MichaelLandau2018]. After downloading plastid genes and genomes, taxonomic name resolution (detection of synonyms) is carried out using the [Catalog of Life (COL)](https://www.catalogueoflife.org/) as a taxonomic standard. Next, rogue taxa are detected by an all-by-all BLAST search [@Camacho2009]; any sequences whose top three hits match a different family are excluded. One specimen per species is selected prioritizing those that come from the same specimen with maximum combined length. Genes are then aligned individually using MAFFT [@Katoh2002], then concatenated into a supermatrix (only sequences originating from the same specimen are concatenated). The tree is inferred with IQTREE [@Nguyen2015], and dated with treePL [@Smith2012] using `r nrow(plastid_calibration_dates)` fossil calibration points.
+The workflow is implemented in R v`r paste0(R.version$major, ".", R.version$minor)` [@RCoreTeam2020] with the Drake package v`r packageVersion("drake")` [@MichaelLandau2018]. After downloading plastid genes and genomes, taxonomic name resolution (detection of synonyms) is carried out using the [Catalog of Life (COL)](https://www.catalogueoflife.org/) as a taxonomic standard. Next, rogue taxa are detected by an all-by-all BLAST search [@Camacho2009]; any sequences whose top three hits match a different family are excluded. One specimen per species is selected prioritizing those that come from the same specimen with maximum combined length. Genes are then aligned individually using MAFFT [@Katoh2002], trimmed with TrimAl [@Capella-Gutierrez2009], then concatenated into a supermatrix (only sequences originating from the same specimen are concatenated). The tree is inferred with IQTREE [@Nguyen2015], and dated with treePL [@Smith2012] using `r nrow(plastid_calibration_dates)` fossil calibration points.
 
 All code is available at https://github.com/joelnitta/ftol.
 
