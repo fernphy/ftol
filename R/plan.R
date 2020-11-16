@@ -37,7 +37,7 @@ plan <- drake_plan(
   plastid_calibration_dates = load_calibration_dates(plastome_calibration_dates_path),
 
   # Manually selected synonyms for resolving names of plastid genes
-  sanger_names_with_mult_syns_select_path = target("data_raw/sanger_names_with_mult_syns_select.csv", format = "file"),
+  sanger_names_with_mult_syns_select_path = target("data_raw/genbank_names_with_mult_syns_select.csv", format = "file"),
   sanger_names_with_mult_syns_select = read_csv(sanger_names_with_mult_syns_select_path),
 
   # GoFlag (short reads from seq-capture and genome skimming) metadata
@@ -52,13 +52,15 @@ plan <- drake_plan(
   # (target genes defined in plastid_make.R)
   raw_fasta = target(
     fetch_fern_gene(gene, end_date = date_cutoff),
-    transform = map(gene = !!target_genes)
+    transform = map(gene = !!target_genes),
+    hpc = FALSE # don't run in parallel, or will get HTTP status 429 errors
   ),
 
   # Download fern plastid gene metadata
   raw_meta = target(
     fetch_fern_metadata(gene, end_date = date_cutoff),
-    transform = map(gene = !!target_genes)
+    transform = map(gene = !!target_genes),
+    hpc = FALSE
   ),
 
   # Standardize names and filter Sanger sequences ----
