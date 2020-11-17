@@ -1666,8 +1666,8 @@ resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
       query == "Physcomitrella patens" ~ query,
       query == "Physcomitrium patens" ~ query,
       query == "Marchantia polymorpha" ~ query,
-      query == "Psilotum nudum" ~ query,
-      query == "Botrychium sp. ternatum/japonicum" ~ "Sceptridium ternatum",
+      query == "Psilotum nudum" ~ "Psilotum nudum (L.) P. Beauv.",
+      query == "Botrychium sp. ternatum/japonicum" ~ "Sceptridium ternatum (Thunb.) Lyon",
       query == "Adiantum shastense" ~ query,
       query == "Cryptogramma acrostichoides" ~ query,
       query == "Pecluma dulcis" ~ query,
@@ -1689,12 +1689,13 @@ resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
     )) %>%
     # Make sure all species have genus and epithet separated by space
     assert(function (x) str_detect(x, " "), species) %>%
-    select(query, resolved_name = species)
+    select(query, resolved_name = species, scientificName)
   
   plastome_metadata %>%
-    left_join(select(name_resolution_results_fixed, species = query, resolved_name), by = "species") %>%
+    left_join(select(name_resolution_results_fixed, species = query, resolved_name, scientificName), by = "species") %>%
     mutate(species = resolved_name) %>%
     assert(not_na, species) %>%
+    assert(not_na, scientificName) %>%
     select(-resolved_name)
 }
 
