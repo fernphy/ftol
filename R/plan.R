@@ -458,7 +458,8 @@ plan <- drake_plan(
   plastid_acc_data = make_acc_ref_table(
     plastid_genes_aligned_trimmed = plastid_genes_aligned_trimmed,
     sanger_seqs_names_resolved = sanger_seqs_names_resolved,
-    plastome_metadata_renamed = plastome_metadata_renamed),
+    plastome_metadata_renamed = plastome_metadata_renamed,
+    target_genes = target_genes),
   
   # - write out table of GenBank accession numbers 
   plastid_acc_data_out = write_csv(

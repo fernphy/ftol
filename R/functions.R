@@ -3065,13 +3065,15 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
 #' numbers for Sanger sequences, including some not used in phylo. analysis.
 #' @param plastome_metadata_renamed Metadata with resolved species names and accession
 #' numbers for plastome sequences, including some not used in phylo. analysis.
+#' @param target_genes Character vector of Sanger genes included in phylo. analysis
 #'
 #' @return Tibble
 #' 
 make_acc_ref_table <- function(
   plastid_genes_aligned_trimmed,
   sanger_seqs_names_resolved,
-  plastome_metadata_renamed
+  plastome_metadata_renamed,
+  target_genes
 ) {
   
   # Get a vector of all accession numbers in the final plastid alignment
@@ -3079,38 +3081,28 @@ make_acc_ref_table <- function(
     set_names(NULL) %>%
     unlist()
   
-  # combine sanger and plastome data
+  # combine sanger and plastome metata data
   sanger_plastome_dat <-
     bind_rows(
-      select(sanger_seqs_names_resolved, accession, species, gene),
-      select(plastome_metadata_renamed, accession, species, plastome_title = title)
+      select(sanger_seqs_names_resolved, accession, species, sci_name = scientificName, gene),
+      transmute(plastome_metadata_renamed, accession, species, sci_name = scientificName, gene = "full_plastome")
     )
   
   # Build table of accession numbers, species, gene, and "title" for full plastome sequences
-  acc_data <-
-    tibble(
-      accession = plastid_accs
-    ) %>%
-    mutate(
-      accession = str_remove_all(accession, "_R_")
-    ) %>%
+  # - start with accession numbers used for phy. analysis.
+  tibble(accession = plastid_accs) %>%
+    mutate(accession = str_remove_all(accession, "_R_")) %>%
     unique() %>%
     left_join(sanger_plastome_dat, by = "accession") %>%
-    assert(not_na, species) %>%
+    # Make sure we aren't missing anything
+    assert(not_na, species, sci_name, gene) %>%
     # Make sure the combination of gene/accession is unique
-    assert_rows(col_concat, is_uniq, accession, gene)
-  
-  # Verify that all rows have either 'gene' or 'title'
-  acc_data %>%
-    filter(is.na(plastome_title)) %>%
-    assert(not_na, gene, success_fun = success_logical, error_fun = error_stop)
-  
-  acc_data %>%
-    filter(is.na(gene)) %>%
-    assert(not_na, plastome_title, success_fun = success_logical, error_fun = error_stop)
-  
-  acc_data
-  
+    assert_rows(col_concat, is_uniq, accession, gene) %>%
+    # Convert to wide form
+    pivot_wider(names_from = "gene", values_from = "accession", species:sci_name) %>%
+    arrange(species) %>%
+    # Rearrange columns
+    select(species, sci_name, all_of(target_genes), full_plastome)
 }
 
 #' Make a table of gene partitions
