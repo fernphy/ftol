@@ -4,8 +4,8 @@ source("R/functions.R")
 source("R/plan.R")
 
 # Setup cache
-plastid_cache <- new_cache("plastid_cache")
-options(rstudio_drake_cache = plastid_cache)
+ftol_cache <- new_cache("ftol_cache")
+options(rstudio_drake_cache = ftol_cache)
 
 # Specify parallel back-end
 options(clustermq.scheduler = "multicore")
@@ -18,9 +18,9 @@ drake_config(
   plan,
   parallelism = "clustermq",
   jobs = 32, # Change to match number of cores available!
-  cache = plastid_cache,
+  cache = ftol_cache,
   seed = 0
 )
 
 # - serial
-# drake_config(plan, verbose = 1, cache = plastid_cache, seed = 0)
+# drake_config(plan, verbose = 1, cache = ftol_cache, seed = 0)

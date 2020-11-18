@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 # un-comment the lines below to load packages and the drake cache
 # 
 # source(here::here("R/packages.R"))
-# plastid_cache <- new_cache(here::here("plastid_cache"))
+# ftol_cache <- new_cache(here::here("ftol_cache"))
 
 # Load objects build during analysis from drake cache
 loadd(
@@ -30,7 +30,7 @@ loadd(
     "resolved_names_all",
     "plastid_acc_data",
     "plastid_gene_part_data"),
-  cache = plastid_cache)
+  cache = ftol_cache)
 
 ```
 
@@ -93,7 +93,7 @@ Files in this data release include:
 
 - `ftol_plastid_dated.tre`: Fern tree of life (FTOL) with divergence times estimated on `ftol_plastid.tre` using fossil calibration points. Branch lengths in millions of years before present. Newick format. MD5 hash: `r tools::md5sum(here::here("results/releases/ftol_plastid_dated.tre"))`
 
-- `plastid_cache.tar.gz`: Zipped file containing the [drake](https://docs.ropensci.org/drake/) cache with all intermediate output (R data files). MD5 hash: FIXME <!-- this can't be computed from within drake, so edit README.md manually -->
+- `ftol_cache.tar.gz`: Zipped file containing the [drake](https://docs.ropensci.org/drake/) cache with all intermediate output (R data files). MD5 hash: FIXME <!-- this can't be computed from within drake, so edit README.md manually -->
 
 ## Methods Summary
 

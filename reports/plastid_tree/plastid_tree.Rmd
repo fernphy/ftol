@@ -12,13 +12,13 @@ library(phytools)
 
 ```{r load-data}
 # Load Catalog of Life plants taxonomy
-loadd(col_plants, cache = plastid_cache)
+loadd(col_plants, cache = ftol_cache)
 
 # Load time tree inferred from plastid data
-phy <- readd(plastid_tree_dated, cache = plastid_cache)
+phy <- readd(plastid_tree_dated, cache = ftol_cache)
 
 # Load Pteridopyte Phylogeny Group I taxonomy
-ppgi <- readd(ppgi_taxonomy, cache = plastid_cache)
+ppgi <- readd(ppgi_taxonomy, cache = ftol_cache)
 
 # Vector of outgroup genera
 outgroup_genera <- c(
