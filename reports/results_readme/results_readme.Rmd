@@ -29,7 +29,13 @@ loadd(
     "plastid_genes_aligned_trimmed_renamed",
     "resolved_names_all",
     "plastid_acc_data",
-    "plastid_gene_part_data"),
+    "plastid_gene_part_data",
+    # need to track output files as deps to get the MD5 hash of each
+    "plastid_tree_out",
+    "plastid_tree_dated_out",
+    "plastid_alignment_concat_out",
+    "plastid_acc_data_out",
+    "plastid_genes_part_data_out"),
   cache = ftol_cache)
 
 ```
@@ -92,8 +98,6 @@ Files in this data release include:
 - `ftol_plastid.tre`: Fern tree of life (FTOL) based on plastid genes, not dated. `r n_tip` species (one tip per species), including `r n_ingroup_tips` ingroup and `r n_outgroup_tips` outgroup taxa. Consensus maximum-likelihood tree. Branch lengths in units of expected change per site. Values at nodes are support values as measured with ultra-fast bootstrap approximation. Newick format. MD5 hash: `r tools::md5sum(here::here("results/releases/ftol_plastid.tre"))`
 
 - `ftol_plastid_dated.tre`: Fern tree of life (FTOL) with divergence times estimated on `ftol_plastid.tre` using fossil calibration points. Branch lengths in millions of years before present. Newick format. MD5 hash: `r tools::md5sum(here::here("results/releases/ftol_plastid_dated.tre"))`
-
-- `ftol_cache.tar.gz`: Zipped file containing the [drake](https://docs.ropensci.org/drake/) cache with all intermediate output (R data files). MD5 hash: FIXME <!-- this can't be computed from within drake, so edit README.md manually -->
 
 ## Methods Summary
 
