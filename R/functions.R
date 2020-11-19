@@ -3125,3 +3125,59 @@ make_gene_part_table <- function(gene_list) {
     assert(is_uniq, gene)
 }
 
+# Managing data ----
+
+#' Make a zipped archive of raw data
+#'
+#' @param version Version number to assign to the archive
+#' @param metadata Tibble with the following metadata:
+#' - target: name of target for raw data file in drake plan (only if that file
+#' is read in individually as a target)
+#' - file: file name
+#' - path: path to file (relative to this project)
+#' - copy: Boolean; should the file by copied into the archive?
+#' - hash: MD5 hash of the file
+#' @param out_path Directory to save the zip archive
+#'
+#' @return Status of the `zip` program after running; externally, the data
+#' will be saved to `<version>.zip` in `out_path`.
+#'
+archive_raw_data <- function (version, metadata, out_path) {
+  
+  # Specify location of zip archive
+  archive <- paste0(fs::path(out_path, version), ".zip")
+  
+  # Make sure the zip archize doesn't already exist
+  assertthat::assert_that(
+    !fs::file_exists(archive), 
+    msg = glue::glue("{archive} already exists")
+  )
+  
+  # Create a temp dir for writing out csv file with metadata and README
+  temp_dir <- tempdir()
+  
+  # Write out csv of metadata (MD5 checksums)
+  readr::write_csv(metadata, fs::path(temp_dir, "md5_checksums.csv"))
+  
+  # Make vector of raw data files to copy into zip folder
+  raw_data_to_copy <- metadata %>%
+    filter(copy == TRUE) %>%
+    # When the files get placed into the zip folder, they won't
+    # be in folders, so make sure each has a unique name.
+    assertr::assert(assertr::is_uniq, file) %>%
+    pull(path) %>%
+    c(fs::path(temp_dir, "md5_checksums.csv"))
+  
+  # zip the files
+  zip_results <- utils::zip(
+    zipfile = archive, 
+    files = raw_data_to_copy,
+    flags = "-r9Xj")
+  
+  # Cleanup
+  fs::file_delete(fs::path(temp_dir, "md5_checksums.csv"))
+  
+  # Returnc
+  zip_results
+  
+}
