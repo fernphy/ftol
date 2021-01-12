@@ -394,7 +394,7 @@ plan <- drake_plan(
   # Generate tree: paritioned analysis
   plastid_partioned_tree = jntools::iqtree(
     plastid_alignment,
-    bb = 1000, nt = "AUTO",
+    bb = 1000, nt = 32,
     spp = file_in("intermediates/iqtree/partitioned/plastid_gene_blocks.nex"),
     redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree/partitioned/")
   ),
