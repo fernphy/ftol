@@ -1608,6 +1608,39 @@ trimal_auto <- function (seqs, echo = FALSE, ...) {
   results
 }
 
+#' Write out a nexus block of gene start and end positions for IQTREE
+#' 
+#' Output nexus file example: http://www.iqtree.org/workshop/data/turtle.nex
+#'
+#' @param gene_list List of genes in the aligment
+#' @param nexus_file Path to write out nexus file
+#'
+#' @return A vector of gene start and end positions
+#' 
+write_nexus_gene_block <- function (gene_list, nexus_file) {
+  
+  gene_locs <-
+    tibble::tibble(
+      gene = names(gene_list),
+      length = purrr::map_dbl(gene_list, ncol)
+    ) %>%
+    dplyr::mutate(
+      end = cumsum(length),
+      start = end - length + 1) %>%
+    dplyr::mutate(
+      nexus_line = glue::glue("  charset {gene} = {start}-{end};")
+    ) %>%
+    dplyr::pull(nexus_line)
+  
+  cat(
+    "#nexus", "begin sets;", gene_locs, "end;",
+    file = nexus_file, sep = "\n"
+  )
+  
+  gene_locs
+  
+}
+
 #' Concatenate a list of aligned genes
 #'
 #' @param dna_list List of matrices of class DNAbin

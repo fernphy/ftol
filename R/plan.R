@@ -376,14 +376,27 @@ plan <- drake_plan(
     name_metadata = resolved_names_all
   ),
   
+  # Make nexus block of genes for IQTREE
+  plastid_gene_blocks = write_nexus_gene_block(
+    plastid_genes_aligned_trimmed_renamed,
+    file_out("intermediates/iqtree/partitioned/plastid_gene_blocks.nex")),
+  
   # Concatenate alignments by species name.
   plastid_alignment = concatenate_genes(plastid_genes_aligned_trimmed_renamed),
   
-  # Generate tree.
+  # Generate tree: single concatenated analysis.
   plastid_tree = jntools::iqtree(
     plastid_alignment,
     m = "GTR+I+G", bb = 1000, nt = "AUTO",
     redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree")
+  ),
+  
+  # Generate tree: paritioned analysis
+  plastid_partioned_tree = jntools::iqtree(
+    plastid_alignment,
+    bb = 1000, nt = "AUTO",
+    spp = file_in("intermediates/iqtree/plastid_gene_blocks.nex"),
+    redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree/partitioned")
   ),
   
   # Dating analysis with treepl ----
