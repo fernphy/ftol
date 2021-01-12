@@ -395,8 +395,8 @@ plan <- drake_plan(
   plastid_partioned_tree = jntools::iqtree(
     plastid_alignment,
     bb = 1000, nt = "AUTO",
-    spp = file_in("intermediates/iqtree/plastid_gene_blocks.nex"),
-    redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree/partitioned")
+    spp = file_in("intermediates/iqtree/partitioned/plastid_gene_blocks.nex"),
+    redo = FALSE, echo = TRUE, wd = here::here("intermediates/iqtree/partitioned/")
   ),
   
   # Dating analysis with treepl ----
