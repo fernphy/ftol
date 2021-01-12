@@ -8,11 +8,5 @@
 #PBS -M joelnitta@gmail.com
 #PBS -V
 cd ftol
-### start docker daemon
-start-dockerd.sh
-### wait for docker daemon to get up and running
-sleep 30
 ### mount ~ so symlinks to ~/project_data work
-docker run --rm -v ~/:/home/rstudio/ -w /home/rstudio/ftol joelnitta/ftol:4.0.0 Rscript -e "drake::r_make()"
-### stop docker daemon
-stop-dockerd.sh
+docker run --rm -v ~/:/home/rstudio/ -w /home/rstudio/ftol joelnitta/ftol:0.0.1 Rscript -e "drake::r_make()"
