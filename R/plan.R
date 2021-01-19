@@ -393,7 +393,7 @@ plan <- drake_plan(
   
   # Generate tree: paritioned analysis
   #
-  # About `m = "MF+MERGE"` (from http://www.iqtree.org/doc/Command-Reference): 
+  # About `m = "MFP+MERGE"` (from http://www.iqtree.org/doc/Command-Reference): 
   # Select best-fit partitioning scheme by possibly merging 
   # partitions to reduce over-parameterization and increase model fit, and
   # additionally includes FreeRate model.
@@ -402,10 +402,10 @@ plan <- drake_plan(
   # The FreeRate model typically fits data better than the +G model and is 
   # recommended for analysis of large data sets.
   #
-  plastid_partioned_tree = jntools::iqtree(
+  plastid_partitioned_tree = jntools::iqtree(
     plastid_alignment,
     bb = 1000, nt = 32,
-    m = "MF+MERGE",
+    m = "MFP+MERGE",
     spp = file_in("intermediates/iqtree/partitioned/plastid_gene_blocks.nex"),
     redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree/partitioned/")
   ),
