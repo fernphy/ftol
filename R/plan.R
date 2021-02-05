@@ -15,11 +15,15 @@ plan <- drake_plan(
   # Use `target("path", format = "file")` to track file contents
   
   # Data for resolving taxonomic names:
-  # Catalog of Life database subsetted to tracheophytes.
+  # - Catalog of Life database subsetted to tracheophytes.
   col_plants_path = target("data_raw/archive-kingdom-plantae-phylum-tracheophyta-bl3/taxa.txt", format = "file"),
   col_plants = pferns::load_col_plants(col_plants_path),
   
-  # Modified PPGI taxonomy
+  # - World Ferns taxonomic data
+  wf_path = target("data_raw/FernsExportJan2020.xlsx", format = "file"),
+  world_ferns_raw = load_wf(wf_path),
+  
+  # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   ppgi_taxonomy_path = target("data_raw/ppgi_taxonomy_mod.csv", format = "file"),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
@@ -46,6 +50,9 @@ plan <- drake_plan(
     select(taxon = Taxon, targeted_capture_id = `Targeted Capture ID`, genome_skimming_id  = `Genome Skimming ID`) %>%
     filter(!is.na(taxon)),
   
+  # Format taxonomic data for name resolution ----
+  wf_synonym_table = make_synonym_table(world_ferns_raw),
+  
   # Download individual plastid sequences from GenBank (Sanger sequences) ----
   
   # Download fern plastid gene fasta files
@@ -64,6 +71,13 @@ plan <- drake_plan(
   ),
   
   # Standardize names and filter Sanger sequences ----
+  
+  # Resolve names in metadata (WIP) using World Ferns as a reference
+  raw_meta_resolved = target(
+    resolve_gb_names(gb_metadata = raw_meta, wf_synonym_table = wf_synonym_table),
+    transform = map(raw_meta),
+    hpc = FALSE
+  ),
   
   # Combine GenBank sequences with metadata
   # (so fasta sequence is a list-column in sanger_seqs_combined_raw)

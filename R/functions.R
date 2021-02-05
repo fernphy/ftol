@@ -357,9 +357,9 @@ resolve_sanger_names_auto <- function (combined_metadata, col_plants) {
     name_resolution_results %>%
     filter_at(vars(contains("exclude")), all_vars(. == FALSE)) %>%
     select(-contains("exclude")) %>%
-    filter(str_detect(query, " sp. ", negate = TRUE)) %>%
-    filter(str_detect(query, "aff.", negate = TRUE)) %>%
-    filter(str_detect(query, "cf.", negate = TRUE))
+    filter(str_detect(query, " sp\\. ", negate = TRUE)) %>%
+    filter(str_detect(query, "aff\\.", negate = TRUE)) %>%
+    filter(str_detect(query, "cf\\.", negate = TRUE))
   
   # *add to tally at end
   non_valid_queries <- anti_join(
@@ -3592,3 +3592,86 @@ fetch_taxonomy <- function(tax_ids, chunk_size = 200) {
   
 }
 
+#' Read in World Ferns database
+load_wf <- function (file) {
+  readxl::read_xlsx(file) %>%
+    janitor::clean_names()
+}
+
+#' Convert raw names table into table matching names to synonyms
+#'
+#' @param world_ferns_raw Dataframe; raw data from World Ferns database
+#'
+#' @return Dataframe with three columns: name, synonym, and publication
+#' 
+make_synonym_table <- function(world_ferns_raw) {
+  world_ferns_raw %>%
+    transmute(name = paste(name, authors), synonyms) %>%
+    separate_rows(synonyms, sep = "÷") %>%
+    # Warning 'Additional pieces discarded in 3 rows [13355, 28481, 29163]'
+    # can be safely ignored (extra '•' signs)
+    separate(synonyms, into = c("synonym", "pub"), sep = "•", extra = "drop", fill = "right") %>%
+    mutate(synonym = str_trim(synonym), pub = str_trim(pub)) %>%
+    # Some accepted names are also listed as synonyms. But we can't have the same name
+    # be both an accepted name and a synonym. Assume anything listed as a
+    # synonym is only that, and not an accepted name.
+    filter(!name %in% .$synonym) %>%
+    assert(not_na, name)
+}
+
+
+
+#' Resolve scientific names of fern sequences from genbank
+#' 
+#' WIP
+#'
+#' @param gb_metadata 
+#' @param wf_synonym_table 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+resolve_gb_names <- function (gb_metadata, wf_synonym_table) {
+  # Extract all names and synonyms from World Ferns list as reference for matching
+  ref_names <- 
+    wf_synonym_table %>% 
+    filter(!is.na(synonym)) %>% 
+    pull(synonym) %>%
+    c(wf_synonym_table$name) %>%
+    unique()
+  
+  # Get full scientific name with author from taxonomy ID in metadata by querying NCBI
+  ncbi_names <- gb_metadata %>% 
+    assert(not_na, taxid) %>%
+    pull(taxid) %>%
+    unique() %>%
+    fetch_taxonomy
+  
+  # Filter query to only accepted names with author (first round of querying)
+  ncbi_accepted_names <- ncbi_names %>%
+    filter(accepted == TRUE) %>%
+    filter(!is.na(scientific_name)) %>%
+    pull(scientific_name) %>%
+    unique()
+  
+  # Query NCBI accepted names against the World Ferns reference
+  name_resolution <- tt_match_names(ncbi_accepted_names, ref_names, max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
+    as_tibble()
+  
+  round_1_res <-
+    name_resolution %>%
+    select(query, reference, match_type) %>%
+    # Add back in taxonomic ID
+    left_join(select(ncbi_names, scientific_name, taxid), by = c(query = "scientific_name"))
+  
+  # TO DO: try matching synonyms, add back in names without author, convert matched synonyms to the accepted name
+  list(
+    ref_names = ref_names,
+    ncbi_names = ncbi_names,
+    ncbi_accepted_names = ncbi_accepted_names,
+    name_resolution = name_resolution,
+    round_1_res = round_1_res
+  )
+  
+}
