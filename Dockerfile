@@ -6,6 +6,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ### Install APT packages ###
 ############################
 
+# gawk for taxon-tools
 # gcc through libtool for treePL
 # cmake, libeigen3-dev for IQTREE
 # zlib1g-dev for R package XVector
@@ -46,6 +47,7 @@ RUN apt-get update \
     python-dev-is-python3 \
     curl \
     fasttree \
+    gawk \
   && apt-get clean
 
 ########################
@@ -143,6 +145,14 @@ ENV PATH="$PATH:$DEST/"
 # Silence parallel citation warning
 RUN mkdir /root/.parallel \
   && touch /root/.parallel/will-cite
+  
+### taxon-tools ###
+WORKDIR $APPS_HOME
+ENV APP_NAME=taxon-tools
+RUN git clone https://github.com/camwebb/$APP_NAME.git && \
+	cd $APP_NAME && \
+	make check && \
+	make install
 
 ######################
 ### conda packages ###
