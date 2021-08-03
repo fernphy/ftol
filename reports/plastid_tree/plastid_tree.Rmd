@@ -168,6 +168,24 @@ phytools::plotTree(phy, type="fan", ftype="off", lwd = 0.8)
   for (i in 1:nrow(clade_data)) { 
     phytools::arc.cladelabels(text = " ", node = clade_data$mrca[i], lwd = 5, lend = "square", col = clade_data$color[i], mark.node = FALSE, orientation = "horizontal")
   }
+  
+# # Dark version (for some reason, can't plot both phylo and arc.cladelabels on black background)
+# pdf(file = "phy_dark_labels.pdf", height = 10, width = 10)
+# # par(fg="white",bg="grey10")
+# plot.new()
+# # phytools::plotTree(phy, type="fan", ftype="off", lwd = 0.8)
+# rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = "transparent")
+#   for (i in 1:nrow(clade_data)) { 
+#     phytools::arc.cladelabels(text = " ", node = clade_data$mrca[i], lwd = 5, lend = "square", col = clade_data$color[i], mark.node = FALSE, orientation = "horizontal")
+#   }
+# dev.off()
+# 
+# 
+# # Dark version
+# pdf(file = "phy_dark.pdf", height = 10, width = 10)
+# par(fg="white",bg="grey10")
+# phytools::plotTree(phy, type="fan", ftype="off", lwd = 0.8, color="grey90")
+# dev.off()
 ```
 
 **Figure 1: Fern tree of life (FTOL) based on plastid data.** Colors correspond to major clade (order or suborder, see **Fig. 2** for labels). Shading on tree indicates geologic era (Cenozoic not labeled).
