@@ -427,6 +427,8 @@ plan <- drake_plan(
   # Dating analysis with treepl ----
   
   # Root tree on bryophytes
+  # FIXME: note that ape::is.rooted(plastid_tree_rooted) returns FALSE
+  # may need to add `resolve.root = TRUE`
   plastid_tree_rooted = ape::root(
     plastid_tree,
     c("Anthoceros_angustus", "Marchantia_polymorpha", "Physcomitrium_patens")),
