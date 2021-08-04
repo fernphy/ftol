@@ -54,7 +54,6 @@ fetch_genbank_refs <- function(query) {
   
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
-  
   # Read in full GenBank records text
   gbrecs <- readr::read_lines(temp_file) %>% 
     # Replace problematic slashes (that indicate a break between records) with "RECORD_BREAK"
@@ -86,6 +85,17 @@ fetch_genbank_refs <- function(query) {
 #' 
 extract_sequence <- function (gb_entry, gene) {
   
+  # Check for FEATURES and ORIGIN field; if either is missing, return NULL
+  if (str_detect(gb_entry, "FEATURES", negate = TRUE)) {
+    message("Genbank flatfile not valid; no sequence extracted")
+    return(NULL)
+    }
+
+  if (str_detect(gb_entry, "ORIGIN",  negate = TRUE)) {
+    message("Genbank flatfile not valid; no sequence extracted")
+    return(NULL)
+    }
+
   # Extract start and end of target gene
   gene_range_list <-
     gb_entry %>%
@@ -177,13 +187,15 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
     magrittr::extract(-length(.)) %>%
     # Extract DNA sequences from each entry
     purrr::map2(gene, extract_sequence) %>%
+    # Drop any NULL values
+    purrr::compact() %>%
     # Name them as the accession
     purrr::set_names(map_chr(., names)) %>%
     # Convert to ape format
     # - each sequence needs to be a character vector with each letter as an element
     map(stringr::str_split, "") %>%
     map(ape::as.DNAbin) %>%
-    jntools::flatten_DNA_list()
+    do.call(c, .)
   
 }
 
@@ -197,11 +209,10 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 #' @return List of class DNAbin
 #' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
 fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
-  
+
   assertthat::assert_that(assertthat::is.string(gene))
-  
   assertthat::assert_that(assertthat::is.string(end_date))
-  
+    
   # Format GenBank query: all ferns matching the gene name.
   # Assume that we only want single genes or small sets of genes, not entire plastome.
   # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
@@ -212,7 +223,7 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   
   # Extract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  print(glue("Found {num_hits} sequences (UIDs)"))
+  print(glue("Found {num_hits} sequences (UIDs) for {gene}"))
   
   # Download complete GenBank record for each and write it to a temporary file
   temp_dir <- tempdir()
@@ -221,7 +232,81 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
   # Parse flatfile
-  parse_dna_from_flatfile(temp_file, gene)
+  results <- parse_dna_from_flatfile(temp_file, gene)
+
+  fs::file_delete(temp_file)
+
+  results
+  
+}
+
+#' Fetch metadata from GenBank
+#'
+#' @param query String to use for querying GenBank
+#' @param col_select Character vector; columns of metadata to retain in output
+#'
+#' @return Tibble
+#' 
+fetch_metadata <- function(
+  query = NULL,
+  col_select = c("gi", "caption", "taxid", "title", "slen", "subtype", "subname")) {
+  
+  assertthat::assert_that(assertthat::is.string(query))
+  
+  assertthat::assert_that(is.character(col_select))
+  
+  # Do an initial search without downloading any IDs to see how many hits
+  # we get.
+  initial_genbank_results <- rentrez::entrez_search(
+    db = "nucleotide",
+    term = query,
+    use_history = FALSE
+  )
+  
+  assertthat::assert_that(
+    initial_genbank_results$count > 0,
+    msg = "Query resulted in no hits")
+  
+  # Download IDs with maximum set to 1 more than the total number of hits.
+  genbank_results <- rentrez::entrez_search(
+    db = "nucleotide",
+    term = query,
+    use_history = FALSE,
+    retmax = initial_genbank_results$count + 1
+  )
+  
+  # Define internal function to download genbank data into tibble
+  entrez_summary_gb <- function(id, col_select) {
+    # Download data
+    rentrez::entrez_summary(db = "nucleotide", id = id) %>%
+      # Extract selected columns from result
+      purrr::map_dfr(magrittr::extract, col_select) %>%
+      # Make sure taxid column is character
+      mutate(taxid = as.character(taxid)) %>%
+      assert(not_na, taxid)
+  }
+  
+  # Extract list of IDs from search results
+  genbank_ids <- genbank_results$ids
+  
+  # Fetch metadata for each ID and extract selected columns
+  if (length(genbank_ids) == 1) {
+    rentrez_results <- rentrez::entrez_summary(db = "nucleotide", id = genbank_ids) %>%
+      magrittr::extract(col_select) %>%
+      tibble::as_tibble() %>%
+      mutate(taxid = as.character(taxid)) %>%
+      assert(not_na, taxid)
+  } else {
+    # Split input vector into chunks
+    n <- length(genbank_ids)
+    chunk_size <- 200
+    r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
+    genbank_ids_list <- split(genbank_ids, r) %>% magrittr::set_names(NULL)
+    # Download results for each chunk
+    rentrez_results <- map_df(genbank_ids_list, ~entrez_summary_gb(., col_select = col_select))
+  }
+  
+  return(rentrez_results)
   
 }
 
@@ -236,7 +321,6 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
 fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   
   assertthat::assert_that(assertthat::is.string(gene))
-  
   assertthat::assert_that(assertthat::is.string(end_date))
   
   # Format GenBank query: all ferns matching the gene name and date range.
@@ -245,11 +329,11 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
   
   # Fetch standard metadata
-  metadata <- gbfetch::fetch_metadata(query) %>%
-    # Parse out data contained in the "subtype" and "subname" columns
-    tidy_genbank_metadata() %>%
-    # Remove weird brackets from species names
-    mutate(species = str_remove_all(species, "\\[") %>% str_remove_all("\\]"))
+  metadata <- fetch_metadata(query) %>%
+    rename(accession = caption) %>%
+    # GenBank accession should be non-missing, unique
+    assert(not_na, accession) %>%
+    assert(is_uniq, accession)
   
   # Also fetch reference data (publication to cite for the sequence).
   # If the title is only "Direct Submission" consider this to be NA
@@ -257,10 +341,14 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   ref_data <- fetch_genbank_refs(query) %>%
     transmute(
       accession, 
-      publication = str_replace_all(title, "Direct Submission", NA_character_))
+      publication = str_replace_all(title, "Direct Submission", NA_character_)) %>%
+      # GenBank accession should be non-missing, unique
+    assert(not_na, accession) %>%
+    assert(is_uniq, accession)
   
-  # Combine the two
-  left_join(metadata, ref_data, by = "accession")
+  # Combine standard metadata with publication metadata
+  left_join(metadata, ref_data, by = "accession") %>%
+    assert(is_uniq, accession)
   
 }
 
