@@ -3690,24 +3690,39 @@ load_wf <- function (file) {
 #'
 #' @param world_ferns_raw Dataframe; raw data from World Ferns database
 #'
-#' @return Dataframe with three columns: name, synonym, and publication
+#' @return Dataframe with two columns: name (accepted name), synonym
 #' 
 make_synonym_table <- function(world_ferns_raw) {
-  world_ferns_raw %>%
+  res <- world_ferns_raw %>%
     transmute(name = paste(name, authors), synonyms) %>%
     separate_rows(synonyms, sep = "÷") %>%
     # Warning 'Additional pieces discarded in 3 rows [13355, 28481, 29163]'
     # can be safely ignored (extra '•' signs)
     separate(synonyms, into = c("synonym", "pub"), sep = "•", extra = "drop", fill = "right") %>%
-    mutate(synonym = str_trim(synonym), pub = str_trim(pub)) %>%
+    # Drop publication (duplicated with variants in spelling in some cases)
+    transmute(name, synonym = str_trim(synonym)) %>%
+    unique() %>%
     # Some accepted names are also listed as synonyms. But we can't have the same name
     # be both an accepted name and a synonym. Assume anything listed as a
     # synonym is only that, and not an accepted name.
     filter(!name %in% .$synonym) %>%
+    # Some synonyms map to multiple accepted names
+    # FIXME: these should be investigated further, but remove for now
+    add_count(synonym) %>%
+    mutate(remove = if_else(n > 1 & !is.na(synonym), TRUE, FALSE)) %>%
+    filter(remove == FALSE) %>%
+    select(-remove, -n) %>%
+    # Verify no names are missing, synonym is unique
     assert(not_na, name)
+  
+  # Verify all synonyms are unique (not including NA)
+  res %>% 
+    filter(!is.na(synonym)) %>%
+    assert(is_uniq, synonym, success_fun = success_logical)
+
+  res
+    
 }
-
-
 
 #' Resolve scientific names of fern sequences from genbank
 #' 
