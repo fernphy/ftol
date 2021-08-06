@@ -3746,7 +3746,8 @@ load_wf <- function (file) {
 #' @return Dataframe with two columns: name (accepted name), synonym
 #' 
 make_synonym_table <- function(world_ferns_raw) {
-  res <- world_ferns_raw %>%
+  # Make synonym table, still includes non-ASCII characters
+  synonym_table <- world_ferns_raw %>%
     transmute(name = paste(name, authors), synonyms) %>%
     separate_rows(synonyms, sep = "÷") %>%
     # Warning 'Additional pieces discarded in 3 rows [13355, 28481, 29163]'
@@ -3766,14 +3767,24 @@ make_synonym_table <- function(world_ferns_raw) {
     filter(remove == FALSE) %>%
     select(-remove, -n) %>%
     # Verify no names are missing, synonym is unique
-    assert(not_na, name)
+    assert(not_na, name) %>%
+    # Add columns with non-ASCII characters replaced with ASCII 
+    # (converts accented 'a' to normal 'a' etc)
+    mutate(
+      name_ascii = stringi::stri_trans_general(name, "latin-ascii"),
+      synonym_ascii = stringi::stri_trans_general(synonym, "latin-ascii")
+    )
   
   # Verify all synonyms are unique (not including NA)
-  res %>% 
+  synonym_table %>% 
     filter(!is.na(synonym)) %>%
     assert(is_uniq, synonym, success_fun = success_logical)
 
-  res
+  synonym_table %>% 
+    filter(!is.na(synonym_ascii)) %>%
+    assert(is_uniq, synonym_ascii, success_fun = success_logical)
+
+  synonym_table
     
 }
 
