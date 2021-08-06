@@ -3656,7 +3656,7 @@ parse_tax_list <- function(record) {
 
 #' Fetch taxonomic data from the NCBI taxonomy database for a set of taxon ids 
 #'
-#' @param tax_ids Vector of taxon IDs
+#' @param tax_ids Character vector of taxon IDs
 #' @param chunk_size Number of chunks to split the tax_ids into when querying
 #' the NCBI database. Should be 200 or less. 200 is probably fine.
 #'
@@ -3665,6 +3665,11 @@ parse_tax_list <- function(record) {
 #' fetch_taxonomy(c("2726184", "2605333", "872590"))
 fetch_taxonomy <- function(tax_ids, chunk_size = 200) {
   
+  # Make sure taxonomic IDs don't include any missing values
+  tax_ids <- as.character(tax_ids)
+  assertthat::assert_that(is.character(tax_ids))
+  assertthat::assert_that(!any(is.na(tax_ids)))
+
   if(length(tax_ids) < chunk_size) {
     fetch_taxonomy_chunk(tax_ids) %>%
       map_df(parse_tax_list)
@@ -3678,6 +3683,54 @@ fetch_taxonomy <- function(tax_ids, chunk_size = 200) {
       map_df(parse_tax_list)
   }
   
+}
+
+#' Clean up species names downloaded from NCBI taxonomy database
+#'
+#' @param ncbi_names_raw Tibble with columns `taxid` `species` `accepted` 
+#' and `scientific_name`. Names downloaded from NCBI taxonomy database
+#' with fetch_taxonomy()
+#'
+#' @return Tibble; names with duplicates removed
+#' 
+clean_ncbi_names <- function(ncbi_names_raw) {
+  # Clean up ncbi_names: some species have multiple accepted names.
+  # These seem to include the species name w/o author and with author
+  ncbi_accepted_mult_fixed <- ncbi_names_raw %>%
+    filter(accepted == TRUE) %>%
+    filter(!is.na(scientific_name)) %>%
+    # Assume the sci. name. with most spaces has the author, and we want it
+    add_count(taxid) %>%
+    filter(n > 1) %>%
+    select(-n) %>%
+    mutate(n_spaces = str_count(scientific_name, " ")) %>%
+    group_by(taxid) %>%
+    # Discard ties (may lose some candidate names here, but so be it)
+    slice_max(order_by = n_spaces, n = 1, with_ties = FALSE) %>%
+    select(-n_spaces) 
+  
+  # Remove problematic names from original data, then add fixed names
+  # These still include non-ASCII characters
+  ncbi_names_non_ascii <-
+  ncbi_names_raw %>%
+    anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
+    bind_rows(ncbi_accepted_mult_fixed) %>%
+    # Remove brackets around species name
+    # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
+    mutate(species = str_remove_all(species, "\\[|\\]"))
+
+  ncbi_names_clean <- ncbi_names_non_ascii %>%
+    mutate(
+      species = stringi::stri_trans_general(species, "latin-ascii"),
+      scientific_name = stringi::stri_trans_general(scientific_name, "latin-ascii")
+      )
+
+  # Make sure conversion to ASCII doesn't duplicate any names
+  assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$species) == n_distinct(ncbi_names_clean$species)))
+  assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$scientific_name) == n_distinct(ncbi_names_clean$scientific_name)))
+
+  ncbi_names_clean
+     
 }
 
 #' Read in World Ferns database
