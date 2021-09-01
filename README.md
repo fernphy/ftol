@@ -2,7 +2,7 @@
 
 The goal of this project is to generate an automatically updated **Fern Tree of Life**.
 
-All code is in **R**, and workflow is controlled with the [drake](https://docs.ropensci.org/drake/) package.
+All code is in **R**, and workflow is controlled with the [targets](https://github.com/ropensci/targets) package.
 
 ### Docker
 
@@ -26,7 +26,7 @@ Raw data files should be downloaded from Dropbox using the following links, and 
  
 ### Running the code
 
-To run the analysis, execute `drake::r_make()` from the root of the repo.
+To run the analysis, execute `targets::tar_make()` from the root of the repo.
 
 ### Details
 
