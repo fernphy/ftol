@@ -4,24 +4,23 @@ source("R/packages.R")
 source("R/functions.R")
 
 # Specify path to folder with raw data
-data_raw <- "/data_raw"
+data_raw <- "data_raw"
 
 tar_plan(
 
   # Load data ----
   # Data for resolving taxonomic names:
-  # - Catalog of Life database subsetted to tracheophytes.
-  tar_file(col_plants_path, path(data_raw, "archive-kingdom-plantae-phylum-tracheophyta-bl3/taxa.txt")),
-  col_plants = pferns::load_col_plants(col_plants_path),
+  # - Catalog of Life database
+  tar_file(col_data_path, path(data_raw, "2021-08-25_dwca/Taxon.tsv")),
+  col_data = load_col(col_data_path),
   # - World Ferns taxonomic data
-  tar_file(wf_path, path(data_raw, "FernsExportJan2020.xlsx")),
-  world_ferns_raw = load_wf(wf_path),
+  world_ferns_data = extract_fow_from_col(col_data),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(ppgi_taxonomy_path, path(data_raw, "ppgi_taxonomy_mod.csv")),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
   # List of plastid coding genes from Wei et al 2017
-  tar_file(target_sanger_genes_path, path(data_raw, "/wei_2017_coding_genes.txt")),
+  tar_file(target_sanger_genes_path, path(data_raw, "wei_2017_coding_genes.txt")),
   target_sanger_genes = read_lines(target_sanger_genes_path),
   # Outgroup plastome accessions
   tar_file(plastome_outgroups_path, path(data_raw, "plastome_outgroups.csv")),
@@ -58,12 +57,12 @@ tar_plan(
 
   # Taxonomic name resolution ----
   # Format taxonomic data for name resolution
-  wf_synonym_table = make_synonym_table(world_ferns_raw),
+  # wf_synonym_table = make_synonym_table(world_ferns_raw),
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
   # Clean NCBI species names
-  ncbi_names = clean_ncbi_names(ncbi_names_raw),
+  ncbi_names = clean_ncbi_names(ncbi_names_raw) #,
   # Resolve names to World Ferns
-  ncbi_names_resolve_results = resolve_gb_names(ncbi_names, wf_synonym_table)
+  # ncbi_names_resolve_results = resolve_gb_names(ncbi_names, wf_synonym_table)
 
 )

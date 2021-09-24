@@ -1,3 +1,79 @@
+# Data loading ----
+
+#' Load data from the Catalog of Life
+#'
+#' @param col_data_path Path to TSV downloaded from the Catalog of Life 
+#' https://www.catalogueoflife.org/data/download
+#'
+#' @return Dataframe (tibble)
+#' 
+load_col <- function(col_data_path) {
+  # Use data.table as it handles quotation marks in data better than read_*() functions
+  data.table::fread(file = col_data_path, sep = "\t", stringsAsFactors = FALSE) %>%
+    janitor::clean_names() %>%
+    tibble::as_tibble()
+}
+
+#' Extract Ferns of the World taxonomic data from Catalog of Life
+#' 
+#' Also do some quality checks, and filter to only data at species level or below
+#'
+#' @param col_data Catalog of Life data. Output of of load_col()
+#'
+#' @return Dataframe (tibble)
+#' 
+extract_fow_from_col <- function(col_data) {
+  # Filter Catalog of Life data to only Ferns of the World
+  fow <- col_data %>% 
+    filter(dwc_dataset_id == "1140") %>%
+    select(
+      taxon_id = dwc_taxon_id, 
+      accepted_name_taxon_id = dwc_accepted_name_usage_id, 
+      status = dwc_taxonomic_status,
+      rank = dwc_taxon_rank, 
+      scientific_name = dwc_scientific_name) %>%
+    # Keep only species level and below
+    filter(rank %in% c("form", "infraspecific name", "species", "subform", "subspecies", "subvariety", "variety")) %>%
+    # Filter some names that were incorrectly labeled species level
+    filter(str_detect(scientific_name, "Polypodiaceae tribe Thelypterideae|Asplenium grex Triblemma|Pteridaceae tribus Platyzomateae|Filicaceae tribus Taenitideae", negate = TRUE)) %>%
+    mutate(status = str_replace_all(status, "provisionally accepted", "accepted")) %>%
+    select(-rank) %>%
+    # Note: taxon_id is unique, but scientific_name may not be (esp in case of ambiguous synonyms)
+    assert(not_na, taxon_id) %>% 
+    assert(is_uniq, taxon_id)
+  
+  # Make sure all synonyms map correctly
+  fow_accepted <- 
+    fow %>%
+    filter(str_detect(status, "accepted")) %>%
+    select(taxon_id, scientific_name, -status)
+  
+  fow_synonyms <- 
+    fow %>%
+    filter(str_detect(status, "synonym")) %>%
+    select(taxon_id, accepted_name_taxon_id, scientific_name, -status)
+  
+  fow_synonyms %>%
+    anti_join(fow_accepted, by = c(accepted_name_taxon_id = "taxon_id")) %>%
+    verify(nrow(.) == 0, success_fun = success_logical)
+  
+  # Make sure all accepted names and synonyms are accounted for
+  bind_rows(fow_accepted, fow_synonyms) %>%
+    assert(is_uniq, taxon_id) %>%
+    anti_join(fow, by = "taxon_id") %>%
+    verify(nrow(.) == 0, success_fun = success_logical)
+  
+  # Make sure accepted names and synonyms are distinct
+  # A few repeats. Leave these in for now, but will need to fix.
+  # fow_accepted %>%
+  #   inner_join(fow_synonyms, by = c(name = "synonym")) %>%
+  #   select(scientific_name = name) %>% 
+  #   left_join(fow)
+  
+  fow
+}
+
+
 # Download GenBank seqs ----
 
 #' Helper function to parse character vector from GenBank record into dataframe
@@ -87,15 +163,32 @@ extract_sequence <- function (gb_entry, gene) {
   
   # Check for FEATURES and ORIGIN field; if either is missing, return NULL
   if (str_detect(gb_entry, "FEATURES", negate = TRUE)) {
-    message("Genbank flatfile not valid; no sequence extracted")
+    message("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
     return(NULL)
-    }
-
+  }
+  
   if (str_detect(gb_entry, "ORIGIN",  negate = TRUE)) {
-    message("Genbank flatfile not valid; no sequence extracted")
+    message("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
     return(NULL)
-    }
-
+  }
+  
+  if (str_detect(gb_entry, "ACCESSION",  negate = TRUE)) {
+    message("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
+    return(NULL)
+  }
+  
+  # Extract accession
+  accession <-
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_match('ACCESSION(.+)\n') %>%
+    magrittr::extract(,2) %>%
+    # In very rare cases, may have multiple values for accession,
+    # separated by space. If so, take the first one.
+    str_trim(side = "both") %>%
+    str_split(" ") %>%
+    purrr::pluck(1,1)
+  
   # Extract start and end of target gene
   gene_range_list <-
     gb_entry %>%
@@ -112,10 +205,15 @@ extract_sequence <- function (gb_entry, gene) {
     unlist
   
   # Make sure target gene is detected
-  assertthat::assert_that(
-    any(str_detect(gene_range_list, regex(gene, ignore_case = TRUE))),
-    msg = "Gene not detected"
+  gene_detected <- any(str_detect(gene_range_list, regex(gene, ignore_case = TRUE)))
+  gene_detected_msg <- assertthat::validate_that(
+    gene_detected,
+    msg = glue::glue("Gene {gene} not detected in accession {accession}")
   )
+  if(!gene_detected) {
+    message(gene_detected_msg)
+    return(NULL)
+  }
   
   # Subset to only the target gene
   gene_range <-
@@ -130,17 +228,33 @@ extract_sequence <- function (gb_entry, gene) {
     parse_number %>%
     sort()
   
-  # Make sure that worked correctly
-  assertthat::assert_that(
-    length(unique(gene_range)) <= 2,
-    msg = "Duplicate copies of gene detected")
-  assertthat::assert_that(
-    length(gene_range) > 1,
-    msg = "Full range of gene not detected")
-  assertthat::assert_that(is.numeric(gene_range))
-  assertthat::assert_that(!anyNA(gene_range))
-  assertthat::assert_that(gene_range[1] <= gene_range[2])
-  assertthat::assert_that(gene_range[2] >= gene_range[1])
+  # Check for duplicated genes
+  gene_duplicated <- length(unique(gene_range)) <= 2
+  gene_duplicated_msg <- assertthat::validate_that(
+    gene_duplicated,
+    msg = glue::glue("Duplicate copies of gene {gene} detected in accession {accession}")
+  )
+  if(!gene_duplicated) {
+    message(gene_duplicated_msg)
+    return(NULL)
+  }
+  
+  # Check that full range of gene was detected
+  gene_full <- length(gene_range) > 1 && 
+    is.numeric(gene_range) && 
+    !anyNA(gene_range) && 
+    gene_range[1] <= gene_range[2] && 
+    gene_range[2] >= gene_range[1]
+  
+  gene_full_msg <- assertthat::validate_that(
+    gene_full,
+    msg = glue::glue("Full range of gene {gene} not detected in accession {accession}")
+  )
+  
+  if(!gene_full) {
+    message(gene_full_msg)
+    return(NULL)
+  }
   
   # Extract sequence, subset to target gene
   sequence <- 
@@ -153,18 +267,6 @@ extract_sequence <- function (gb_entry, gene) {
     str_remove_all(" ") %>%
     str_remove_all("[0-9]") %>%
     substr(gene_range[1], gene_range[2])
-  
-  # Extract accession
-  accession <-
-    gb_entry %>%
-    paste(sep = "") %>%
-    str_match('ACCESSION(.+)\n') %>%
-    magrittr::extract(,2) %>%
-    # In very rare cases, may have multiple values for accession,
-    # separated by space. If so, take the first one.
-    str_trim(side = "both") %>%
-    str_split(" ") %>%
-    purrr::pluck(1,1)
   
   set_names(sequence, accession)
 }
@@ -200,7 +302,6 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 }
 
 #' Download a set of fern sequences for a given gene
-#' 
 #'
 #' @param gene Name of gene
 #' @param start_date Earliest date to download
@@ -209,10 +310,10 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 #' @return List of class DNAbin
 #' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
 fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
-
+  
   assertthat::assert_that(assertthat::is.string(gene))
   assertthat::assert_that(assertthat::is.string(end_date))
-    
+  
   # Format GenBank query: all ferns matching the gene name.
   # Assume that we only want single genes or small sets of genes, not entire plastome.
   # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
@@ -229,13 +330,16 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, "gb_records.txt")
   
+  # Make sure temp file doesn't already exist
+  if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
+  
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
   # Parse flatfile
   results <- parse_dna_from_flatfile(temp_file, gene)
-
+  
   fs::file_delete(temp_file)
-
+  
   results
   
 }
@@ -342,7 +446,7 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
     transmute(
       accession, 
       publication = str_replace_all(title, "Direct Submission", NA_character_)) %>%
-      # GenBank accession should be non-missing, unique
+    # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
     assert(is_uniq, accession)
   
@@ -1751,8 +1855,8 @@ concatenate_genes <- function (dna_list) {
                           msg = "All elements of dna_list must be matrices")
   
   # Check that there are no duplicate sequence names (species) within a gene
-    map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
-      assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
+  map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
+    assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
   
   dna_multi <- new("multidna", dna_list) 
   apex::concatenate(dna_multi)
@@ -2062,11 +2166,11 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
   
   # Make sure there is only 1 hit for that accession
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-
+  
   assertthat::assert_that(
     num_hits == 1,
     msg = "Did not find exactly one accession")
-
+  
   # Download complete GenBank record and write it to a temporary file
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, "gb_records.txt")
@@ -2148,7 +2252,7 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
       expect_aa_high = ceiling((dna_len + 3) / 3),
       check_aa_high = aa_len <= expect_aa_high
     )
-    
+  
   cds <- cds_with_all_aa %>%
     filter(check_aa_low, check_aa_high)
   
@@ -3138,7 +3242,7 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
     # trim ambiguous bases from ends
     "-t"
   )
-
+  
   kindel_res <- processx::run("kindel", args)
   
   # Write out standard output so it can be read in with ape::read.FASTA
@@ -3664,12 +3768,12 @@ parse_tax_list <- function(record) {
 #' @examples
 #' fetch_taxonomy(c("2726184", "2605333", "872590"))
 fetch_taxonomy <- function(tax_ids, chunk_size = 200) {
-
+  
   # Make sure taxonomic IDs don't include any missing values
   tax_ids <- as.character(tax_ids)
   assertthat::assert_that(is.character(tax_ids))
   assertthat::assert_that(!any(is.na(tax_ids)))
-
+  
   if(length(tax_ids) < chunk_size) {
     fetch_taxonomy_chunk(tax_ids) %>%
       map_df(parse_tax_list)
@@ -3712,31 +3816,25 @@ clean_ncbi_names <- function(ncbi_names_raw) {
   # Remove problematic names from original data, then add fixed names
   # These still include non-ASCII characters
   ncbi_names_non_ascii <-
-  ncbi_names_raw %>%
+    ncbi_names_raw %>%
     anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
     bind_rows(ncbi_accepted_mult_fixed) %>%
     # Remove brackets around species name
     # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
     mutate(species = str_remove_all(species, "\\[|\\]"))
-
+  
   ncbi_names_clean <- ncbi_names_non_ascii %>%
     mutate(
       species = stringi::stri_trans_general(species, "latin-ascii"),
       scientific_name = stringi::stri_trans_general(scientific_name, "latin-ascii")
-      )
-
+    )
+  
   # Make sure conversion to ASCII doesn't duplicate any names
   assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$species) == n_distinct(ncbi_names_clean$species)))
   assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$scientific_name) == n_distinct(ncbi_names_clean$scientific_name)))
-
+  
   ncbi_names_clean
-     
-}
-
-#' Read in World Ferns database
-load_wf <- function (file) {
-  readxl::read_xlsx(file) %>%
-    janitor::clean_names()
+  
 }
 
 #' Convert raw names table into table matching names to synonyms
@@ -3779,13 +3877,13 @@ make_synonym_table <- function(world_ferns_raw) {
   synonym_table %>% 
     filter(!is.na(synonym)) %>%
     assert(is_uniq, synonym, success_fun = success_logical)
-
+  
   synonym_table %>% 
     filter(!is.na(synonym_ascii)) %>%
     assert(is_uniq, synonym_ascii, success_fun = success_logical)
-
+  
   synonym_table
-    
+  
 }
 
 #' Resolve taxonomic names for sequences downloaded from GenBank
