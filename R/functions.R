@@ -3814,26 +3814,12 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     select(-n_spaces) 
   
   # Remove problematic names from original data, then add fixed names
-  # These still include non-ASCII characters
-  ncbi_names_non_ascii <-
-    ncbi_names_raw %>%
+  ncbi_names_raw %>%
     anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
     bind_rows(ncbi_accepted_mult_fixed) %>%
     # Remove brackets around species name
     # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
     mutate(species = str_remove_all(species, "\\[|\\]"))
-  
-  ncbi_names_clean <- ncbi_names_non_ascii %>%
-    mutate(
-      species = stringi::stri_trans_general(species, "latin-ascii"),
-      scientific_name = stringi::stri_trans_general(scientific_name, "latin-ascii")
-    )
-  
-  # Make sure conversion to ASCII doesn't duplicate any names
-  assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$species) == n_distinct(ncbi_names_clean$species)))
-  assertthat::assert_that(all(n_distinct(ncbi_names_non_ascii$scientific_name) == n_distinct(ncbi_names_clean$scientific_name)))
-  
-  ncbi_names_clean
   
 }
 
