@@ -7,7 +7,7 @@ source("R/functions.R")
 data_raw <- "data_raw"
 
 tar_plan(
-
+  
   # Load data ----
   # Data for resolving taxonomic names:
   # - Catalog of Life database
@@ -31,7 +31,7 @@ tar_plan(
   # Manually selected synonyms for resolving names of plastid genes
   tar_file(sanger_names_with_mult_syns_select_path, path(data_raw, "genbank_names_with_mult_syns_select.csv")),
   sanger_names_with_mult_syns_select = read_csv(sanger_names_with_mult_syns_select_path),
-
+  
   # Download individual plastid sequences from GenBank (Sanger sequences) ----
   # Define variables used in plan
   # - Target plastid fern genes to download
@@ -54,15 +54,27 @@ tar_plan(
     pattern = map(target_genes),
     deployment = "main"
   ),
-
+  
   # Taxonomic name resolution ----
-  # Format taxonomic data for name resolution
-  # wf_synonym_table = make_synonym_table(world_ferns_raw),
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
   # Clean NCBI species names
-  ncbi_names = clean_ncbi_names(ncbi_names_raw) #,
-  # Resolve names to World Ferns
-  # ncbi_names_resolve_results = resolve_gb_names(ncbi_names, wf_synonym_table)
-
+  ncbi_names_full = clean_ncbi_names(ncbi_names_raw),
+  # Exclude invalid names (hybrids, taxa not identified to species level)
+  ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
+  # Parse reference names
+  wf_ref_names = tt_parse_names(unique(world_ferns_data$scientific_name)),
+  # First round of name parsing: NCBI accepted scientific names
+  ncbi_names_query_round_1 = select_ncbi_round_one_names(ncbi_names_query),
+  name_resolution_round_1 = tt_match_names(
+    query = ncbi_names_query_round_1$scientific_name, 
+    reference = wf_ref_names,
+    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
+    as_tibble(),
+  # Classify results
+  match_results_classified_round_1 = tt_classify_result(name_resolution_round_1),
+  # Resolve synonyms
+  match_results_resolved_round_1 = tt_resolve_synonyms(match_results_classified_round_1, world_ferns_data),
+  # Select names for round 2
+  ncbi_names_query_round_2 = select_ncbi_round_two_names(match_results_resolved_round_1, ncbi_names_query)
 )

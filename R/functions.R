@@ -39,7 +39,7 @@ extract_fow_from_col <- function(col_data) {
     mutate(status = str_replace_all(status, "provisionally accepted", "accepted")) %>%
     select(-rank) %>%
     # Note: taxon_id is unique, but scientific_name may not be (esp in case of ambiguous synonyms)
-    assert(not_na, taxon_id) %>% 
+    assert(not_na, taxon_id, scientific_name) %>% 
     assert(is_uniq, taxon_id)
   
   # Make sure all synonyms map correctly
@@ -3409,6 +3409,29 @@ archive_raw_data <- function (version, metadata, out_path) {
 
 # Taxonomic name resolution ----
 
+#' Make a dataframe with taxonomic names
+#'
+#' @param taxa Character vector; taxon names to be parsed by taxon-tools `parsenames`.
+#' Missing values not allowed. Must all be unique.
+#'
+#' @return Dataframe with two columns: `id` and `name`
+#' 
+#' @examples
+#' tt_make_name_df("Foogenus x barspecies var. foosubsp (L.) F. Bar")
+tt_make_name_df <- function(taxa) {
+  
+  assertthat::assert_that(all(assertr::is_uniq(taxa)))
+  assertthat::assert_that(assertthat::noNA(taxa))
+  
+  # Format input names as data frame with unique ID
+  # ID is combination of first 4 chars of hash of the input (taxa), followed by "-" and integer
+  taxa_tbl <- data.frame(name = taxa)
+  taxa_tbl$id <- 1:nrow(taxa_tbl)
+  taxa_tbl$id <- paste(substr(digest::digest(taxa), 1, 4), taxa_tbl$id, sep = "-")
+  
+  taxa_tbl[, c("id", "name")]
+}
+
 #' Parse taxonomic names with (and for) taxon-tools
 #' 
 #' Requires [taxon-tools](https://github.com/camwebb/taxon-tools) to be installed.
@@ -3432,34 +3455,32 @@ archive_raw_data <- function (version, metadata, out_path) {
 #' 
 #' If `file` is specified, the parsed names will be written to that path in a format
 #' for taxon-tools `matchnames`.
+#' 
+#' @examples 
+#' tt_parse_names(c("Foogenus x barspecies var. foosubsp (L.) F. Bar", " "))
 #'
-tt_parse_names <- function(taxa, file = NULL) {
+tt_parse_names <- function(taxa) {
   
   # Check input: must be character vector, no NA values, all unique
   assertthat::assert_that(is.character(taxa))
-  assertthat::assert_that(assertthat::noNA(taxa))
-  assertthat::assert_that(all(assertr::is_uniq(taxa)))
-  if(!is.null(file)) assertthat::assert_that(assertthat::is.string(file))
-  
-  # Format input names as data frame with unique ID
-  # ID is combination of first 4 chars of hash of the input (taxa), followed by "-" and integer
-  taxa_tbl <- data.frame(name = taxa)
-  taxa_tbl$id <- 1:nrow(taxa_tbl)
-  taxa_tbl$id <- paste(substr(digest::digest(taxa), 1, 4), taxa_tbl$id, sep = "-")
-  
+
   # Write out names formatted for parsing with taxon-tools to temp file
   # format: 
   # `id_num|taxon_name`
   # for example,
   # `x-234|Foogenus x barspecies var. foosubsp (L.) F. Bar`
+  taxa_tbl <- tt_make_name_df(taxa)
   taxa_tbl$record <- paste(taxa_tbl$id, taxa_tbl$name, sep = "|")
-  ref_taxa_txt_file <- tempfile()
+  ref_taxa_txt_file <- tempfile(
+    pattern = digest::digest(taxa),
+    fileext = ".txt"
+  )
+  if(fs::file_exists(ref_taxa_txt_file)) fs::file_delete(ref_taxa_txt_file)
   writeLines(taxa_tbl$record, ref_taxa_txt_file)
   
   # Parse reference names with taxon tools
   ref_parsed <- processx::run("parsenames", ref_taxa_txt_file)
-  
-  fs::file_delete(ref_taxa_txt_file)
+  if(fs::file_exists(ref_taxa_txt_file)) fs::file_delete(ref_taxa_txt_file)
   
   # Read in results of parsing, format as dataframe
   
@@ -3496,14 +3517,86 @@ tt_parse_names <- function(taxa, file = NULL) {
     !all(parsed_res$fail == TRUE),
     msg = "No names could be successfully parsed")
   
-  # Add back in original names
-  parsed_res <- dplyr::left_join(parsed_res, dplyr::select(taxa_tbl, name, id), by = "id")
+  # Emit warning for failures
+  if(sum(parsed_res$fail) > 0) {
+    failed_ids <- parsed_res$id[parsed_res$fail == TRUE]
+    failed_names <- paste(taxa_tbl$name[taxa_tbl$id %in% failed_ids], collapse = ", ") 
+    warning(glue::glue("The following names could not be parsed and are excluded from results: {failed_names}"))
+  }
   
-  # Optionally write out successfully parsed and formatted names to file
-  if(!is.null(file)) writeLines(text = parsed_res$record[parsed_res$fail == FALSE], con = file)
+  # Add back in original name
+  parsed_res <- dplyr::left_join(
+    parsed_res,
+    dplyr::select(taxa_tbl, id, name), by = "id")
+  
+  # Remove failures, drop "fail" column
+  parsed_res <- parsed_res[parsed_res$fail == FALSE, ]
+  parsed_res$fail <- NULL
   
   # Return parsed names as dataframe
-  dplyr::select(parsed_res, id, name, dplyr::all_of(name_parts))
+  parsed_res[, c("name", "id", name_parts)]
+}
+
+#' Load parsed taxon names
+#'
+#' @param path Path to taxon names that were parsed with taxon-tools
+#' https://github.com/camwebb/taxon-tools
+#'
+#' @return Dataframe (tibble)
+#' 
+tt_load_names <- function(path) {
+  suppressMessages(
+    # Read in the parsed names as a dataframe
+    readr::read_delim(
+      path, delim = "|", 
+      col_types = cols(.default = readr::col_character()),
+      col_names = c(
+        "id",
+        "genus_hybrid_sign",
+        "genus_name",
+        "species_hybrid_sign",
+        "specific_epithet",
+        "infraspecific_rank",
+        "infraspecific_epithet",
+        "author"
+      )
+    )
+  )
+}
+
+#' Write out parsed names for taxon-tools from a dataframe to a text file
+#'
+#' @param df Dataframe with parsed names
+#' @param path Path to write dataframe
+#'
+#' @return Path to parsed names
+tt_write_names <- function(df, path) {
+  
+  # Make vector of standard taxon-tools columns
+  tt_col_names = c(
+    "id",
+    "genus_hybrid_sign",
+    "genus_name",
+    "species_hybrid_sign",
+    "specific_epithet",
+    "infraspecific_rank",
+    "infraspecific_epithet",
+    "author"
+  )
+  
+  # Replace NA values with ""
+  df <- dplyr::mutate(df, dplyr::across(dplyr::everything(), ~tidyr::replace_na(., "")))
+  
+  # Subset to only taxon-tools columns, in order
+  df <- df[, tt_col_names]
+  
+  # taxon-tools uses pipe as separator
+  df <- tidyr::unite(df, col = "text", dplyr::all_of(tt_col_names), sep = "|")
+  
+  # write out text
+  writeLines(df$text, path)
+  
+  path
   
 }
 
@@ -3517,13 +3610,17 @@ tt_parse_names <- function(taxa, file = NULL) {
 #' Next, names are fuzzily matched following rules using the component parts.
 #' 
 #' Parsing is fairly fast (much faster than matching) but can take some time if the
-#' number of names is very large. If multiple queries will be made against the same
-#' reference, the cache can be used to store parsed reference names to avoid
-#' parsing these multiple times.
+#' number of names is very large. If multiple queries will be made, it is recommended
+#' to first parse the names to a file using `tt_parse_names()`, and use the file(s) as
+#' input to `query` and/or `reference`.
+#' 
+#' One of either `reference` or `cache` must be provided.
 #'
-#' @param query Character vector; taxon names to be queried.
+#' @param query Character vector; taxon names to be queried, or the path to a text
+#' file with taxon names that have been parsed with `tt_parse_names()`.
 #' Missing values not allowed. Must all be unique.
-#' @param reference  Character vector; taxon names to use as reference.
+#' @param reference  Character vector; taxon names to use as reference, or the path to a text
+#' file with taxon names that have been parsed with `tt_parse_names()`.
 #' Missing values not allowed. Must all be unique.
 #' @param max_dist Max Levenshtein distance to allow during fuzzy matching. 
 #' (total insertions, deletions and substitutions)
@@ -3534,69 +3631,61 @@ tt_parse_names <- function(taxa, file = NULL) {
 #' and infraspecific epithet (if present) match exactly. Default: to not allow such a match.
 #' @param simple Logical; return the output in a simplified format with only the query
 #' name, matched reference name, and match type.
-#' @param cache Character vector of length 1; path to cache (RDS file) for storing 
-#' parsed reference names. If it does not already exist, it will be created.
 #'
 #' @return Dataframe
 #' 
-tt_match_names <- function(query, reference, max_dist = 10, match_no_auth = FALSE, match_canon = FALSE, simple = FALSE, cache = NULL) {
+tt_match_names <- function(
+  query, reference, 
+  max_dist = 10, match_no_auth = FALSE, match_canon = FALSE, simple = FALSE
+) {
   
   # Check input
-  assertthat::assert_that(is.character(query))
-  assertthat::assert_that(assertthat::noNA(query))
-  assertthat::assert_that(all(assertr::is_uniq(query)))
-  assertthat::assert_that(is.character(reference))
-  assertthat::assert_that(assertthat::noNA(reference))
-  assertthat::assert_that(all(assertr::is_uniq(reference)))
+  assertthat::assert_that(is.character(query) | inherits(query, "data.frame"))
+  # assertthat::assert_that(assertthat::noNA(query))
+  # assertthat::assert_that(all(assertr::is_uniq(query)))
+  assertthat::assert_that(is.character(reference) | inherits(reference, "data.frame"))
+  # assertthat::assert_that(assertthat::noNA(reference))
+  # assertthat::assert_that(all(assertr::is_uniq(reference)))
   assertthat::assert_that(assertthat::is.number(max_dist))
   assertthat::assert_that(is.logical(match_no_auth))
   assertthat::assert_that(is.logical(match_canon))
   assertthat::assert_that(is.logical(simple))
-  if(!is.null(cache)) assertthat::assert_that(assertthat::is.string(cache))
   
-  # Handling the cache:
-  # If no cache is specified, just parse reference names
-  # If cache is specified... 
-  # - if cache already exists, load reference text and dataframe from cache
-  # - if cache doesn't yet exist, parse names and save to cache
-  if(is.null(cache)) {
-    # Parse the reference names to a temporary file
-    ref_parsed_txt <- paste0(tempfile(), ".txt")
-    ref_parsed_df <- tt_parse_names(taxa = reference, file = ref_parsed_txt)
+  # Parse or load query names
+  if(is.character(query)) {
+    # Parse the names (adds 'name' column)
+    query_parsed_df <- tt_parse_names(query)
   } else {
-    if(file.exists(cache)) {
-      # Load the cache
-      cache_objects <- readRDS(cache)
-      ref_parsed_df <- cache_objects$parsed_df
-      # Save the plain text of successfully parsed names to a temporary file
-      ref_parsed_txt <- paste0(tempfile(), ".txt")
-      writeLines(cache_objects$parsed_txt, ref_parsed_txt)
-    } else {
-      # Parse the reference names to a temporary file
-      ref_parsed_txt <- paste0(tempfile(), ".txt")
-      ref_parsed_df <- tt_parse_names(taxa = reference, file = ref_parsed_txt)
-      # Save the dataframe output by tt_parse_names() and the
-      # plain text of successfully parsed names to the cache
-      saveRDS(
-        object = list(
-          parsed_df = ref_parsed_df,
-          parsed_txt = readLines(ref_parsed_txt)
-        ),
-        file = cache
-      )
-    }
+    # Or, names are already parsed
+    query_parsed_df <- query
   }
   
-  # Parse the query names to a temporary file
-  query_parsed_txt <- paste0(tempfile(), ".txt")
-  query_parsed_df <- tt_parse_names(taxa = query, file = query_parsed_txt)
+  # Write out parsed names to temporary file
+  query_parsed_txt <- tempfile(pattern = digest::digest(query), fileext = ".txt")
+  if(fs::file_exists(query_parsed_txt)) fs::file_delete(query_parsed_txt)
+  tt_write_names(query_parsed_df, query_parsed_txt)
+  
+  # Parse or load reference names
+  if(is.character(reference)) {
+    # Parse the names (adds 'name' column)
+    ref_parsed_df <- tt_parse_names(reference)
+  } else {
+    # Or, names are already parsed
+    ref_parsed_df <- reference
+  }
+  
+  # Write out parsed names to temporary file
+  ref_parsed_txt <- tempfile(pattern = digest::digest(reference), fileext = ".txt")
+  if(fs::file_exists(ref_parsed_txt)) fs::file_delete(ref_parsed_txt)
+  tt_write_names(ref_parsed_df, ref_parsed_txt)
   
   # Format argument flags
   if(match_no_auth) match_no_auth <- "-1" else match_no_auth <- NULL
   if(match_canon) match_canon <- "-c" else match_canon <- NULL
   
   # Specify temporary output file
-  match_results_txt <- paste0(tempfile(), ".txt")
+  match_results_txt <- tempfile(pattern = digest::digest(c(query, reference)), fileext = ".txt")
+  if(fs::file_exists(match_results_txt)) fs::file_delete(match_results_txt)
   
   # Run taxon-tools matchnames
   match_results <- processx::run(
@@ -3817,8 +3906,135 @@ clean_ncbi_names <- function(ncbi_names_raw) {
   ncbi_names_raw %>%
     anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
     bind_rows(ncbi_accepted_mult_fixed) %>%
-    # Remove brackets around species name
-    # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
-    mutate(species = str_remove_all(species, "\\[|\\]"))
+    mutate(
+      # Remove brackets around species name
+      # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
+      species = str_remove_all(species, "\\[|\\]"),
+      # Remove year after authorship in scientific name
+      scientific_name = str_remove_all(scientific_name, ", [0-9][0-9][0-9][0-9]")
+      )
   
 }
+
+#' Exclude invalid names from taxonomic name resolution
+#'
+#' @param ncbi_names Names downloaded from NCBI taxonomy database.
+#' Output of clean_ncbi_names()
+#'
+#' @return Dataframe
+#' 
+exclude_invalid_ncbi_names <- function(ncbi_names) {
+  # Exclude names from consideration that aren't fully identified to species, or are hybrids
+  # (assume there should be at least one space between genus and species)
+  ncbi_names_exclude <-
+    ncbi_names %>%
+    filter(str_detect(species, " sp\\.| aff\\.| cf\\.| x ") | str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| x ") | str_count(species, " ") < 1 | str_count(scientific_name, " ") < 1)
+  
+  ncbi_names %>%
+    anti_join(ncbi_names_exclude, by = "species", na_matches = "never") %>%
+    anti_join(ncbi_names_exclude, by = "scientific_name", na_matches = "never")
+}
+
+#' Select NCBI names for first round of taxonomic name resolution
+#' 
+#' Names that are considered "accepted" by NCBI and have full scientific name (with author)
+#'
+#' @param ncbi_names Names downloaded from NCBI taxonomy database.
+#'
+#' @return Dataframe (tibble)
+#' 
+select_ncbi_round_one_names <- function(ncbi_names) {
+  ncbi_names %>%
+    filter(accepted == TRUE) %>%
+    filter(!is.na(scientific_name)) %>%
+    assertr::assert(is_uniq, taxid, scientific_name)
+}
+
+
+#' Classify results of taxon-tools matching
+#'
+#' @param match_results Dataframe; output of tt_match_names()
+#'
+#' @return Dataframe with column `result_type` added
+#' 
+tt_classify_result <- function(match_results) {
+  match_results %>%
+    add_count(query) %>%
+    mutate(
+      result_type = case_when(
+        match_type != "no_match" & n == 1 ~ "single_match",
+        match_type != "no_match" & n > 1 ~ "mult_match",
+        match_type == "no_match" ~ "no_match",
+        TRUE ~ NA_character_
+      )
+    ) %>%
+    assert(not_na, result_type) %>%
+    select(-n)
+}
+
+#' Resolve synonyms after matching names
+#'
+#' @param match_results_classified Dataframe; output of tt_classify_result() 
+#' @param taxonomy_data Dataframe; taxonomic data with columns 
+#' `taxon_id` `accepted_name_taxon_id` `status` `scientific_name`
+#'
+#' @return Dataframe; match results with column name `accepted_name` added.
+#' Failures have `NA` for `accepted_name`.
+#' 
+tt_resolve_synonyms <- function(match_results_classified, taxonomy_data) {
+  match_results_classified_with_taxonomy <-
+    match_results_classified %>% 
+    select(query, reference, match_type, result_type) %>%
+    left_join(taxonomy_data, by = c(reference = "scientific_name"))
+  
+  accepted_single_match <-
+    match_results_classified_with_taxonomy %>%
+    filter(status == "accepted" & result_type == "single_match") %>%
+    mutate(accepted_name = reference) %>%
+    select(query, reference, accepted_name, match_type, status)
+  
+  accepted_single_synonyms <-
+    match_results_classified_with_taxonomy %>% 
+    filter(status == "synonym") %>%
+    left_join(
+      select(taxonomy_data, taxon_id, accepted_name = scientific_name), 
+      by = c(accepted_name_taxon_id = "taxon_id"))  %>%
+    select(query, reference, accepted_name, match_type, status) %>%
+    group_by(query) %>%
+    # Add count of number of resolved, accepted names per query
+    mutate(n = n_distinct(accepted_name)) %>%
+    ungroup() %>%
+    filter(n == 1) %>%
+    select(-n)
+  
+  success <- bind_rows(accepted_single_match, accepted_single_match)
+  
+  failure <-
+    match_results_classified_with_taxonomy %>%
+    select(query, reference, match_type, status) %>%
+    anti_join(success, by = "query")
+  
+  bind_rows(success, failure) %>% 
+    verify(all(query %in% match_results_classified$query)) %>%
+    verify(all(match_results_classified$query %in% query))
+}
+
+#' Select NCBI names for second round of taxonomic name resolution
+#' 
+#' Names that are considered synonyms by NCBI and have full scientific name (with author)
+#'
+#' @param match_results_resolved Dataframe; output of tt_resolve_synonyms() 
+#' @param ncbi_names Names downloaded from NCBI taxonomy database.
+#'
+#' @return Dataframe (tibble)
+#' 
+select_ncbi_round_two_names <- function(match_results_resolved, ncbi_names) {
+  match_results_resolved %>% 
+    filter(is.na(accepted_name)) %>%
+    select(scientific_name = query) %>%
+    # Filter query to only synonyms of accepted names that couldn't be resolved in the first round
+    left_join(ncbi_names, by = "scientific_name") %>%
+    filter(accepted == FALSE) %>%
+    filter(!is.na(scientific_name))
+}
+
