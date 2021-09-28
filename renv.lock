@@ -1150,6 +1150,13 @@
       "Repository": "CRAN",
       "Hash": "11e2e922127153ec9c47f582df0d6c3d"
     },
+    "rgnparser": {
+      "Package": "rgnparser",
+      "Version": "0.2.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "9bbcf8403b28711a8879874f2bb11666"
+    },
     "ritis": {
       "Package": "ritis",
       "Version": "0.9.0",

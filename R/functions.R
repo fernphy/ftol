@@ -3463,7 +3463,7 @@ tt_parse_names <- function(taxa) {
   
   # Check input: must be character vector, no NA values, all unique
   assertthat::assert_that(is.character(taxa))
-
+  
   # Write out names formatted for parsing with taxon-tools to temp file
   # format: 
   # `id_num|taxon_name`
@@ -3912,7 +3912,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       species = str_remove_all(species, "\\[|\\]"),
       # Remove year after authorship in scientific name
       scientific_name = str_remove_all(scientific_name, ", [0-9][0-9][0-9][0-9]")
-      )
+    )
   
 }
 
@@ -4106,5 +4106,10 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
     filter(!is.na(accepted_name)) %>% 
     select(taxid, accepted_name) %>%
     unique() %>% 
-    assert(is_uniq, taxid)
+    assert(is_uniq, taxid) %>%
+    # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
+    mutate(
+      rgnparser::gn_parse_tidy(ncbi_accepted_names_map$accepted_name) %>% 
+        select(taxon = canonicalsimple)
+    )
 }
