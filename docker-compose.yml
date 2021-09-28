@@ -1,7 +1,7 @@
 version: "3"
 services:
   analysis:
-    image: joelnitta/ftol:0.0.1
+    image: joelnitta/ftol:latest
     ports:
       - "7070:8787"
     volumes:

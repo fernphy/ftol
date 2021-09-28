@@ -401,10 +401,10 @@
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.12.8",
+      "Version": "1.14.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "cd711af60c47207a776213a368626369"
+      "Hash": "d1b8b1a821ee564a3515fa6c6d5c52dc"
     },
     "dbplyr": {
       "Package": "dbplyr",
@@ -1080,6 +1080,13 @@
       "Repository": "CRAN",
       "Hash": "5aef4b2e36fe729608b55abb04944827"
     },
+    "read.gb": {
+      "Package": "read.gb",
+      "Version": "2.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "71ac7b3d6d9c384c775f9ddee4680d98"
+    },
     "readr": {
       "Package": "readr",
       "Version": "1.3.1",
@@ -1142,6 +1149,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "11e2e922127153ec9c47f582df0d6c3d"
+    },
+    "rgnparser": {
+      "Package": "rgnparser",
+      "Version": "0.2.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "9bbcf8403b28711a8879874f2bb11666"
     },
     "ritis": {
       "Package": "ritis",
