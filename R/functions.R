@@ -73,81 +73,7 @@ extract_fow_from_col <- function(col_data) {
   fow
 }
 
-
-# Download GenBank seqs ----
-
-#' Helper function to parse character vector from GenBank record into dataframe
-#'
-#' @param text Character vector from reading in a GenBank record
-#'
-#' @return Dataframe
-#' 
-#' @examples
-#' gb_text <- c("ACCESSION   MK697585",                                             
-#' "REFERENCE   1  (bases 1 to 817)",                                  
-#' "  TITLE     Hybridization rates in Dryopteris carthusiana complex",
-#' "REFERENCE   2  (bases 1 to 817)",                                  
-#' "  TITLE     Direct Submission")  
-#' tidy_gb_text(gb_text)
-tidy_gb_text <- function(text) {
-  
-  if(length(text) == 0) return(tibble())
-  if(is.null(text)) return(tibble())
-  
-  text %>%
-    stringr::str_trim("left") %>%
-    # Split text on the first instance of >1 space
-    stringr::str_split("  +", n = 2) %>%
-    # Convert to tibble in wide format
-    purrr::map_df(~tibble::tibble(var = .[[1]], value = .[[2]])) %>%
-    dplyr::mutate(var = janitor::make_clean_names(var)) %>%
-    tidyr::pivot_wider(values_from = "value", names_from = "var")
-}
-
-#' Fetch reference data (title of reference where sequence was published)
-#' for a GenBank query
-#'
-#' @param query GenBank query
-#'
-#' @return Tibble
-#' @export
-#'
-#' @examples
-#' fetch_genbank_refs("KY241392")
-#' fetch_genbank_refs("Crepidomanes minutum AND rbcL[Gene]")
-fetch_genbank_refs <- function(query) {
-  
-  # Get list of GenBank IDs (GIs)
-  uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
-  
-  # Exract number of hits and print
-  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  print(glue("Found {num_hits} sequences (UIDs)"))
-  
-  # Download complete GenBank record for each and write it to a temporary file
-  temp_dir <- tempdir()
-  temp_file <- fs::path(temp_dir, "gb_records.txt")
-  
-  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
-  # Read in full GenBank records text
-  gbrecs <- readr::read_lines(temp_file) %>% 
-    # Replace problematic slashes (that indicate a break between records) with "RECORD_BREAK"
-    stringr::str_replace_all("^//$", "RECORD_BREAK") %>% 
-    # Keep only relevant lines in each record
-    magrittr::extract(str_detect(., "ACCESSION|TITLE|REFERENCE|RECORD_BREAK"))
-  
-  # Make a vector of record groups for splitting the records into a list
-  record_groups <- cumsum(gbrecs == "RECORD_BREAK")
-  
-  # Split the records into a list of records
-  split(gbrecs, record_groups) %>%
-    # Don't need the "RECORD_BREAK" string anymore
-    purrr::map(~magrittr::extract(., stringr::str_detect(., "RECORD_BREAK", negate = TRUE))) %>%
-    # Tidy the list
-    purrr::map_df(tidy_gb_text)
-  
-}
+# Download Sanger sequences from GenBank----
 
 #' Extract a translated amino acid sequence from a single entry
 #' in a genbank flatfile
@@ -352,6 +278,8 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, return_df
   
 }
 
+# Download metadata for Sanger sequences from GenBank ----
+
 #' Fetch metadata from GenBank
 #'
 #' @param query String to use for querying GenBank
@@ -422,6 +350,79 @@ fetch_metadata <- function(
   
 }
 
+#' Helper function for fetch_genbank_refs() to parse character vector from GenBank record into dataframe
+#'
+#' @param text Character vector from reading in a GenBank record
+#'
+#' @return Dataframe
+#' 
+#' @examples
+#' gb_text <- c("ACCESSION   MK697585",                                             
+#' "REFERENCE   1  (bases 1 to 817)",                                  
+#' "  TITLE     Hybridization rates in Dryopteris carthusiana complex",
+#' "REFERENCE   2  (bases 1 to 817)",                                  
+#' "  TITLE     Direct Submission")  
+#' tidy_gb_text(gb_text)
+tidy_gb_text <- function(text) {
+  
+  if(length(text) == 0) return(tibble())
+  if(is.null(text)) return(tibble())
+  
+  text %>%
+    stringr::str_trim("left") %>%
+    # Split text on the first instance of >1 space
+    stringr::str_split("  +", n = 2) %>%
+    # Convert to tibble in wide format
+    purrr::map_df(~tibble::tibble(var = .[[1]], value = .[[2]])) %>%
+    dplyr::mutate(var = janitor::make_clean_names(var)) %>%
+    tidyr::pivot_wider(values_from = "value", names_from = "var")
+}
+
+#' Fetch reference data (title of reference where sequence was published)
+#' for a GenBank query
+#'
+#' @param query GenBank query
+#'
+#' @return Tibble
+#' @export
+#'
+#' @examples
+#' fetch_genbank_refs("KY241392")
+#' fetch_genbank_refs("Crepidomanes minutum AND rbcL[Gene]")
+fetch_genbank_refs <- function(query) {
+  
+  # Get list of GenBank IDs (GIs)
+  uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
+  
+  # Exract number of hits and print
+  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
+  print(glue("Found {num_hits} sequences (UIDs)"))
+  
+  # Download complete GenBank record for each and write it to a temporary file
+  temp_dir <- tempdir()
+  temp_file <- fs::path(temp_dir, "gb_records.txt")
+  
+  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
+  
+  # Read in full GenBank records text
+  gbrecs <- readr::read_lines(temp_file) %>% 
+    # Replace problematic slashes (that indicate a break between records) with "RECORD_BREAK"
+    stringr::str_replace_all("^//$", "RECORD_BREAK") %>% 
+    # Keep only relevant lines in each record
+    magrittr::extract(str_detect(., "ACCESSION|TITLE|REFERENCE|RECORD_BREAK"))
+  
+  # Make a vector of record groups for splitting the records into a list
+  record_groups <- cumsum(gbrecs == "RECORD_BREAK")
+  
+  # Split the records into a list of records
+  split(gbrecs, record_groups) %>%
+    # Don't need the "RECORD_BREAK" string anymore
+    purrr::map(~magrittr::extract(., stringr::str_detect(., "RECORD_BREAK", negate = TRUE))) %>%
+    # Tidy the list
+    purrr::map_df(tidy_gb_text)
+  
+}
+
 #' Download a set of fern sequence metadata for a given gene
 #'
 #' @param gene Name of gene
@@ -465,6 +466,8 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   
 }
 
+# Combine Sanger sequences data ----
+
 #' Combine sanger sequence metadata with sequences, join to resolved names
 #' and filter by sequence length and if name was resolved or not
 #' 
@@ -487,6 +490,8 @@ combine_and_filter_sanger <- function(raw_meta, raw_fasta, ncbi_accepted_names_m
     filter(slen > 400) %>%
     assert(not_na, accession, seq, accepted_name, taxon)
 }
+
+# Remove rogues ----
 
 #' Run all-by-all BLAST to detect rogue sequences in GenBank pteridophytes
 #' 
@@ -709,99 +714,6 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
   seqs
 }
 
-#' Tidy GenBank metadata
-#'
-#' GenBank metadata comes with a column "subtype" containing miscellaneous
-#' data separated by '|'. The names of these data are in the "subname" column.
-#' This function tidies these two columns, i.e., converts the data in the
-#' "subtype" column so each value gets its own column.
-#' 
-#' @param data Dataframe; GenBank metadata obtained with
-#' gbfetch::fetch_metadata.
-#'
-#' @return Dataframe.
-#' 
-#' @examples
-#' raw_meta <- fetch_metadata("rbcl[Gene] AND Crepidomanes[ORGN]")
-#' # Raw metadata still contains untidy data in the "subtype" and 
-#' # "subname" columns
-#' raw_meta
-#' # Tidy!
-#' tidy_genbank_metadata(raw_meta)
-
-tidy_genbank_metadata <- function(data) {
-  
-  # Check assumptions: must have subtype and subname columns present
-  assertthat::assert_that("subtype" %in% colnames(data))
-  assertthat::assert_that("subname" %in% colnames(data))
-  
-  # Define helper function that works on one row at a time
-  tidy_genbank_meta_single <- function(data) {
-    
-    # Early return if no data to parse in subtype
-    if(data$subtype == "" | is.na(data$subtype)) return (data %>% dplyr::select(-subname, -subtype))
-    if(data$subname == "" | is.na(data$subname)) return (data %>% dplyr::select(-subname, -subtype))
-    
-    # Split "subtype" into multiple columns
-    # Use janitor::make_clean_names to de-duplicate names
-    sub_cols <- data %>% 
-      dplyr::pull(subtype) %>% 
-      stringr::str_split("\\|") %>% 
-      magrittr::extract2(1) %>% 
-      janitor::make_clean_names()
-    
-    sub_data <- data %>% 
-      dplyr::select(subname) %>% 
-      tidyr::separate(subname, into = sub_cols, sep = "\\|")
-    
-    data %>% 
-      dplyr::select(-subname, -subtype) %>% 
-      dplyr::bind_cols(sub_data)
-  }
-  
-  # Apply the function row-wise and combine back into a dataframe
-  transpose(data) %>%
-    purrr::map(as_tibble) %>%
-    purrr::map_df(tidy_genbank_meta_single)
-  
-}
-
-#' Filter GenBank sequences
-#'
-#' @param metadata_with_seqs Tibble containting sequences downloaded
-#' from GenBank (column "seqs") and associated metadata (at least "accession"
-#' and "species").
-#' @param min_len Minimum sequence length to retain
-#' @param ppgi Tibble; genus-level and higher taxonomic system for pteridophytes,
-#' according to PPGI 2016.
-#' @param ... Additional arguments not used by this function but meant for 
-#' tracking with drake
-#'
-#' @return Tibble
-filter_sanger_seqs <- function (metadata_with_seqs, min_len, ppgi, ...) {
-  
-  # Check for genera missing from ppgi, warn before dropping
-  genus_not_in_ppgi <-
-    metadata_with_seqs %>%
-    dplyr::mutate(genus = stringr::str_split(species, " ") %>% purrr::map_chr(1)) %>%
-    dplyr::anti_join(ppgi, by = "genus") %>%
-    dplyr::mutate(msg = glue("{accession} ({genus})")) %>%
-    dplyr::arrange(genus)
-  
-  assertthat::validate_that(
-    nrow(genus_not_in_ppgi) == 0,
-    msg = warning(glue(
-      "{nrow(genus_not_in_ppgi)} accessions do not have genera in ppgi and will be dropped: 
-       {paste(genus_not_in_ppgi$msg, collapse = ', ')}"))
-  )
-  
-  # Apply filters
-  metadata_with_seqs %>%
-    dplyr::anti_join(genus_not_in_ppgi, by = "accession") %>%
-    dplyr::filter(length > min_len) 
-  
-}
-
 #' Select a set of GenBank genes by joining on common vouchers
 #' 
 #' This assumes genes comprise: "rbcL", "atpA", "atpB", "rps4"
@@ -914,37 +826,6 @@ select_genbank_genes <- function (genbank_seqs_tibble, n_seqs_per_sp = c("single
   
 }
 
-# Helper function to extract DNA sequences from tibble
-# where they are stored as a list-column
-extract_seqs <- function(data) {
-  seqs <- data$seq
-  names(seqs) <- data$accession
-  ape::as.DNAbin(seqs)
-}
-
-#' Rename genes from number (1, 2, etc) to gene name ("rbcL", "atpA", etc)
-#'
-#' @param raw_fasta_all_genes Combined dataframe including metadata
-#' and DNA sequence for all downloaded GenBank (Sanger) sequences
-#' @param genes_used Character vector of genes used
-#'
-#' @return Dataframe with genes listed by name instead of number
-#' 
-rename_genes <- function (raw_fasta_all_genes, genes_used) {
-  
-  ### Recode gene names from numbers to actual genes used ###
-  # Note this depends on the order of `genes_used`:
-  # must be in the same order as `target_used used` for fetch_fern_gene()
-  genes_used <- genes_used %>% set_names(1:length(genes_used))
-  
-  raw_fasta_all_genes %>%
-    rename(gene_number = gene) %>%
-    mutate(
-      gene = recode(gene_number, !!!genes_used)
-    )
-  
-}
-
 #' Filter out species in plastome data from Sanger data
 #'
 #' @param plastome_genes_unaligned List of unaligned plastome genes
@@ -977,80 +858,64 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
   
 }
 
-#' Combine sequences for target genes from GenBank with sequences
-#' extracted from plastomes
+# Download plastomes from GenBank ----
+
+#' Tidy GenBank metadata
 #'
-#' @param raw_fasta_all_genes Tibble of DNA sequence data downloaded from GenBank
-#' @param sanger_accessions_selection Final selection of accessions to use after removing rogues
-#' @param plastome_genes_unaligned List of unaligned genes extracted from plastomes
-#'
-#' @return List of class DNAbin
+#' GenBank metadata comes with a column "subtype" containing miscellaneous
+#' data separated by '|'. The names of these data are in the "subname" column.
+#' This function tidies these two columns, i.e., converts the data in the
+#' "subtype" column so each value gets its own column.
 #' 
-combine_sanger_with_plastome <- function (
-  raw_fasta_all_genes,
-  sanger_accessions_selection,
-  plastome_genes_unaligned
-) {
+#' @param data Dataframe; GenBank metadata obtained with
+#' gbfetch::fetch_metadata.
+#'
+#' @return Dataframe.
+#' 
+#' @examples
+#' raw_meta <- fetch_metadata("rbcl[Gene] AND Crepidomanes[ORGN]")
+#' # Raw metadata still contains untidy data in the "subtype" and 
+#' # "subname" columns
+#' raw_meta
+#' # Tidy!
+#' tidy_genbank_metadata(raw_meta)
+
+tidy_genbank_metadata <- function(data) {
   
-  # Convert final selected GenBank (Sanger) accessions to long format
-  final_gb_accessions <-
-    sanger_accessions_selection %>%
-    select(species, specimen_voucher, contains("accession")) %>%
-    pivot_longer(
-      cols = contains("accession"),
-      names_to = "gene",
-      names_pattern = "_(.*)$",
-      values_to = "accession") %>%
-    filter(!is.na(accession))
+  # Check assumptions: must have subtype and subname columns present
+  assertthat::assert_that("subtype" %in% colnames(data))
+  assertthat::assert_that("subname" %in% colnames(data))
   
-  # GenBank (Sanger) data: add sequence data, group by gene
-  final_seqs_grouped <-
-    final_gb_accessions %>%
-    # Check that the combination of gene + accession is unique
-    assert_rows(col_concat, is_uniq, accession, gene) %>%
-    left_join(
-      select(raw_fasta_all_genes, gene, accession, seq),
-      # Join on gene + accession, since some different genes share the same acc
-      by = c("gene", "accession")
-    ) %>%
-    # Check that the combination of gene + accession is unique
-    assert_rows(col_concat, is_uniq, accession, gene) %>%
-    # Set grouping
-    group_by(gene)
+  # Define helper function that works on one row at a time
+  tidy_genbank_meta_single <- function(data) {
+    
+    # Early return if no data to parse in subtype
+    if(data$subtype == "" | is.na(data$subtype)) return (data %>% dplyr::select(-subname, -subtype))
+    if(data$subname == "" | is.na(data$subname)) return (data %>% dplyr::select(-subname, -subtype))
+    
+    # Split "subtype" into multiple columns
+    # Use janitor::make_clean_names to de-duplicate names
+    sub_cols <- data %>% 
+      dplyr::pull(subtype) %>% 
+      stringr::str_split("\\|") %>% 
+      magrittr::extract2(1) %>% 
+      janitor::make_clean_names()
+    
+    sub_data <- data %>% 
+      dplyr::select(subname) %>% 
+      tidyr::separate(subname, into = sub_cols, sep = "\\|")
+    
+    data %>% 
+      dplyr::select(-subname, -subtype) %>% 
+      dplyr::bind_cols(sub_data)
+  }
   
-  # GenBank (Sanger) data: convert to list of DNA sequences, name by gene
-  genbank_genes_unaligned <-
-    final_seqs_grouped %>%
-    group_split %>%
-    map(extract_seqs)
-  
-  names(genbank_genes_unaligned) <- group_keys(final_seqs_grouped) %>% pull(gene)
-  
-  ### Combine with plastome sequences ###
-  
-  # - Make vector of genes in common between Sanger and plastome sequences
-  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastome_genes_unaligned)) 
-  
-  # - Make a list of accessions for genes in common between Sanger and plastome sequences
-  common_genes <-
-    common_gene_names %>%
-    map(~c(genbank_genes_unaligned[[.]], plastome_genes_unaligned[[.]])) %>%
-    set_names(common_gene_names)
-  
-  # - Make a list of accessions in Sanger genes only (likely zero, but for completeness' sake)
-  genbank_genes_only <- genbank_genes_unaligned %>%
-    magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastome_genes_unaligned)))
-  
-  # - Make a list of accessions in plastome sequences only
-  plastome_genes_only <- plastome_genes_unaligned %>%
-    magrittr::extract(setdiff(names(plastome_genes_unaligned), names(genbank_genes_unaligned)))
-  
-  # Combine the lists
-  c(common_genes, genbank_genes_only, plastome_genes_only)
+  # Apply the function row-wise and combine back into a dataframe
+  transpose(data) %>%
+    purrr::map(as_tibble) %>%
+    purrr::map_df(tidy_genbank_meta_single)
   
 }
-
-# Download plastid genes from plastomes ----
 
 #' Download plastome metadata
 #'
@@ -1972,6 +1837,80 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
     duplicates = duplicates,
     length_errors = aa_length_errors
   )
+  
+}
+
+
+#' Combine sequences for target genes from GenBank with sequences
+#' extracted from plastomes
+#'
+#' @param raw_fasta_all_genes Tibble of DNA sequence data downloaded from GenBank
+#' @param sanger_accessions_selection Final selection of accessions to use after removing rogues
+#' @param plastome_genes_unaligned List of unaligned genes extracted from plastomes
+#'
+#' @return List of class DNAbin
+#' 
+combine_sanger_with_plastome <- function (
+  raw_fasta_all_genes,
+  sanger_accessions_selection,
+  plastome_genes_unaligned
+) {
+  
+  # Convert final selected GenBank (Sanger) accessions to long format
+  final_gb_accessions <-
+    sanger_accessions_selection %>%
+    select(species, specimen_voucher, contains("accession")) %>%
+    pivot_longer(
+      cols = contains("accession"),
+      names_to = "gene",
+      names_pattern = "_(.*)$",
+      values_to = "accession") %>%
+    filter(!is.na(accession))
+  
+  # GenBank (Sanger) data: add sequence data, group by gene
+  final_seqs_grouped <-
+    final_gb_accessions %>%
+    # Check that the combination of gene + accession is unique
+    assert_rows(col_concat, is_uniq, accession, gene) %>%
+    left_join(
+      select(raw_fasta_all_genes, gene, accession, seq),
+      # Join on gene + accession, since some different genes share the same acc
+      by = c("gene", "accession")
+    ) %>%
+    # Check that the combination of gene + accession is unique
+    assert_rows(col_concat, is_uniq, accession, gene) %>%
+    # Set grouping
+    group_by(gene)
+  
+  # GenBank (Sanger) data: convert to list of DNA sequences, name by gene
+  genbank_genes_unaligned <-
+    final_seqs_grouped %>%
+    group_split %>%
+    map(extract_seqs)
+  
+  names(genbank_genes_unaligned) <- group_keys(final_seqs_grouped) %>% pull(gene)
+  
+  ### Combine with plastome sequences ###
+  
+  # - Make vector of genes in common between Sanger and plastome sequences
+  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastome_genes_unaligned)) 
+  
+  # - Make a list of accessions for genes in common between Sanger and plastome sequences
+  common_genes <-
+    common_gene_names %>%
+    map(~c(genbank_genes_unaligned[[.]], plastome_genes_unaligned[[.]])) %>%
+    set_names(common_gene_names)
+  
+  # - Make a list of accessions in Sanger genes only (likely zero, but for completeness' sake)
+  genbank_genes_only <- genbank_genes_unaligned %>%
+    magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastome_genes_unaligned)))
+  
+  # - Make a list of accessions in plastome sequences only
+  plastome_genes_only <- plastome_genes_unaligned %>%
+    magrittr::extract(setdiff(names(plastome_genes_unaligned), names(genbank_genes_unaligned)))
+  
+  # Combine the lists
+  c(common_genes, genbank_genes_only, plastome_genes_only)
   
 }
 
