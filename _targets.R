@@ -100,5 +100,9 @@ tar_plan(
       ncbi_names_query = ncbi_names_query, 
       match_results_resolved_round_1, match_results_resolved_round_2, match_results_resolved_round_3),
   # Map NCBI names to accepted names
-  ncbi_accepted_names_map = make_ncbi_accepted_names_map(match_results_resolved_all)
+  ncbi_accepted_names_map = make_ncbi_accepted_names_map(match_results_resolved_all),
+  
+  # Remove rogue sequences ----
+  # Combine sanger sequences and metadata, filter to resolved names
+  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map)
 )

@@ -306,10 +306,14 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 #' @param gene Name of gene
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
+#' @param return_df Logical; return results as a dataframe? If FALSE, returns results
+#' as a list
 #'
-#' @return List of class DNAbin
+#' @return List of class DNAbin or dataframe with one row per sequence and columns
+#' for the sequence and accession
+#' 
 #' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
-fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
+fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, return_df = TRUE) {
   
   assertthat::assert_that(assertthat::is.string(gene))
   assertthat::assert_that(assertthat::is.string(end_date))
@@ -336,11 +340,15 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date) {
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
   # Parse flatfile
-  results <- parse_dna_from_flatfile(temp_file, gene)
+  seqs <- parse_dna_from_flatfile(temp_file, gene)
   
   fs::file_delete(temp_file)
   
-  results
+  # Return list 
+  if(return_df == FALSE) return(seqs)
+  
+  # Or return dataframe
+  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs))
   
 }
 
@@ -452,8 +460,32 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
   
   # Combine standard metadata with publication metadata
   left_join(metadata, ref_data, by = "accession") %>%
-    assert(is_uniq, accession)
+    assert(is_uniq, accession) %>%
+    mutate(gene = gene)
   
+}
+
+#' Combine sanger sequence metadata with sequences, join to resolved names
+#' and filter by sequence length and if name was resolved or not
+#' 
+#' Drops sequences with scientific names that could not be resolved
+#'
+#' @param raw_meta Sanger sequence metadata; output of fetch_fern_metadata()
+#' @param raw_fasta Sanger sequences; output of fetch_fern_gene()
+#' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to accepted
+#' species name; output of make_ncbi_accepted_names_map()
+#'
+#' @return Tibble with Sanger sequence metadata, sequences, and accepted name
+#' 
+combine_and_filter_sanger <- function(raw_meta, raw_fasta, ncbi_accepted_names_map) {
+  # Join metadata and fasta sequences
+  raw_meta %>%
+    left_join(raw_fasta, by = "accession") %>%
+    # Inner join to name resolution results: will drop un-resolved names
+    inner_join(ncbi_accepted_names_map, by = "taxid") %>%
+    # Filter by minimum seq. length
+    filter(slen > 400) %>%
+    assert(not_na, accession, seq, accepted_name, taxon)
 }
 
 #' Combine GenBank DNA sequences and associated metadata into single dataframe
@@ -766,11 +798,11 @@ blast_rogues <- function (metadata_with_seqs, ...) {
   # Create OTU column for naming sequences as species_accession
   metadata_with_seqs <- dplyr::mutate(
     metadata_with_seqs,
-    otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
+    otu = glue("{taxon}_{accession}") %>% stringr::str_replace_all(" ", "_")
   )
   
   # Extract sequences from metadata and rename
-  pterido_seqs <- ape::as.DNAbin(metadata_with_seqs$seq)
+  pterido_seqs <- do.call(c, metadata_with_seqs$seq)
   names(pterido_seqs) <- metadata_with_seqs$otu
   
   # Make sure that went OK
@@ -4109,7 +4141,8 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
     assert(is_uniq, taxid) %>%
     # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
     mutate(
-      rgnparser::gn_parse_tidy(ncbi_accepted_names_map$accepted_name) %>% 
+      rgnparser::gn_parse_tidy(accepted_name) %>% 
         select(taxon = canonicalsimple)
-    )
+    ) %>%
+    mutate(taxon = str_replace_all(taxon, " ", "_"))
 }
