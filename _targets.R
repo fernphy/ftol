@@ -64,17 +64,33 @@ tar_plan(
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
   # Parse reference names
   wf_ref_names = tt_parse_names(unique(world_ferns_data$scientific_name)),
-  # First round of name parsing: NCBI accepted scientific names
-  ncbi_names_query_round_1 = select_ncbi_round_one_names(ncbi_names_query),
-  name_resolution_round_1 = tt_match_names(
+  # Resolve names, round 1: NCBI accepted scientific names
+  ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
+  match_results_raw_round_1 = tt_match_names(
     query = ncbi_names_query_round_1$scientific_name, 
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
     as_tibble(),
-  # Classify results
-  match_results_classified_round_1 = tt_classify_result(name_resolution_round_1),
-  # Resolve synonyms
+  # - Classify results
+  match_results_classified_round_1 = tt_classify_result(match_results_raw_round_1),
+  # - Resolve synonyms
   match_results_resolved_round_1 = tt_resolve_synonyms(match_results_classified_round_1, world_ferns_data),
-  # Select names for round 2
-  ncbi_names_query_round_2 = select_ncbi_round_two_names(match_results_resolved_round_1, ncbi_names_query)
+  # Resolve names, round 2: NCBI synonym scientific names
+  ncbi_names_query_round_2 = select_ncbi_names_round_2(match_results_resolved_round_1, ncbi_names_query),
+  match_results_raw_round_2 = tt_match_names(
+    query = ncbi_names_query_round_2$scientific_name, 
+    reference = wf_ref_names,
+    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
+    as_tibble(),
+  match_results_classified_round_2 = tt_classify_result(match_results_raw_round_2),
+  match_results_resolved_round_2 = tt_resolve_synonyms(match_results_classified_round_2, world_ferns_data),
+  # Resolve names, round 3: NCBI species without author
+  ncbi_names_query_round_3 = select_ncbi_names_round_3(match_results_resolved_round_1, match_results_resolved_round_2, ncbi_names_query),
+  match_results_raw_round_3 = tt_match_names(
+    query = ncbi_names_query_round_3$species, 
+    reference = wf_ref_names,
+    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
+    as_tibble(),
+  match_results_classified_round_3 = tt_classify_result(match_results_raw_round_3),
+  match_results_resolved_round_3 = tt_resolve_synonyms(match_results_classified_round_3, world_ferns_data),
 )

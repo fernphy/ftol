@@ -3943,7 +3943,7 @@ exclude_invalid_ncbi_names <- function(ncbi_names) {
 #'
 #' @return Dataframe (tibble)
 #' 
-select_ncbi_round_one_names <- function(ncbi_names) {
+select_ncbi_names_round_1 <- function(ncbi_names) {
   ncbi_names %>%
     filter(accepted == TRUE) %>%
     filter(!is.na(scientific_name)) %>%
@@ -4007,7 +4007,7 @@ tt_resolve_synonyms <- function(match_results_classified, taxonomy_data) {
     filter(n == 1) %>%
     select(-n)
   
-  success <- bind_rows(accepted_single_match, accepted_single_match)
+  success <- bind_rows(accepted_single_match, accepted_single_synonyms)
   
   failure <-
     match_results_classified_with_taxonomy %>%
@@ -4028,13 +4028,51 @@ tt_resolve_synonyms <- function(match_results_classified, taxonomy_data) {
 #'
 #' @return Dataframe (tibble)
 #' 
-select_ncbi_round_two_names <- function(match_results_resolved, ncbi_names) {
-  match_results_resolved %>% 
-    filter(is.na(accepted_name)) %>%
-    select(scientific_name = query) %>%
-    # Filter query to only synonyms of accepted names that couldn't be resolved in the first round
-    left_join(ncbi_names, by = "scientific_name") %>%
-    filter(accepted == FALSE) %>%
-    filter(!is.na(scientific_name))
+select_ncbi_names_round_2 <- function(match_results_resolved_round_1, ncbi_names) {
+  
+  # Get IDs of all resolved names from round 1
+  ncbi_id_resolved <-
+    match_results_resolved_round_1 %>%
+    left_join(ncbi_names, by = c(query = "scientific_name")) %>%
+    filter(!is.na(accepted_name)) %>%
+    assert(not_na, taxid)
+  
+  # Filter query names to those that failed round 1,
+  # then to synonyms with a scientific name
+  ncbi_names %>%
+    anti_join(ncbi_id_resolved, by = "taxid") %>%
+    filter(accepted == FALSE, !is.na(scientific_name)) %>%
+    assertr::assert(is_uniq, scientific_name)
+  
+}
+
+#' Select NCBI names for third round of taxonomic name resolution
+#' 
+#' NCBI names that are species only (lack scientific name)
+#'
+#' @param match_results_resolved_round_1 Dataframe; output of tt_resolve_synonyms() 
+#' @param match_results_resolved_round_2 Dataframe; output of tt_resolve_synonyms() 
+#' @param ncbi_names Names downloaded from NCBI taxonomy database.
+#'
+#' @return Dataframe (tibble)
+#' 
+select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_results_resolved_round_2, ncbi_names) {
+  
+  # Get IDs of all resolved names from round 1
+  ncbi_id_resolved <-
+    bind_rows(
+      match_results_resolved_round_1,
+      match_results_resolved_round_2) %>%
+    left_join(ncbi_names, by = c(query = "scientific_name")) %>%
+    filter(!is.na(accepted_name)) %>%
+    assert(not_na, taxid)
+  
+  # Filter query names to those that failed round 1 + 2,
+  # then to those lacking a scientific name (species name only)
+  ncbi_names %>%
+    anti_join(ncbi_id_resolved, by = "taxid") %>%
+    filter(is.na(scientific_name)) %>%
+    assertr::assert(is_uniq, species)
+  
 }
 
