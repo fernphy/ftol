@@ -4076,3 +4076,35 @@ select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_resu
   
 }
 
+#' Combine results of name matching rounds 1-3
+#'
+#' @param ncbi_names_query Names downloaded from NCBI taxonomy database. 
+#' @param ... Dataframes; output of tt_resolve_synonyms() 
+#'
+#' @return Dataframe; match results with NCBI taxid added
+#'
+combined_match_results <- function(ncbi_names_query, ...) {
+  bind_rows(...) %>%
+    left_join(select(ncbi_names_query, taxid, scientific_name), by = c(query = "scientific_name")) %>%
+    left_join(select(ncbi_names_query, taxid, species), by = c(query = "species")) %>%
+    mutate(taxid = coalesce(taxid.x, taxid.y)) %>%
+    assert(not_na, taxid) %>%
+    select(-taxid.x, -taxid.y)
+}
+
+#' Map resolved, accepted names to NCBI names
+#'
+#' @param match_results_resolved_all Dataframe; output of combined_match_results()
+#'
+#' @return Dataframe; NCBI names mapped to the accepted name in World Ferns
+#' Does not include names that could not be matched to a single accepted name
+#' @export
+#'
+#' @examples
+make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
+  match_results_resolved_all %>%
+    filter(!is.na(accepted_name)) %>% 
+    select(taxid, accepted_name) %>%
+    unique() %>% 
+    assert(is_uniq, taxid)
+}
