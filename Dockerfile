@@ -107,9 +107,9 @@ RUN git clone https://github.com/blackrim/treePL.git \
 ### gnparser ###
 WORKDIR $APPS_HOME
 ENV APP_NAME=gnparser
-ENV VERSION=0.14.1
+ENV VERSION=1.4.0
 ENV DEST=$APPS_HOME/$APP_NAME/$VERSION
-RUN wget https://gitlab.com/gogna/gnparser/uploads/7d6ed7e3b1eee0fd6c9ae51f5bf711c0/$APP_NAME-v$VERSION-linux.tar.gz \
+RUN wget https://github.com/gnames/gnparser/releases/download/v$VERSION/gnparser-v$VERSION-linux.tar.gz \
   && tar xf $APP_NAME-v$VERSION-linux.tar.gz \
   && rm $APP_NAME-v$VERSION-linux.tar.gz \
   && mv "$APP_NAME" /usr/local/bin/
