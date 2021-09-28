@@ -1,4 +1,4 @@
-FROM rocker/rstudio:4.0.0
+FROM rocker/rstudio:4.1.1
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -58,27 +58,6 @@ RUN apt-get update \
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python \
   && pip install biopython
-
-####################################
-### Install R packages with renv ###
-####################################
-
-# Create directory for renv project library
-RUN mkdir renv
-
-# Modify Rprofile.site so renv uses /renv for project library
-RUN echo 'Sys.setenv(RENV_PATHS_LIBRARY = "/renv")' >> /usr/local/lib/R/etc/Rprofile.site
-
-# Initialize a 'dummy' project and restore the renv library.
-# Since the library path is specified as above, the library will be restored to /renv
-RUN mkdir tmp/project
-
-COPY ./renv.lock tmp/project
-
-WORKDIR tmp/project
-
-# Don't use cache (the symlinks won't work from Rstudio server)
-RUN Rscript -e 'install.packages("renv"); renv::consent(provided = TRUE); renv::settings$use.cache(FALSE); renv::init(bare = TRUE); renv::restore()'
 
 #############################
 ### Other custom software ###
@@ -151,6 +130,7 @@ WORKDIR $APPS_HOME
 ENV APP_NAME=taxon-tools
 RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 	cd $APP_NAME && \
+  git checkout 8f8b5e2611b6fdef1998b7878e93e60a9bc7c130 && \
 	make check && \
 	make install
 
@@ -215,5 +195,26 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
   echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME  && \
   chmod 755 /usr/local/bin/$APPNAME
+
+####################################
+### Install R packages with renv ###
+####################################
+
+# Create directory for renv project library
+RUN mkdir renv
+
+# Modify Rprofile.site so renv uses /renv for project library
+RUN echo 'Sys.setenv(RENV_PATHS_LIBRARY = "/renv")' >> /usr/local/lib/R/etc/Rprofile.site
+
+# Initialize a 'dummy' project and restore the renv library.
+# Since the library path is specified as above, the library will be restored to /renv
+RUN mkdir /tmp/project
+
+COPY ./renv.lock /tmp/project
+
+WORKDIR /tmp/project
+
+# Don't use cache (the symlinks won't work from Rstudio server)
+RUN Rscript -e 'install.packages("renv"); renv::consent(provided = TRUE); renv::settings$use.cache(FALSE); renv::init(bare = TRUE); renv::restore()'
 
 WORKDIR /home/rstudio/
