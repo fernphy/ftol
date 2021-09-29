@@ -102,6 +102,14 @@ tar_plan(
   
   # Remove rogue sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
-  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map),
-  all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered)
+  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map, ppgi_taxonomy),
+  # Conduct all-by-all blast
+  all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered),
+  # Identify rogues (sequences matching wrong family)
+  # FIXME: many of these are due to bad taxonomy. inspect results and modify WF taxonomy as needed
+  sanger_seqs_rogues = detect_rogues(
+    metadata_with_seqs = sanger_seqs_combined_filtered,
+    blast_results = all_by_all_blast,
+    ppgi = ppgi_taxonomy,
+    id = gene)
 )

@@ -617,31 +617,24 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
   
   ### Detect rogues ###
   
-  ### Check for monotypic families ###
+  ### Check for monotypic families within each gene ###
   # These by default will match to a different (non-self)
   # family, so are not valid for checking rogues.
   exclude_from_rogues <-
     metadata_with_seqs %>% 
-    dplyr::mutate(genus = stringr::str_split(species, " ") %>% purrr::map_chr(1)) %>%
+    dplyr::mutate(genus = stringr::str_split(taxon, "_") %>% purrr::map_chr(1)) %>%
     dplyr::left_join(
-      select(ppgi, genus, family, suborder, order), 
+      select(ppgi, genus, family), 
       by = "genus") %>%
-    dplyr::add_count(family) %>%
+    assert(not_na, genus, family) %>%
+    dplyr::add_count(family, gene) %>%
     dplyr::filter(n == 1) %>%
     dplyr::mutate(
-      otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{taxon}-{accession}-{gene}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
-    dplyr::pull(otu)
+    select(otu, family, gene)
   
-  # FIXME: need to run taxonomic resolution before rogue detection
-  # e.g., NCBI name of Diplaziopsis cavaleriana (Christ) C. Chr. (Diplaziopsidaceae)
-  # is Diplazium cavalerianum (Christ) M. Kato (Athyriaceae)
-  #
-  # Wait on this until we can use a fixed version of World Ferns though because
-  # currenty it has many species placed in the wrong family, which will cause
-  # more problems that it solves.
-  
-  # Group small (esp. monotypic) families
+  # Group small families by order
   # to avoid false-positives
   ppgi <- mutate(ppgi, family = case_when(
     order == "Cyatheales" ~ "Cyatheales",
@@ -652,10 +645,8 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
   # Make list of rogue sequences (accessions) to exclude
   # Start with blast results
   blast_results %>%
-    # Remove extra '_R_' added by MAFFT when reversing seqs
-    dplyr::mutate_at(vars(qseqid, sseqid), ~ stringr::str_remove_all(., "_R_")) %>%
     # Exclude monotypic families
-    dplyr::filter(!qseqid %in% exclude_from_rogues) %>%
+    dplyr::anti_join(exclude_from_rogues, by = c(qseqid = "otu")) %>%
     # Filter out self-hits
     dplyr::filter(qseqid != sseqid) %>%
     # Keep top 3 best hits per query
@@ -686,8 +677,11 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
     ) %>%
     filter(str_detect(s_family, ",", negate = TRUE)) %>%
     filter(q_family != s_family) %>%
-    mutate(accession = str_split(qseqid, "_") %>% map_chr(last))
-  
+    # Add information for accession and gene (make sure OTU has expected number of dashes first)
+    verify(all(str_count(qseqid, "-") == 2)) %>%
+    mutate(
+      accession = str_split(qseqid, "-") %>% map_chr(2),
+      gene = str_split(qseqid, "-") %>% map_chr(3)) 
 }
 
 # Filter to one seq per species by removing 'rogue' sequences, then
