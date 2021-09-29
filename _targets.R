@@ -4,7 +4,7 @@ source("R/packages.R")
 source("R/functions.R")
 
 # Specify path to folder with raw data
-data_raw <- "data_raw"
+data_raw <- "/data_raw"
 
 tar_plan(
   
@@ -36,10 +36,8 @@ tar_plan(
   # Define variables used in plan
   # - Target plastid fern genes to download
   target_genes = c("atpA", "atpB", "rbcL", "rps4"),
-  # - Minimum lengths for each gene (in case this needs to be adjusted per gene)
-  min_lengths = c(400, 400, 400, 400),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2021/06/30",
+  date_cutoff = "2021/09/01",
   # Download fern plastid gene fasta files
   tar_target(
     raw_fasta,
@@ -104,5 +102,6 @@ tar_plan(
   
   # Remove rogue sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
-  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map)
+  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map),
+  all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered)
 )

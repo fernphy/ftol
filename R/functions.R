@@ -274,7 +274,7 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, return_df
   if(return_df == FALSE) return(seqs)
   
   # Or return dataframe
-  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs))
+  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = gene)
   
 }
 
@@ -483,12 +483,14 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
 combine_and_filter_sanger <- function(raw_meta, raw_fasta, ncbi_accepted_names_map) {
   # Join metadata and fasta sequences
   raw_meta %>%
-    left_join(raw_fasta, by = "accession") %>%
+    left_join(raw_fasta, by = c("accession", "gene")) %>%
     # Inner join to name resolution results: will drop un-resolved names
     inner_join(ncbi_accepted_names_map, by = "taxid") %>%
     # Filter by minimum seq. length
     filter(slen > 400) %>%
-    assert(not_na, accession, seq, accepted_name, taxon)
+    assert(not_na, accession, seq, accepted_name, taxon) %>%
+    # Filter out null sequences
+    filter(!map_lgl(seq, is.null))
 }
 
 # Remove rogues ----
@@ -509,11 +511,14 @@ blast_rogues <- function (metadata_with_seqs, ...) {
   
   ### All-by-all BLAST ###
   
-  # Create OTU column for naming sequences as species_accession
-  metadata_with_seqs <- dplyr::mutate(
-    metadata_with_seqs,
-    otu = glue("{taxon}_{accession}") %>% stringr::str_replace_all(" ", "_")
-  )
+  # Create OTU column for naming sequences as taxon-accession-gene
+  metadata_with_seqs <- 
+  metadata_with_seqs %>%
+    # Make sure there are no spaces in taxon, accession, or gene
+    verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
+    verify(all(str_detect(accession, " ", negate = TRUE))) %>%
+    verify(all(str_detect(gene, " ", negate = TRUE))) %>%
+    mutate(otu = glue("{taxon}-{accession}-{gene}"))
   
   # Extract sequences from metadata and rename
   pterido_seqs <- do.call(c, metadata_with_seqs$seq)
@@ -527,12 +532,15 @@ blast_rogues <- function (metadata_with_seqs, ...) {
   # Blast to exclude rogues
   
   # Make temporary working dir for BLAST functions.
-  blast_dir <- fs::dir_create(
-    fs::path(
+  blast_dir <- fs::path(
       tempdir(), 
       # Use hash as unique name for folder
       digest::digest(pterido_seqs)
-    ))
+  )
+
+  if(fs::dir_exists(blast_dir)) fs::dir_delete(blast_dir)
+
+  fs::dir_create(blast_dir)
   
   # Remove any gaps
   pterido_seqs <- ape::del.gaps(pterido_seqs)
@@ -572,7 +580,7 @@ blast_rogues <- function (metadata_with_seqs, ...) {
   )
   
   # Cleanup
-  fs::dir_delete (blast_dir)
+  if(fs::dir_exists(blast_dir)) fs::dir_delete(blast_dir)
   
   blast_results
   
@@ -1013,12 +1021,8 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
   # Parse flatfile
   gb_entry <- readr::read_file(temp_file)
   
-  # Some genes are missing or duplicates for a given plastome,
-  # so avoid errors by wrapping extract_sequence() in safely()
-  extract_sequence_safely <- safely(extract_sequence)
-  
   # get the results
-  extracted_genes <- map(genes, ~extract_sequence_safely(gb_entry, .)) %>%
+  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>%
     transpose() %>%
     pluck("result")
   
