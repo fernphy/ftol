@@ -727,83 +727,94 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
 
 #' Select a set of GenBank genes by joining on common vouchers
 #' 
-#' This assumes genes comprise: "rbcL", "atpA", "atpB", "rps4"
+#' This assumes genes comprise: "rbcL", "atpA", "atpB", "rps4". Filters
+#' to only one set of sequences per taxon (species), prioritizing in order:
+#' - those with rbcL + other genes
+#' - those with rbcL
+#' - those with the greatest combined length of other genes
 #' 
 #' @param genbank_seqs_tibble Tibble; metadata for GenBank sequences
 #' including columns for `gene`, `species`, `specimen_voucher`, 
 #' `accession` (GenBank accession), and `length` (gene length in bp)
-#' @param n_seqs_per_sp String; format of output data. If 'single', only one set 
-#' of sequences per species will be returned, prioritizing species with rbcL. 
-#' If 'multiple', all sequences will be returned (multiple seqs per species)
 #'
 #' @return Tibble in wide format joining genes based on species + voucher
 #' 
-select_genbank_genes <- function (genbank_seqs_tibble, n_seqs_per_sp = c("single", "multiple")) {
+select_genbank_genes <- function (genbank_seqs_tibble) {
   
-  assertthat::assert_that(assertthat::is.string(n_seqs_per_sp))
-  
-  assertthat::assert_that(
-    n_seqs_per_sp %in% c("single", "multiple"),
-    msg = "'n_seqs_per_sp' must be either 'single' or 'multiple'")
-  
-  ### Join genes based on voucher ###
-  # Original genbank data is in "long" format, with one row per accession
-  # We need to convert this to wide by joining gene sequences with the same voucher.
-  # To join without combining NA vouchers, split into a list of dataframes,
-  # then do a full join with na_matches = "never"
-  gb_data <- 
+  ### Some pre-processing ### 
+  # extract voucher specimen, count number of bases in sequence
+  genbank_seqs_tibble_clean <- 
     genbank_seqs_tibble %>%
-    select(gene, species, specimen_voucher, accession, length) %>%
-    # Select one sequence per specimen per species per gene based on gene length
-    group_by(gene, specimen_voucher, species) %>%
+    # Filter to only records with specimen voucher
+    select(subtype, subname) %>%
+    unique() %>%
+    filter(str_detect(subtype, "specimen_voucher")) %>%
+    mutate(
+      # Metadata are contained in two columns
+      # `subtype` is column name of metadata separated by `|`
+      # `subname` is content of metadata separated by `|`
+      # `subtype` may not be unique for each record (could have multiple vouchers)
+      # here, extract out `specimen_voucher`
+      meta_names = str_split(subtype, "\\|"),
+      meta_data = str_split(subname, "\\|"),
+      meta_sel_index = map(meta_names, ~which(. == "specimen_voucher")),
+    ) %>%
+    unnest(meta_sel_index) %>%
+    mutate(
+      specimen_voucher = map2(meta_data, meta_sel_index, ~magrittr::extract(.x, .y))
+    ) %>%
+    unnest(specimen_voucher) %>%
+    select(subtype, subname, specimen_voucher) %>%
+    right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
+    # Extract actual length of sequence (different from `slen` in gb metadata)
+    mutate(length = map_dbl(seq, ~length(.[[1]]))) %>%
+    select(gene, taxon, specimen_voucher, accession, length) %>%
+    # In some cases, there are multiple vouchers including `s.n.` and 
+    # a numbered voucher. Use only the numbered voucher.
+    add_count(gene, taxon, accession) %>%
+    filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
+    # Now there should be a unique combination of `gene`, `taxon`, `accession` per row
+    assert_rows(col_concat, is_uniq, gene, taxon, accession) %>%
+    select(-n)
+  
+  ### Convert to wide format ###
+  gb_data <-
+    genbank_seqs_tibble_clean %>%
+    group_by(gene, specimen_voucher, taxon) %>%
     arrange(desc(length)) %>%
     slice(1) %>%
-    ungroup %>%
-    # FIXME: work-around to avoid joining on NA vouchers: treat each as a distinct sample
-    mutate(
-      row_num = 1:nrow(.),
-      specimen_voucher = ifelse(is.na(specimen_voucher), glue("specimen_missing_{row_num}"), specimen_voucher)
-    ) %>%
+    ungroup() %>%
     # Convert to wide format, joining on voucher
     # - first split into a list of dataframes by gene
     group_by(gene) %>%
-    group_split %>%
+    group_split() %>%
     # For each dataframe, convert to wide format and
     # rename "length" and "accession" columns by gene
     map(
       ~pivot_wider(.,
-                   id_cols = c("species", "specimen_voucher"),
+                   id_cols = c("taxon", "specimen_voucher"),
                    names_from = gene,
                    values_from = c("length", "accession")
       )
     ) %>%
-    # Join the gene sequences by species + voucher
-    # FIXME: na_matches = "never" is currently breaking with full_join()
-    # once this bug gets fixed in dplyr, can delete the work-around above
-    reduce(full_join, by = c("species", "specimen_voucher"), na_matches = "na") %>%
+    # Join the gene sequences by taxon + voucher
+    reduce(full_join, by = c("taxon", "specimen_voucher"), na_matches = "never") %>%
     mutate_at(vars(contains("length")), ~replace_na(., 0)) %>%
     # Add total length of all genes (need to sum row-wise)
     # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
-    mutate(total_length = pmap_dbl(select(., contains("length")), sum)) %>%
-    # FIXME: last part of work-around: convert "specimen_missing" back to NA. remove this once bug gets fixed in dplyr.
-    mutate(specimen_voucher = ifelse(str_detect(specimen_voucher, "specimen_missing"), NA, specimen_voucher))
-  
-  # If `n_seqs_per_sp` is 'multiple' exit early, returning all seqs (including multiple seqs per species) 
-  if (n_seqs_per_sp == "multiple") return (gb_data)
-  
-  # Otherwise continue on, selecting one set of sequences per species.
+    mutate(total_length = pmap_dbl(select(., contains("length")), sum))
   
   ### Select final sequences ###
   
-  # Highest priority species: those with rbcL and at least one other gene.
-  # Choose best specimen per species by total sequence length
+  # Highest priority taxon: those with rbcL and at least one other gene.
+  # Choose best specimen per taxon by total sequence length
   rbcl_and_at_least_one_other <-
     gb_data %>% 
     filter(!is.na(accession_rbcL)) %>%
     filter_at(
       vars(accession_atpA, accession_atpB, accession_rps4), 
       any_vars(!is.na(.))) %>%
-    group_by(species) %>%
+    group_by(taxon) %>%
     arrange(desc(total_length)) %>%
     slice(1) %>%
     ungroup
@@ -811,19 +822,19 @@ select_genbank_genes <- function (genbank_seqs_tibble, n_seqs_per_sp = c("single
   # Next priority: anything with rbcL only
   rbcl_only <-
     gb_data %>%
-    filter(!species %in% rbcl_and_at_least_one_other$species) %>%
+    filter(!taxon %in% rbcl_and_at_least_one_other$taxon) %>%
     filter(!is.na(accession_rbcL)) %>%
-    group_by(species) %>%
+    group_by(taxon) %>%
     arrange(desc(total_length)) %>%
     slice(1) %>%
     ungroup
   
-  # Next priority: any other species on basis of total seq. length
+  # Next priority: any other taxon on basis of total seq. length
   other_genes <-
     gb_data %>%
-    filter(!species %in% rbcl_and_at_least_one_other$species) %>%
-    filter(!species %in% rbcl_only$species) %>%
-    group_by(species) %>%
+    filter(!taxon %in% rbcl_and_at_least_one_other$taxon) %>%
+    filter(!taxon %in% rbcl_only$taxon) %>%
+    group_by(taxon) %>%
     arrange(desc(total_length)) %>%
     slice(1) %>%
     ungroup
@@ -833,8 +844,8 @@ select_genbank_genes <- function (genbank_seqs_tibble, n_seqs_per_sp = c("single
     rbcl_and_at_least_one_other,
     rbcl_only,
     other_genes
-  )
-  
+  ) %>%
+    assert(is_uniq, taxon)
 }
 
 #' Filter out species in plastome data from Sanger data

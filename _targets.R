@@ -111,5 +111,17 @@ tar_plan(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,
     ppgi = ppgi_taxonomy,
-    id = gene)
+    id = gene),
+  sanger_seqs_rogues_removed = anti_join(
+    sanger_seqs_combined_filtered,
+    sanger_seqs_rogues,
+    by = c("accession", "gene")
+  ),
+
+  # Select final Sanger sequences ----
+  # Select one specimen per species, prioritizing in order
+  # - 1: specimens with rbcL + any other gene
+  # - 2: specimens with rbcL
+  # - 3: specimens with longest combined non-rbcL genes
+  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed)
 )
