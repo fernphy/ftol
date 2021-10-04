@@ -20,8 +20,8 @@ tar_plan(
   tar_file(ppgi_taxonomy_path, path(data_raw, "ppgi_taxonomy_mod.csv")),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
   # List of plastid coding genes from Wei et al 2017
-  tar_file(target_sanger_genes_path, path(data_raw, "wei_2017_coding_genes.txt")),
-  target_sanger_genes = read_lines(target_sanger_genes_path),
+  tar_file(target_plastome_genes_path, path(data_raw, "wei_2017_coding_genes.txt")),
+  target_plastome_genes = read_lines(target_plastome_genes_path),
   # Outgroup plastome accessions
   tar_file(plastome_outgroups_path, path(data_raw, "plastome_outgroups.csv")),
   plastome_outgroups = read_csv(plastome_outgroups_path),
@@ -129,12 +129,24 @@ tar_plan(
   # ca. 100 species by 60 genes
   
   # Download plastome metadata (accessions and species)
-  plastome_metadata = download_plastome_metadata(
+  plastome_metadata_raw = download_plastome_metadata(
     end_date = date_cutoff,
     outgroups = plastome_outgroups),
 
   # Resolve species names in plastome metadata
-  plastome_metadata_renamed = resolve_pterido_plastome_names(
-    plastome_metadata, plastome_outgroups, wf_ref_names, world_ferns_data
-  )
+  plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
+    plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data
+  ),
+
+  # Download plastome sequences
+  # don't run in parallel, or will get HTTP status 429 errors
+  target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
+  tar_target(
+    plastome_seqs_raw,
+    fetch_fern_genes_from_plastome(
+      genes = target_plastome_genes, 
+      accession = target_plastome_accessions),
+    pattern = map(target_plastome_accessions),
+    deployment = "main")
+    
 )

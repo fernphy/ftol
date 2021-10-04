@@ -1002,9 +1002,7 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
 #' @param max_length Maximum length to accept for genes. Used to filter
 #' out any abnormally (probably erroneously) long genes.
 #'
-#' @return List of lists; each list is a gene sequence of class DNAbin
-#' with a single sequence.
-#' The lists are named by gene, and the sequences are named after the accession.
+#' @return Dataframe with columns for `accession`, `gene`, and `seq`
 #' 
 #' test <- fetch_fern_genes_from_plastome(
 #' accession = "AY178864",
@@ -1024,8 +1022,8 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     msg = "Did not find exactly one accession")
   
   # Download complete GenBank record and write it to a temporary file
-  temp_dir <- tempdir()
-  temp_file <- fs::path(temp_dir, "gb_records.txt")
+  temp_file <- tempfile(pattern = "gb_records_", fileext = ".txt")
+  if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
   
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
@@ -1033,9 +1031,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
   gb_entry <- readr::read_file(temp_file)
   
   # get the results
-  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>%
-    transpose() %>%
-    pluck("result")
+  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .))
   
   # subset gene names to those to successfully extracted
   genes_successful <- genes[!map_lgl(extracted_genes, is.null)]
@@ -1057,8 +1053,12 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     # Name each DNAbin as the accession
     map(~set_names(., accession))
   
-  # Return as a list of 1, so the results can be combined into a list later
-  list(extracted_genes_filtered) %>% set_names(accession)
+  # Return as a dataframe, so the results can be combined later
+  tibble(
+    accession = accession,
+    gene = names(extracted_genes_filtered),
+    seq = extracted_genes_filtered
+    )
   
 }
 
@@ -1447,7 +1447,7 @@ concatenate_genes <- function (dna_list) {
 #' of fern species; output of tt_parse_names()
 #' @param world_ferns_data Reference data for taxonomic name resolution of fern species
 #' extracted from Catalog of Life data; output of extract_fow_from_col()
-#'
+#' 
 #' @return Dataframe; plastome_metadata with new column `accepted_name` and `taxon`
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
@@ -1505,10 +1505,10 @@ resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups
 
   # Classify matching results
   match_results_plastome_classified <- tt_classify_result(match_results_plastome)
-  
+
   # Resolve synonyms
   match_results_plastome_resolved <- tt_resolve_synonyms(match_results_plastome_classified, world_ferns_data)
-  
+
   ### Combine results ###
   plastome_metadata_ferns_resolved <-
     plastome_metadata %>%
@@ -1518,9 +1518,9 @@ resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups
     left_join(select(match_results_plastome_resolved, query_name = query, accepted_name), by = "query_name") %>%
     select(-query_name) %>%
     mutate(outgroup = FALSE)
-  
+
   plastome_metadata_outgroups_resolved <-
-  plastome_metadata %>%
+    plastome_metadata %>%
     inner_join(plastome_outgroups, by = "accession") %>% 
     select(-matches("species|variety")) %>%
     left_join(select(plastome_outgroup_sci_names, taxid, accepted_name = scientific_name), by = "taxid") %>%
