@@ -968,8 +968,6 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
     # with biofiles::getFeatures() and biofiles::filter()
     # (AP004638, Psilotum nudum)
     filter(accession != "AP004638") %>%
-    # Parse out data contained in the "subtype" and "subname" columns
-    tidy_genbank_metadata() %>%
     # Remove weird brackets from species names
     mutate(species = str_remove_all(species, "\\[") %>% str_remove_all("\\]")) %>%
     # Remove GenBank duplicate sequences starting with "NC_"
@@ -990,8 +988,7 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
   og_query <- outgroups %>% pull(accession) %>% paste(collapse = "[accession] OR ") %>%
     paste("[accession]", collapse = "", sep = "")
   
-  outgroup_metadata <- gbfetch::fetch_metadata(og_query) %>%
-    tidy_genbank_metadata() 
+  outgroup_metadata <- gbfetch::fetch_metadata(og_query)
   
   bind_rows(pterido_metadata, outgroup_metadata) %>%
     select(-maybe_dup)
@@ -1445,61 +1442,104 @@ concatenate_genes <- function (dna_list) {
 #'
 #' @param plastome_metadata Dataframe with column "species" containing
 #' original species names from GenBank
-#' @param col_plants Dataframe; taxonomic standard based on the
-#' Catalog of Life
+#' @param plastome_outgroups Dataframe with metadata on outgroups
+#' @param wf_ref_names Dataframe with parsed scientific names for taxonomic name resolution
+#' of fern species; output of tt_parse_names()
+#' @param world_ferns_data Reference data for taxonomic name resolution of fern species
+#' extracted from Catalog of Life data; output of extract_fow_from_col()
 #'
-#' @return Dataframe; plastome_metadata with new column `resolved_name`
-#' containing the standardized name attached to it.
+#' @return Dataframe; plastome_metadata with new column `accepted_name` and `taxon`
+#' containing the standardized name attached to it, also a column `outgroup` indicating
+#' if the data correspond to outgroup or not
 #' 
-resolve_pterido_plastome_names <- function(plastome_metadata, col_plants) {
+resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups, wf_ref_names, world_ferns_data) {
   
-  # Resolve names in plastome data:
-  # - first automatically
-  name_resolution_results <- taxastand::resolve_fern_names(
-    names = unique(plastome_metadata$species),
-    col_plants = col_plants,
-    exact_match_by = "species",
-    resolve_to = "scientific_name")
-  
-  # - Manual fixes for any names that couldn't be resolved manually
-  name_resolution_results_fixed <-
-    name_resolution_results %>%
-    mutate(scientificName = case_when(
-      exclude_non_pterido_genus == TRUE ~ query,
-      query == "Physcomitrella patens" ~ query,
-      query == "Physcomitrium patens" ~ query,
-      query == "Marchantia polymorpha" ~ query,
-      query == "Psilotum nudum" ~ "Psilotum nudum (L.) P. Beauv.",
-      query == "Botrychium sp. ternatum/japonicum" ~ "Sceptridium ternatum (Thunb.) Lyon",
-      query == "Adiantum shastense" ~ query,
-      query == "Cryptogramma acrostichoides" ~ query,
-      query == "Pecluma dulcis" ~ query,
-      query == "Alsophila podophylla" ~ query,
-      query == "Asplenium nidus" ~ query,
-      query == "Athyrium sinense" ~ query,
-      query == "Dicksonia antarctica" ~ query,
-      query == "Diplazium striatum" ~ query,
-      query == "Lygodium microphyllum" ~ query,
-      TRUE ~ scientificName)) %>%
-    # Make sure all names are accounted for
-    assert(not_na, scientificName) %>%
-    # Add just species name
-    taxastand::add_parsed_names(scientificName, species) %>%
-    # Manual fix after gnparser drops "nudum" from Psilotum nudum
-    mutate(species = case_when(
-      species == "Psilotum" ~ "Psilotum nudum",
-      TRUE ~ species
-    )) %>%
-    # Make sure all species have genus and epithet separated by space
-    assert(function (x) str_detect(x, " "), species) %>%
-    select(query, resolved_name = species, scientificName)
-  
+  ### outgroups ###
+  # Fetch full scientific names for plastome outgroups
+  plastome_outgroup_sci_names <-
   plastome_metadata %>%
-    left_join(select(name_resolution_results_fixed, species = query, resolved_name, scientificName), by = "species") %>%
-    mutate(species = resolved_name) %>%
-    assert(not_na, species) %>%
-    assert(not_na, scientificName) %>%
-    select(-resolved_name)
+    inner_join(plastome_outgroups, by = "accession") %>%
+    # Look up NCBI name from taxid
+    pull(taxid) %>% 
+    unique %>% 
+    fetch_taxonomy() %>%
+    clean_ncbi_names() %>%
+    filter(accepted) %>%
+    # Add one scientific name currently missing
+    mutate(
+      scientific_name = case_when(
+        species == "Sciadopitys verticillata" ~ "Sciadopitys verticillata (Thunb.) Siebold & Zucc.",
+        TRUE ~ scientific_name
+      )
+    ) %>%
+    assert(not_na, scientific_name) %>%
+    # Convert taxid back to numeric
+    mutate(taxid = parse_number(taxid))
+
+  ### ferns ###
+  # Specify names to query against World Ferns for taxonomic name resolution of ferns
+  plastome_names_query <- 
+    plastome_metadata %>%
+    # Exclude outgroups
+    anti_join(plastome_outgroups, by = "accession") %>%
+    # Look up NCBI name from taxid
+    pull(taxid) %>% 
+    unique %>% 
+    fetch_taxonomy() %>%
+    clean_ncbi_names() %>% 
+    filter(accepted) %>%
+    # Remove any names not identified to species
+    filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
+    # Specify query name: scientific name if available, species if not
+    mutate(query_name = coalesce(scientific_name, species)) %>%
+    assert(not_na, query_name) %>%
+    # Convert taxid back to numeric
+    mutate(taxid = parse_number(taxid))
+   
+  # Match names to world ferns
+  match_results_plastome <- tt_match_names(
+    query = plastome_names_query$query_name, 
+    reference = wf_ref_names,
+    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
+    as_tibble()
+
+  # Classify matching results
+  match_results_plastome_classified <- tt_classify_result(match_results_plastome)
+  
+  # Resolve synonyms
+  match_results_plastome_resolved <- tt_resolve_synonyms(match_results_plastome_classified, world_ferns_data)
+  
+  ### Combine results ###
+  plastome_metadata_ferns_resolved <-
+    plastome_metadata %>%
+    anti_join(plastome_outgroups, by = "accession") %>%
+    select(-matches("species|variety")) %>%
+    left_join(select(plastome_names_query, taxid, query_name), by = "taxid") %>%
+    left_join(select(match_results_plastome_resolved, query_name = query, accepted_name), by = "query_name") %>%
+    select(-query_name) %>%
+    mutate(outgroup = FALSE)
+  
+  plastome_metadata_outgroups_resolved <-
+  plastome_metadata %>%
+    inner_join(plastome_outgroups, by = "accession") %>% 
+    select(-matches("species|variety")) %>%
+    left_join(select(plastome_outgroup_sci_names, taxid, accepted_name = scientific_name), by = "taxid") %>%
+    mutate(outgroup = TRUE)
+
+  bind_rows(
+    plastome_metadata_ferns_resolved,
+    plastome_metadata_outgroups_resolved
+  ) %>% 
+  # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
+  mutate(
+    rgnparser::gn_parse_tidy(accepted_name) %>% 
+      select(taxon = canonicalsimple)
+  ) %>%
+  mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
+  # Make sure all accessions are included
+  verify(all(accession %in% plastome_metadata$accession)) %>%
+  verify(all(plastome_metadata$accession %in% accession))
+
 }
 
 #' Combine GenBank rbcL and plastome-derived rbcL sequences

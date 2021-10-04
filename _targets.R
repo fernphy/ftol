@@ -123,5 +123,18 @@ tar_plan(
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
-  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed)
+  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed),
+
+  # Download core set of plastid genes from plastomes ----
+  # ca. 100 species by 60 genes
+  
+  # Download plastome metadata (accessions and species)
+  plastome_metadata = download_plastome_metadata(
+    end_date = date_cutoff,
+    outgroups = plastome_outgroups),
+
+  # Resolve species names in plastome metadata
+  plastome_metadata_renamed = resolve_pterido_plastome_names(
+    plastome_metadata, plastome_outgroups, wf_ref_names, world_ferns_data
+  )
 )
