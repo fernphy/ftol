@@ -168,6 +168,15 @@ tar_plan(
     plastid_genes_aligned,
     align_seqs_tbl(plastid_genes_unaligned_combined),
     pattern = map(plastid_genes_unaligned_combined)
+  ),
+  # Trim alignments
+  tar_target(
+    plastid_genes_aligned_trimmed,
+    mutate(
+      plastid_genes_aligned,
+      seq = purrr::map(seq, trimal_auto)
+    ),
+    pattern = map(plastid_genes_aligned)
   )
 
 )
