@@ -562,17 +562,17 @@
     },
     "future": {
       "Package": "future",
-      "Version": "1.17.0",
+      "Version": "1.22.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "71c119f236429d7b19fd29229b013cba"
+      "Hash": "9c56382c3e53f0b4fc0fc16d88fc3974"
     },
-    "fuzzyjoin": {
-      "Package": "fuzzyjoin",
-      "Version": "0.1.6",
+    "future.callr": {
+      "Package": "future.callr",
+      "Version": "0.6.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "24af5fc67dbeaac6d776a8e6630aacd9"
+      "Hash": "2777ddd75a7aff236990c98825144d0a"
     },
     "gbfetch": {
       "Package": "gbfetch",
@@ -601,13 +601,6 @@
       "Repository": "CRAN",
       "Hash": "b8cff1d1391fd1ad8b65877f4c7f2e53"
     },
-    "geosphere": {
-      "Package": "geosphere",
-      "Version": "1.5-10",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "eee36211f74e4dbc80eae9d504b58f0b"
-    },
     "ggplot2": {
       "Package": "ggplot2",
       "Version": "3.3.2",
@@ -617,10 +610,10 @@
     },
     "globals": {
       "Package": "globals",
-      "Version": "0.12.5",
+      "Version": "0.14.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "e9e529fb7a579ad4b4ff65e052e76ed8"
+      "Hash": "eca8023ed5ca6372479ebb9b3207f5ae"
     },
     "glue": {
       "Package": "glue",
@@ -934,6 +927,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "49f7258fd86ebeaea1df24d9ded00478"
+    },
+    "parallelly": {
+      "Package": "parallelly",
+      "Version": "1.28.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "5300c9fc71841550bdca64d39e82af0e"
     },
     "permute": {
       "Package": "permute",
@@ -1318,13 +1318,6 @@
       "Repository": "CRAN",
       "Hash": "4b550ca01798c27b717b7e3cd4d0f4b9"
     },
-    "stringdist": {
-      "Package": "stringdist",
-      "Version": "0.9.5.5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "734fb9c45f9a36bcd1f1aa0c37a8a5b1"
-    },
     "stringi": {
       "Package": "stringi",
       "Version": "1.4.6",
@@ -1359,18 +1352,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "f3bb17418c64dda3c4d4992f31e77afb"
-    },
-    "taxastand": {
-      "Package": "taxastand",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "taxastand",
-      "RemoteUsername": "joelnitta",
-      "RemoteRef": "master",
-      "RemoteSha": "1973c323fa212e6088c62a8e55a6cac28e9266b4",
-      "Hash": "1f0c00665791ba89b44908bdc63767e6"
     },
     "taxize": {
       "Package": "taxize",

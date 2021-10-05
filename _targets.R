@@ -6,6 +6,12 @@ source("R/functions.R")
 # Specify path to folder with raw data
 data_raw <- "/data_raw"
 
+# Set parallel back-end
+plan(callr)
+
+# Use targets workspaces for debugging
+tar_option_set(workspace_on_error = TRUE)
+
 tar_plan(
   
   # Load data ----
@@ -126,18 +132,14 @@ tar_plan(
   sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed),
 
   # Download core set of plastid genes from plastomes ----
-  # ca. 100 species by 60 genes
-  
   # Download plastome metadata (accessions and species)
   plastome_metadata_raw = download_plastome_metadata(
     end_date = date_cutoff,
     outgroups = plastome_outgroups),
-
   # Resolve species names in plastome metadata
   plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data
   ),
-
   # Download plastome sequences
   # don't run in parallel, or will get HTTP status 429 errors
   target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
@@ -148,9 +150,24 @@ tar_plan(
       accession = target_plastome_accessions),
     pattern = map(target_plastome_accessions),
     deployment = "main"),
-  
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
-    plastome_seqs_raw, plastome_metadata_raw_renamed)
+    plastome_seqs_raw, plastome_metadata_raw_renamed),
+
+  # Combine and align Sanger and plastome sequences ----
+  # Combine Sanger and plastome sequences into single dataframe, group by gene
+  tar_group_by(
+    plastid_genes_unaligned_combined,
+    combine_sanger_plastome(
+      sanger_accessions_selection,
+      sanger_seqs_combined_filtered,
+      plastome_seqs_combined_filtered),
+    gene),
+  # Align sequences by gene
+  tar_target(
+    plastid_genes_aligned,
+    align_seqs_tbl(plastid_genes_unaligned_combined),
+    pattern = map(plastid_genes_unaligned_combined)
+  )
 
 )

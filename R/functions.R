@@ -1228,6 +1228,81 @@ select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renam
   
 }
 
+#' Combine Sanger and plastome sequences
+#'
+#' @param sanger_accessions_selection Dataframe; selection of Sanger accessions in 
+#' wide format. Output of select_genbank_genes()
+#' @param sanger_seqs_combined_filtered Dataframe; filtered Sanger sequences
+#' Output of combine_and_filter_sanger()
+#' @param plastome_seqs_combined_filtered Dataframe; filtered plastome sequences.
+#' Output of select_plastome_seqs()
+#'
+#' @return Dataframe; combined Sanger and plastome sequences in long format
+#' 
+combine_sanger_plastome <- function(
+  sanger_accessions_selection,
+  sanger_seqs_combined_filtered,
+  plastome_seqs_combined_filtered
+) {
+  # Check that names of input match arguments
+  check_args(match.call())
+  
+  sanger_accessions_selection %>%
+    # Remove any accessions in plastome data
+    anti_join(plastome_seqs_combined_filtered, by = "taxon") %>%
+    # Convert to long form
+    select(taxon, matches("accession")) %>%
+    pivot_longer(names_to = "gene", values_to = "accession", -taxon) %>%
+    mutate(gene = str_remove_all(gene, "accession_")) %>%
+    filter(!is.na(accession)) %>%
+    # Add DNA sequences
+    left_join(select(sanger_seqs_combined_filtered, accession, seq, gene), by = c("accession", "gene")) %>%
+    # Add plastome sequences
+    bind_rows(plastome_seqs_combined_filtered) %>%
+    # Make sure it worked
+    assert(not_na, everything()) %>%
+    assert_rows(col_concat, is_uniq, taxon, gene, accession)
+}
+
+#' Align sequences in a tibble
+#'
+#' @param seqs_tbl Dataframe; DNA sequences to align.
+#' Must have columns `taxon`, `gene`, `accession`, `seq`
+#'
+#' @return Dataframe with columns `gene` and `seq`; `seq`
+#' contains the aligned sequences, named by taxon
+#' 
+align_seqs_tbl <- function(seqs_tbl) {
+  # Extract sequences, convert to ape DNAbin list
+  seqs <-
+    seqs_tbl %>%
+    assert(not_na, everything()) %>%
+    # This function should only be applied to
+    # sequences by gene, so taxon and accession
+    # should each be unique
+    assert(is_uniq, taxon, accession) %>%
+    pull(seq) %>%
+    as.list() %>%
+    do.call(c, .) %>%
+    # Name by taxon
+    set_names(seqs_tbl$taxon)
+  
+  # Align sequences
+  alignment <- ips::mafft(
+    x = seqs,
+    options = "--adjustdirection",
+    exec = "/usr/bin/mafft")
+  
+  # Fix names if mafft changed them
+  names(alignment) <- str_remove_all(names(alignment), "_R_")
+  
+  # Return results as tibble
+  tibble(
+    gene = unique(seqs_tbl$gene),
+    seq = list(alignment)
+  )
+}
+
 #' Reformat a list of plastid genes from 
 #' a named list of gene sequences by plastome accession to
 #' a named list of sequences from various accessions by gene
