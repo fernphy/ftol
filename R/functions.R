@@ -1134,32 +1134,41 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' Select a list of plastid sequences to use from a list of plastid genes and
 #' plastome metadata
 #'
-#' @param plastid_seq_list List of plastid genes. Each list item is
-#' a named list of gene sequences for a plastome accession.
-#' @param plastome_metadata Associated plastome metadata (species names)
-#' @param filter_by Should the list be selected by the best representative
-#' accession per species, genus, or voucher?
+#' Filters list to one best accession per taxon, only keeping genes that are missing
+#' < 50% of accessions and accessions missing < 50% of genes'
 #'
-select_plastome_seqs <- function (plastid_seq_list, plastome_metadata, filter_by = c("species", "genus", "voucher")) {
+#' @param plastome_seqs_raw Dataframe of plastid genes. Each row is
+#' a sequence for a gene for a plastome accession.
+#' @param plastome_metadata_raw_renamed Associated plastome metadata (species names)
+#'
+select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renamed) {
   
-  assertthat::assert_that(assertthat::is.string(filter_by))
-  
-  assertthat::assert_that(filter_by %in% c("species", "genus", "voucher"))
-  
-  # Drop any plastome sequences with zero genes
-  check_genes <- function(plastome_seq) {
-    length(plastome_seq) > 0
-  }
-  
-  plastid_seq_list <- plastid_seq_list[map_lgl(plastid_seq_list, check_genes)]
-  
+  # Check that input names match arguments
+  check_args(match.call())
+
+  # Issue warning if any plastomes get dropped because of missing taxon
+  missing_taxon <-
+    plastome_metadata_raw_renamed %>%
+    filter(is.na(taxon)) %>%
+    pull(accession)
+
+  if(length(missing_taxon) > 0) message(
+    glue::glue("The following plastome accessions lack taxon name and are excluded: {paste(missing_taxon, collapse = ', ')}")
+  )
+    
   # Make tibble of gene lengths by accession, including species and voucher
   gene_lengths <- 
-    plastid_seq_list %>%
-    map_df(get_gene_lengths, .id = "plastid_seq_name") %>%
-    mutate(accession = str_remove(plastid_seq_name, "clean_plastid_seqs_plastid_seqs_")) %>%
-    left_join(select(plastome_metadata, accession, species, specimen_voucher), by = "accession") %>%
-    assert(not_na, species, gene, accession, slen)
+    plastome_seqs_raw %>%
+    # Make sure each accession has at least one gene
+    add_count(accession, gene) %>%
+    verify(all(n > 0)) %>%
+    select(-n) %>%
+    # Add column for sequence length
+    mutate(slen = map_dbl(seq, ~length(.[[1]]))) %>%
+    # Add taxon column
+    left_join(select(plastome_metadata_raw_renamed, accession, taxon), by = "accession") %>%
+    filter(!is.na(taxon)) %>%
+    assert(not_na, taxon, gene, accession, slen)
   
   # Missing genes (length 0) are not in the original sequences list,
   # so add these by crossing all combinations of accession and gene
@@ -1168,11 +1177,9 @@ select_plastome_seqs <- function (plastid_seq_list, plastome_metadata, filter_by
       gene = gene_lengths$gene %>% unique, 
       accession = gene_lengths$accession %>% unique)) %>%
     left_join(select(gene_lengths, gene, accession, slen), by = c("gene", "accession")) %>%
-    left_join(select(gene_lengths, accession, species) %>% unique, by = "accession") %>%
-    left_join(select(gene_lengths, accession, specimen_voucher) %>% unique, by = "accession") %>%
-    left_join(select(gene_lengths, accession, plastid_seq_name) %>% unique, by = "accession") %>%
+    left_join(select(gene_lengths, accession, taxon) %>% unique, by = "accession") %>%
     mutate(slen = replace_na(slen, 0)) %>%
-    assert(not_na, gene, accession, slen, species)
+    assert(not_na, gene, accession, slen, taxon)
   
   # Get table of maximum lengths per gene
   # (we will assume these are the actual max. lengths)
@@ -1186,115 +1193,38 @@ select_plastome_seqs <- function (plastid_seq_list, plastome_metadata, filter_by
     )
   
   # Identify the "best" accessions as those having the least
-  # amount of missing data overall per species
-  best_accessions_by_species <-
+  # amount of missing data overall per taxon
+  best_accessions_by_taxon <-
     gene_lengths %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
-    assert(not_na, accession, species) %>%
-    # first get total length for each accession
-    group_by(accession, species) %>%
+    assert(not_na, accession, taxon) %>%
+    # first get total rel length for each accession, keeping taxon column
+    group_by(accession, taxon) %>%
     summarize(
       total_rel_len = sum(rel_len),
       .groups = "drop"
     ) %>%
-    # then sort by species and keep the one with the greatest length
-    group_by(species) %>%
-    arrange(desc(total_rel_len)) %>%
-    slice(1) %>%
+    # then sort by taxon and keep the one with the greatest length
+    group_by(taxon) %>%
+    slice_max(n = 1, order_by = total_rel_len, with_ties = FALSE) %>%
     ungroup
   
-  # Make a table of (relative) gene lengths for
-  # the best accession per species
-  gene_lengths_best_by_species <-
-    best_accessions_by_species %>%
-    select(accession) %>%
-    left_join(gene_lengths, by = "accession") %>%
-    left_join(max_lengths, by = "gene") %>%
-    mutate(rel_len = slen / max_length)
-  
-  # Do the same at the genus level:
-  # Best accession per genus
-  best_accessions_by_genus <-
-    gene_lengths %>%
+  # Assemble final output: filtered plastome genes, one accession per taxon
+  gene_lengths %>%
+    # Make a table of (relative) gene lengths for
+    # the best accession per taxon
+    inner_join(select(best_accessions_by_taxon, accession), by = "accession") %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
-    # add Genus column
-    mutate(genus = str_split(species, " ") %>% map_chr(1)) %>%
-    # first get total length for each accession
-    group_by(accession, genus) %>%
-    summarize(
-      total_rel_len = sum(rel_len),
-      .groups = "drop"
-    ) %>%
-    ungroup %>%
-    # then sort by genus and keep the one with the greatest length
-    group_by(genus) %>%
-    arrange(desc(total_rel_len)) %>%
-    slice(1) %>%
-    ungroup
-  
-  # And best gene lengths by genus
-  gene_lengths_best_by_genus <-
-    best_accessions_by_genus %>%
-    select(accession) %>%
-    left_join(gene_lengths, by = "accession") %>%
-    left_join(max_lengths, by = "gene") %>%
-    mutate(rel_len = slen / max_length)
-  
-  # Do the same at the voucher level:
-  # Best accession per voucher
-  best_accessions_by_voucher <-
-    gene_lengths %>%
-    left_join(max_lengths, by = "gene") %>%
-    mutate(rel_len = slen / max_length) %>%
-    # If voucher is NA (often the case), use accession as stand-in
-    # (so assume each accession comes from a different voucher)
-    mutate(specimen_voucher = ifelse(is.na(specimen_voucher), accession, specimen_voucher)) %>%
-    assert(not_na, accession, specimen_voucher) %>%
-    group_by(accession, specimen_voucher) %>%
-    summarize(
-      total_rel_len = sum(rel_len),
-      .groups = "drop"
-    ) %>%
-    group_by(specimen_voucher) %>%
-    arrange(desc(total_rel_len)) %>%
-    slice(1) %>%
-    ungroup
-  
-  # Make a table of (relative) gene lengths for
-  # the best accession per voucher
-  gene_lengths_best_by_voucher <-
-    best_accessions_by_voucher %>%
-    select(accession) %>%
-    left_join(gene_lengths, by = "accession") %>%
-    left_join(max_lengths, by = "gene") %>%
-    mutate(rel_len = slen / max_length)
-  
-  # Select gene lengths filtered by genus, species, or voucher
-  gene_lengths_best_filtered_by_genus <-
-    filter_majority_missing(gene_lengths_best_by_genus) %>%
-    select(accession, species, gene) %>%
-    left_join(select(gene_lengths, plastid_seq_name, accession) %>% unique, by = "accession") %>%
+    assert(not_na, everything()) %>%
+    # Filter out accessions missing > 50% of genes
+    # and genes absent from > 50% of sequences
+    filter_majority_missing() %>%
+    filter(slen > 1) %>%
+    select(taxon, accession, gene) %>%
+    left_join(plastome_seqs_raw, by = c("accession", "gene")) %>%
     assert(not_na, everything())
-  
-  gene_lengths_best_filtered_by_species <-
-    filter_majority_missing(gene_lengths_best_by_species)  %>%
-    select(accession, species, gene) %>%
-    left_join(select(gene_lengths, plastid_seq_name, accession) %>% unique, by = "accession") %>%
-    assert(not_na, everything())
-  
-  gene_lengths_best_filtered_by_voucher <-
-    filter_majority_missing(gene_lengths_best_by_voucher)  %>%
-    select(accession, species, specimen_voucher, gene) %>%
-    left_join(select(gene_lengths, plastid_seq_name, accession) %>% unique, by = "accession") %>%
-    assert(not_na, accession, species, gene, plastid_seq_name)
-  
-  switch(
-    filter_by,
-    genus = gene_lengths_best_filtered_by_genus,
-    species = gene_lengths_best_filtered_by_species,
-    voucher = gene_lengths_best_filtered_by_voucher)
   
 }
 
@@ -3805,4 +3735,17 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
         select(taxon = canonicalsimple)
     ) %>%
     mutate(taxon = str_replace_all(taxon, " ", "_"))
+}
+
+# Etc ----
+# This function can be called inside of other functions to check
+# if the names of the input match the names of the arguments
+# Need to provide match.call() as the input
+# check_args(match.call())
+check_args <- function(call_match) {
+  call_names <- as.character(call_match)
+  arg_names <- names(as.list(call_match))
+  stopifnot(
+    "Names of input must match names of arguments" = isTRUE(all.equal(call_names[-1], arg_names[-1]))
+  )
 }

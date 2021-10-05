@@ -147,6 +147,10 @@ tar_plan(
       genes = target_plastome_genes, 
       accession = target_plastome_accessions),
     pattern = map(target_plastome_accessions),
-    deployment = "main")
-    
+    deployment = "main"),
+  
+  # Combine plastome metadata and sequences, filter to best accession per taxon
+  plastome_seqs_combined_filtered = select_plastome_seqs(
+    plastome_seqs_raw, plastome_metadata_raw_renamed)
+
 )
