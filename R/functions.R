@@ -1294,7 +1294,7 @@ align_seqs_tbl <- function(seqs_tbl) {
     exec = "/usr/bin/mafft")
   
   # Fix names if mafft changed them
-  names(alignment) <- str_remove_all(names(alignment), "_R_")
+  rownames(alignment) <- str_remove_all(rownames(alignment), "_R_")
   
   # Return results as tibble
   tibble(

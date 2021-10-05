@@ -177,6 +177,11 @@ tar_plan(
       seq = purrr::map(seq, trimal_auto)
     ),
     pattern = map(plastid_genes_aligned)
+  ),
+  # Concatenate alignments
+  plastid_alignment = do.call(
+    ape::cbind.DNAbin, 
+    c(plastid_genes_aligned_trimmed$seq, fill.with.gaps = TRUE)
   )
 
 )
