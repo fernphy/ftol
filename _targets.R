@@ -182,6 +182,14 @@ tar_plan(
   plastid_alignment = do.call(
     ape::cbind.DNAbin, 
     c(plastid_genes_aligned_trimmed$seq, fill.with.gaps = TRUE)
+  ),
+
+  # Phylogenetic analysis
+  # Generate tree: single concatenated analysis.
+  plastid_tree = jntools::iqtree(
+    plastid_alignment,
+    m = "GTR+I+G", bb = 1000, nt = "AUTO",
+    redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
   )
 
 )
