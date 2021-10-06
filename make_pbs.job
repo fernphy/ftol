@@ -8,5 +8,4 @@
 #PBS -M joelnitta@gmail.com
 #PBS -V
 cd ftol
-### mount ~ so symlinks to ~/project_data work
-docker run --rm -v ~/:/home/rstudio/ -w /home/rstudio/ftol joelnitta/ftol:0.0.1 Rscript -e "drake::r_make()"
+docker run --rm -v /home/joelnitta/ftol:/wd -v /nfs_share/joelnitta/project_data/pacific_ferns_biogeo/data_raw/:/data_raw -w /wd joelnitta/ftol:latest Rscript -e "targets::tar_make()"
