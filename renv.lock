@@ -273,6 +273,13 @@
       "Repository": "CRAN",
       "Hash": "f61dbaec772ccd2e17705c1e872e9e7c"
     },
+    "checkmate": {
+      "Package": "checkmate",
+      "Version": "2.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a667800d5f0350371bedeb8b8b950289"
+    },
     "checkr": {
       "Package": "checkr",
       "Version": "0.5.0",
@@ -1317,6 +1324,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "4b550ca01798c27b717b7e3cd4d0f4b9"
+    },
+    "strex": {
+      "Package": "strex",
+      "Version": "1.4.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a67873a8b7114c68b17b252bbdd99909"
     },
     "stringi": {
       "Package": "stringi",

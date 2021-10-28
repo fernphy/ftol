@@ -41,16 +41,27 @@ tar_plan(
   # Download individual plastid sequences from GenBank (Sanger sequences) ----
   # Define variables used in plan
   # - Target plastid fern genes to download
-  target_genes = c("atpA", "atpB", "rbcL", "rps4"),
+  target_genes = c("atpA", "atpB", "matK", "rbcL", "rps4"),
+  # - Target plastid spacing regions to download
+  target_spacers = c("trnL-trnF", "rps4-trnS"),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2021/09/01",
+  date_cutoff = "2021/10/26",
   # Download fern plastid gene fasta files
   tar_target(
-    raw_fasta,
+    raw_fasta_genes,
     fetch_fern_gene(target_genes, end_date = date_cutoff),
     pattern = map(target_genes),
     deployment = "main" # don't run in parallel, or will get HTTP status 429 errors
   ),
+  # Download fern plastid spacer fasta files
+  tar_target(
+    raw_fasta_spacers,
+    fetch_fern_spacer(target_spacers, end_date = date_cutoff),
+    pattern = map(target_spacers),
+    deployment = "main"
+  ),
+  # Combine
+  raw_fasta = bind_rows(raw_fasta_genes, raw_fasta_spacers),
   # Download fern plastid gene metadata
   tar_target(
     raw_meta,
