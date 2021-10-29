@@ -816,23 +816,22 @@ combine_and_filter_sanger <- function(
 #' @param metadata_with_seqs Tibble containting sequences downloaded
 #' from GenBank (column "seqs") and associated metadata (at least "accession"
 #' and "species").
-#' @param ppgi Tibble; genus-level and higher taxonomic system for pteridophytes,
-#' according to PPGI 2016.
-#' @param ... Additional arguments not used by this function but meant for 
-#' tracking with drake
 #' 
-blast_rogues <- function (metadata_with_seqs, ...) {
+blast_rogues <- function (metadata_with_seqs) {
   
   ### All-by-all BLAST ###
   
-  # Create OTU column for naming sequences as taxon-accession-gene
+  # Create OTU column for naming sequences as taxon|accession|gene
   metadata_with_seqs <- 
   metadata_with_seqs %>%
-    # Make sure there are no spaces in taxon, accession, or gene
+    # Make sure there are no spaces or `|` in taxon, accession, or gene
     verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
     verify(all(str_detect(accession, " ", negate = TRUE))) %>%
     verify(all(str_detect(gene, " ", negate = TRUE))) %>%
-    mutate(otu = glue("{taxon}-{accession}-{gene}"))
+    verify(all(str_detect(taxon, "\\|", negate = TRUE))) %>%
+    verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
+    verify(all(str_detect(gene, "\\|", negate = TRUE))) %>%
+    mutate(otu = glue("{taxon}|{accession}|{gene}"))
   
   # Extract sequences from metadata and rename
   pterido_seqs <- do.call(c, metadata_with_seqs$seq)
@@ -935,7 +934,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
     dplyr::add_count(family, gene) %>%
     dplyr::filter(n == 1) %>%
     dplyr::mutate(
-      otu = glue("{taxon}-{accession}-{gene}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{taxon}|{accession}|{gene}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
     select(otu, family, gene)
   
@@ -983,10 +982,10 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
     filter(str_detect(s_family, ",", negate = TRUE)) %>%
     filter(q_family != s_family) %>%
     # Add information for accession and gene (make sure OTU has expected number of dashes first)
-    verify(all(str_count(qseqid, "-") == 2)) %>%
+    verify(all(str_count(qseqid, "\\|") == 2)) %>%
     mutate(
-      accession = str_split(qseqid, "-") %>% map_chr(2),
-      gene = str_split(qseqid, "-") %>% map_chr(3)) 
+      accession = str_split(qseqid, "\\|") %>% map_chr(2),
+      gene = str_split(qseqid, "\\|") %>% map_chr(3)) 
 }
 
 # Filter to one seq per species by removing 'rogue' sequences, then
