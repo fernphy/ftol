@@ -721,7 +721,10 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
   }
 
   # Fetch standard metadata
-  metadata <- fetch_metadata(query) %>%
+  metadata <- fetch_metadata(
+    query = query,
+    # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
+    col_select = c("gi", "caption", "taxid", "title", "subtype", "subname")) %>%
     rename(accession = caption) %>%
     # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
@@ -757,28 +760,51 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
 #' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to accepted
 #' species name; output of make_ncbi_accepted_names_map()
 #' @param ppgi PPGI taxonomic system
+#' @param target_genes Character vector: target Sanger genes
+#' @param target_spacers Character vector: target Sanger intergenic spacer regions
+#' @param min_gene_len Number: minimum length (bp) required for Sanger genes
+#' @param min_spacer_len Number: minimum length (bp) required for Sanger intergenic spacer regions
 #'
 #' @return Tibble with Sanger sequence metadata, sequences, and accepted name
 #' 
-combine_and_filter_sanger <- function(raw_meta, raw_fasta, ncbi_accepted_names_map, ppgi) {
+combine_and_filter_sanger <- function(
+  raw_meta, raw_fasta, ncbi_accepted_names_map, 
+  ppgi_taxonomy, target_genes, target_spacers,
+  min_gene_len, min_spacer_len) {
+  
+  # Check that input names match arguments
+  check_args(match.call())
+  
   # Join metadata and fasta sequences
   raw_meta %>%
     left_join(raw_fasta, by = c("accession", "gene")) %>%
+    # Filter out null sequences
+    filter(!map_lgl(seq, is.null)) %>%
     # Inner join to name resolution results: will drop un-resolved names
     inner_join(ncbi_accepted_names_map, by = "taxid") %>%
     # Drop nothogenera
     mutate(genus = stringr::str_split(taxon, "_") %>% purrr::map_chr(1)) %>%
     left_join(
-      select(ppgi, genus, nothogenus), 
+      select(ppgi_taxonomy, genus, nothogenus), 
       by = "genus") %>%
     assert(not_na, nothogenus) %>%
     filter(nothogenus == "no") %>%
     select(-genus, -nothogenus) %>%
+    # Calculate actual seq length
+    mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
+    # Categorize gene type
+    mutate(
+      gene_type = case_when(
+        gene %in% target_genes ~ "gene",
+        gene %in% target_spacers ~ "spacer",
+        TRUE ~ NA_character_
+      )
+    ) %>%
+    assert(not_na, gene_type) %>%
     # Filter by minimum seq. length
-    filter(slen > 400) %>%
-    assert(not_na, accession, seq, accepted_name, taxon) %>%
-    # Filter out null sequences
-    filter(!map_lgl(seq, is.null))
+    filter((seq_len > min_gene_len & gene_type == "gene") | (seq_len > min_spacer_len & gene_type == "spacer")) %>%
+    assert(not_na, accession, seq, resolved_name, taxon)
+  
 }
 
 # Remove rogues ----

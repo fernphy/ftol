@@ -122,7 +122,13 @@ tar_plan(
   
   # Remove rogue sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
-  sanger_seqs_combined_filtered = combine_and_filter_sanger(raw_meta, raw_fasta, ncbi_accepted_names_map, ppgi_taxonomy),
+  # - set minimum lengths (bp) for filtering genes and spacers
+  min_gene_len = 200,
+  min_spacer_len = 20,
+  sanger_seqs_combined_filtered = combine_and_filter_sanger(
+    raw_meta, raw_fasta, ncbi_accepted_names_map, 
+    ppgi_taxonomy, target_genes, target_spacers,
+    min_gene_len, min_spacer_len),
   # Conduct all-by-all blast
   all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered),
   # Identify rogues (sequences matching wrong family)
