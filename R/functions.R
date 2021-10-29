@@ -753,7 +753,8 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
 #' Combine sanger sequence metadata with sequences, join to resolved names
 #' and filter by sequence length and if name was resolved or not
 #' 
-#' Drops sequences with scientific names that could not be resolved, nothogenera
+#' Drops sequences with scientific names that could not be resolved, nothogenera,
+#' Adds `otu` column ({taxon}|{accession}|{gene})
 #'
 #' @param raw_meta Sanger sequence metadata; output of fetch_fern_metadata()
 #' @param raw_fasta Sanger sequences; output of fetch_fern_gene()
@@ -803,7 +804,16 @@ combine_and_filter_sanger <- function(
     assert(not_na, gene_type) %>%
     # Filter by minimum seq. length
     filter((seq_len > min_gene_len & gene_type == "gene") | (seq_len > min_spacer_len & gene_type == "spacer")) %>%
-    assert(not_na, accession, seq, resolved_name, taxon)
+    assert(not_na, accession, seq, resolved_name, taxon) %>%
+    # Create OTU column for naming sequences as taxon|accession|gene
+    # - first make sure there are no spaces or `|` in taxon, accession, or gene
+    verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
+    verify(all(str_detect(accession, " ", negate = TRUE))) %>%
+    verify(all(str_detect(gene, " ", negate = TRUE))) %>%
+    verify(all(str_detect(taxon, "\\|", negate = TRUE))) %>%
+    verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
+    verify(all(str_detect(gene, "\\|", negate = TRUE))) %>%
+    mutate(otu = glue("{taxon}|{accession}|{gene}"))
   
 }
 
@@ -820,18 +830,6 @@ combine_and_filter_sanger <- function(
 blast_rogues <- function (metadata_with_seqs) {
   
   ### All-by-all BLAST ###
-  
-  # Create OTU column for naming sequences as taxon|accession|gene
-  metadata_with_seqs <- 
-  metadata_with_seqs %>%
-    # Make sure there are no spaces or `|` in taxon, accession, or gene
-    verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
-    verify(all(str_detect(accession, " ", negate = TRUE))) %>%
-    verify(all(str_detect(gene, " ", negate = TRUE))) %>%
-    verify(all(str_detect(taxon, "\\|", negate = TRUE))) %>%
-    verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
-    verify(all(str_detect(gene, "\\|", negate = TRUE))) %>%
-    mutate(otu = glue("{taxon}|{accession}|{gene}"))
   
   # Extract sequences from metadata and rename
   pterido_seqs <- do.call(c, metadata_with_seqs$seq)
