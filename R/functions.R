@@ -698,16 +698,29 @@ fetch_genbank_refs <- function(query) {
 #'
 #' @return Datarame
 #' fetch_fern_metadata("rbcL", start_date = "2018/01/01", end_date = "2018/02/01")
-fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date) {
+fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_spacer = FALSE) {
   
   assertthat::assert_that(assertthat::is.string(gene))
   assertthat::assert_that(assertthat::is.string(end_date))
+  assertthat::assert_that(assertthat::is.flag(is_spacer))
   
-  # Format GenBank query: all ferns matching the gene name and date range.
-  # Assume that we only want single genes or small sets of genes, not entire plastome.
-  # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-  query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
-  
+  if(isTRUE(is_spacer)) {
+    # `spacer` should have exactly one hyphen
+	  assertthat::assert_that(isTRUE(str_count(gene, "-") == 1))
+	  
+	  # split into names of two flanking genes
+	  flank_1 <- str_split(gene, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
+	  flank_2 <- str_split(gene, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
+	  
+	  # Format GenBank query: all ferns sequences including both flanking regions
+	  # Assume that we only want single genes or small sets of genes, not entire plastome.
+	  # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
+	  query <- glue('{flank_1} AND {flank_2} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  } else {
+    # Format GenBank query: all ferns matching the gene name and date range
+    query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  }
+
   # Fetch standard metadata
   metadata <- fetch_metadata(query) %>%
     rename(accession = caption) %>%

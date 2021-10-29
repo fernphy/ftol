@@ -60,15 +60,23 @@ tar_plan(
     pattern = map(target_spacers),
     deployment = "main"
   ),
-  # Combine
-  raw_fasta = bind_rows(raw_fasta_genes, raw_fasta_spacers),
   # Download fern plastid gene metadata
   tar_target(
-    raw_meta,
-    fetch_fern_metadata(target_genes, end_date = date_cutoff),
+    raw_meta_genes,
+    fetch_fern_metadata(target_genes, end_date = date_cutoff, is_spacer = FALSE),
     pattern = map(target_genes),
     deployment = "main"
   ),
+  # Download fern plastid spacer metadata
+  tar_target(
+    raw_meta_spacers,
+    fetch_fern_metadata(target_spacers, end_date = date_cutoff, is_spacer = TRUE),
+    pattern = map(target_spacers),
+    deployment = "main"
+  ),
+  # Combine
+  raw_fasta = bind_rows(raw_fasta_genes, raw_fasta_spacers),
+  raw_meta = bind_rows(raw_meta_genes, raw_meta_spacers),
   
   # Taxonomic name resolution ----
   # Download species names from NCBI
