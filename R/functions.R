@@ -187,11 +187,26 @@ extract_sequence <- function (gb_entry, gene) {
     paste(sep = "") %>%
     str_remove_all("\n") %>%
     str_remove_all('\"') %>%
-    str_match('ORIGIN(.+)$') %>%
-    magrittr::extract(,2) %>%
+    strex::str_after_last("ORIGIN") %>% 
     str_remove_all(" ") %>%
     str_remove_all("[0-9]") %>%
     substr(gene_range[1], gene_range[2])
+  
+  # Check for valid DNA sequences
+  # - make a grep query that will hit any non-IUPAC character (in upper case)
+  non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
+
+  non_iupac_seq <- str_detect(str_to_upper(sequence), non_iupac)
+
+  non_iupac_seq_msg <- assertthat::validate_that(
+		!non_iupac_seq,
+		msg = glue::glue("Non-IUPAC characters detected in gene {gene} of accession {accession}")
+	)
+
+	if(non_iupac_seq) {
+		message(non_iupac_seq_msg)
+		return(NULL)
+	}
   
   set_names(sequence, accession)
 }
@@ -449,11 +464,26 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		paste(sep = "") %>%
 		str_remove_all("\n") %>%
 		str_remove_all('\"') %>%
-		str_match('ORIGIN(.+)$') %>%
-		magrittr::extract(,2) %>%
+    strex::str_after_last("ORIGIN") %>% 
 		str_remove_all(" ") %>%
 		str_remove_all("[0-9]") %>%
 		substr(gene_range[1], gene_range[2])
+	
+  # Check for valid DNA sequences
+  # - make a grep query that will hit any non-IUPAC character (in upper case)
+  non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
+
+  non_iupac_seq <- str_detect(str_to_upper(sequence), non_iupac)
+
+  non_iupac_seq_msg <- assertthat::validate_that(
+		!non_iupac_seq,
+		msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
+	)
+
+	if(non_iupac_seq) {
+		message(non_iupac_seq_msg)
+		return(NULL)
+	}
 	
 	set_names(sequence, accession)
 }
