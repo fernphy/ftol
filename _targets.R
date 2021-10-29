@@ -129,6 +129,14 @@ tar_plan(
     raw_meta, raw_fasta, ncbi_accepted_names_map, 
     ppgi_taxonomy, target_genes, target_spacers,
     min_gene_len, min_spacer_len),
+  # Make BLAST database including all fern sequences
+  tar_file(
+    sanger_blast_db,
+    make_fern_blast_db(
+      metadata_with_seqs = sanger_seqs_combined_filtered, 
+      blast_db_dir = "intermediates/blast_sanger", 
+      out_name = "ferns_sanger")
+  ),
   # Conduct all-by-all blast
   all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered),
   # Identify rogues (sequences matching wrong family)

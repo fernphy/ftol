@@ -849,6 +849,48 @@ combine_and_filter_sanger <- function(
 
 # Remove rogues ----
 
+#' Make a blast database for ferns
+#'
+#' @param metadata_with_seqs Tibble; fern sequences with column `otu` and `seq`
+#' @param blast_db_dir Folder to write BLAST database
+#' @param out_name Name of BLAST database
+#'
+#' @return Paths to components of BLAST database. Externally, database will be created
+#' 
+make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
+
+	# Extract sequences from metadata and rename
+	pterido_seqs <- do.call(c, metadata_with_seqs$seq)
+	names(pterido_seqs) <- metadata_with_seqs$otu
+	# Remove any gaps
+	# pterido_seqs <- ape::del.gaps(pterido_seqs)
+	# Make sure that went OK
+	assertthat::assert_that(is.list(pterido_seqs))
+	assertthat::assert_that(inherits(pterido_seqs, "DNAbin"))
+	assertthat::assert_that(all(names(pterido_seqs) == metadata_with_seqs$otu))
+	
+	# Write out sequences to temporary file
+	pterido_seqs_path <- tempfile(
+		pattern = digest::digest(pterido_seqs),
+		fileext = ".fasta") %>%
+		fs::path_abs()
+	if(fs::file_exists(pterido_seqs_path)) {fs::file_delete(pterido_seqs_path)}
+	ape::write.FASTA(pterido_seqs, pterido_seqs_path)
+	
+	# Create blast DB (side-effect)
+	baitfindR::build_blast_db(                                                     
+		pterido_seqs_path,                            
+		title = out_name,                                                
+		out_name = out_name,                                                
+		parse_seqids = TRUE,                                              
+		wd = blast_db_dir)
+	
+	# Return path to blast database files
+	fs::path(blast_db_dir, out_name) %>%
+		paste0(c(".nhr", ".nin", ".nog", ".nsd", ".nsi", ".nsq"))
+	
+}
+
 #' Run all-by-all BLAST to detect rogue sequences in GenBank pteridophytes
 #' 
 #' All sequences will be BLASTed against each other.
