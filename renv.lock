@@ -1125,7 +1125,9 @@
     "renv": {
       "Package": "renv",
       "Version": "0.14.0",
-      "Source": "Repository"
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "30e5eba91b67f7f4d75d31de14bbfbdc"
     },
     "reprex": {
       "Package": "reprex",
@@ -1364,6 +1366,19 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "f3bb17418c64dda3c4d4992f31e77afb"
+    },
+    "taxastand": {
+      "Package": "taxastand",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "joelnitta",
+      "RemoteRepo": "taxastand",
+      "RemoteRef": "main",
+      "RemoteSha": "754fd2322c326d10d4dde067d591d9025ca780ad",
+      "Remotes": "anthonynorth/roxyglobals",
+      "Hash": "555ac76d44268ad38bf0745e04931fc0"
     },
     "taxize": {
       "Package": "taxize",

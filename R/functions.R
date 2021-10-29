@@ -27,43 +27,42 @@ extract_fow_from_col <- function(col_data) {
   fow <- col_data %>% 
     filter(dwc_dataset_id == "1140") %>%
     select(
-      taxon_id = dwc_taxon_id, 
-      accepted_name_taxon_id = dwc_accepted_name_usage_id, 
-      status = dwc_taxonomic_status,
+      taxonID = dwc_taxon_id, 
+      acceptedNameUsageID = dwc_accepted_name_usage_id, 
+      taxonomicStatus = dwc_taxonomic_status,
       rank = dwc_taxon_rank, 
-      scientific_name = dwc_scientific_name) %>%
+      scientificName = dwc_scientific_name) %>%
     # Keep only species level and below
     filter(rank %in% c("form", "infraspecific name", "species", "subform", "subspecies", "subvariety", "variety")) %>%
     # Filter some names that were incorrectly labeled species level
-    filter(str_detect(scientific_name, "Polypodiaceae tribe Thelypterideae|Asplenium grex Triblemma|Pteridaceae tribus Platyzomateae|Filicaceae tribus Taenitideae", negate = TRUE)) %>%
-    mutate(status = str_replace_all(status, "provisionally accepted", "accepted")) %>%
+    filter(str_detect(scientificName, "Polypodiaceae tribe Thelypterideae|Asplenium grex Triblemma|Pteridaceae tribus Platyzomateae|Filicaceae tribus Taenitideae", negate = TRUE)) %>%
     select(-rank) %>%
-    # Note: taxon_id is unique, but scientific_name may not be (esp in case of ambiguous synonyms)
-    assert(not_na, taxon_id, scientific_name) %>% 
-    assert(is_uniq, taxon_id)
+    # Note: taxonID is unique, but scientificName may not be (esp in case of ambiguous synonyms)
+    assert(not_na, taxonID, scientificName) %>% 
+    assert(is_uniq, taxonID)
   
   # Make sure all synonyms map correctly
   fow_accepted <- 
     fow %>%
-    filter(str_detect(status, "accepted")) %>%
-    select(taxon_id, scientific_name, -status)
+    filter(str_detect(taxonomicStatus, "accepted")) %>%
+    select(taxonID, scientificName, -taxonomicStatus)
   
   fow_synonyms <- 
     fow %>%
-    filter(str_detect(status, "synonym")) %>%
-    select(taxon_id, accepted_name_taxon_id, scientific_name, -status)
+    filter(str_detect(taxonomicStatus, "synonym")) %>%
+    select(taxonID, acceptedNameUsageID, scientificName, -taxonomicStatus)
   
   fow_synonyms %>%
-    anti_join(fow_accepted, by = c(accepted_name_taxon_id = "taxon_id")) %>%
+    anti_join(fow_accepted, by = c(acceptedNameUsageID = "taxonID")) %>%
     verify(nrow(.) == 0, success_fun = success_logical)
   
   # Make sure all accepted names and synonyms are accounted for
   bind_rows(fow_accepted, fow_synonyms) %>%
-    assert(is_uniq, taxon_id) %>%
-    anti_join(fow, by = "taxon_id") %>%
+    assert(is_uniq, taxonID) %>%
+    anti_join(fow, by = "taxonID") %>%
     verify(nrow(.) == 0, success_fun = success_logical)
   
-  # Make sure accepted names and synonyms are distinct
+  # FIXME: Make sure accepted names and synonyms are distinct
   # A few repeats. Leave these in for now, but will need to fix.
   # fow_accepted %>%
   #   inner_join(fow_synonyms, by = c(name = "synonym")) %>%
@@ -4011,7 +4010,7 @@ select_ncbi_names_round_2 <- function(match_results_resolved_round_1, ncbi_names
   ncbi_id_resolved <-
     match_results_resolved_round_1 %>%
     left_join(ncbi_names, by = c(query = "scientific_name")) %>%
-    filter(!is.na(accepted_name)) %>%
+    filter(!is.na(resolved_name)) %>%
     assert(not_na, taxid)
   
   # Filter query names to those that failed round 1,
@@ -4041,7 +4040,7 @@ select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_resu
       match_results_resolved_round_1,
       match_results_resolved_round_2) %>%
     left_join(ncbi_names, by = c(query = "scientific_name")) %>%
-    filter(!is.na(accepted_name)) %>%
+    filter(!is.na(resolved_name)) %>%
     assert(not_na, taxid)
   
   # Filter query names to those that failed round 1 + 2,
@@ -4080,13 +4079,13 @@ combined_match_results <- function(ncbi_names_query, ...) {
 #' @examples
 make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
   match_results_resolved_all %>%
-    filter(!is.na(accepted_name)) %>% 
-    select(taxid, accepted_name) %>%
+    filter(!is.na(resolved_name)) %>% 
+    select(taxid, resolved_name) %>%
     unique() %>% 
     assert(is_uniq, taxid) %>%
     # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
     mutate(
-      rgnparser::gn_parse_tidy(accepted_name) %>% 
+      rgnparser::gn_parse_tidy(resolved_name) %>% 
         select(taxon = canonicalsimple)
     ) %>%
     mutate(taxon = str_replace_all(taxon, " ", "_"))
