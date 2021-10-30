@@ -182,16 +182,16 @@ extract_sequence <- function (gb_entry, gene) {
   }
   
   # Extract sequence, subset to target gene
-  sequence <- 
-    gb_entry %>%
-    paste(sep = "") %>%
-    str_remove_all("\n") %>%
-    str_remove_all('\"') %>%
+	sequence <- 
+		gb_entry %>%
+		paste(sep = "") %>%
+		str_remove_all("\n") %>%
+		str_remove_all('\"') %>%
     strex::str_after_last("ORIGIN") %>% 
-    str_remove_all(" ") %>%
-    str_remove_all("[0-9]") %>%
-    substr(gene_range[1], gene_range[2])
-  
+		str_remove_all(" ") %>%
+		str_remove_all("[0-9]") %>%
+		substr(gene_range[1], gene_range[2])
+
   # Check for valid DNA sequences
   # - make a grep query that will hit any non-IUPAC character (in upper case)
   non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
@@ -465,7 +465,7 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		str_remove_all(" ") %>%
 		str_remove_all("[0-9]") %>%
 		substr(gene_range[1], gene_range[2])
-	
+
   # Check for valid DNA sequences
   # - make a grep query that will hit any non-IUPAC character (in upper case)
   non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
@@ -851,6 +851,195 @@ combine_and_filter_sanger <- function(
 
 # Remove rogues ----
 
+#' Build a BLAST database.
+#'
+#' This is a wrapper for makeblastdb.
+#'
+#' @param in_seqs Character vector of length one; the path to the fasta
+#' file containing the sequences to be included in the database.
+#' @param db_type Character vector of length one; "nucl" for DNA or "prot"
+#' for amino acids (proteins).
+#' @param out_name Character vector of length one; name of BLAST database
+#' to be created (optional). This will be used to name all database files;
+#' if omitted, the name of the `in_seqs` file will be used instead.
+#' @param title Character vector of length one; title of BLAST database
+#' to be created (optional).
+#' @param parse_seqids Logical; should the makeblastdb flag
+#' "parse_seqids" be used?
+#' @param wd Character vector of length one; working directory. The blast
+#' database will be made here.
+#' @param echo Logical; should standard error and output be printed?
+#' @param ... Additional other arguments. Not used by this function, but
+#' meant to be used by \code{\link[drake]{drake_plan}} for tracking
+#' during workflows.
+#' @return A series of files starting with \code{out_name} and ending in
+#' .phr, .pin, .pog, .psd, .psi, psq (for proteins) or .nhr, .nin, .nog,
+#' .nsd, .nsi, and .nsq (for DNA) that constitute the BLAST database in
+#' the working directory.
+#' @author Joel H Nitta, \email{joelnitta@@gmail.com}
+#' @references \url{https://www.ncbi.nlm.nih.gov/books/NBK279690/}
+#' @examples
+#' library(ape)
+#' data(woodmouse)
+#' temp_dir <- fs::dir_create(fs::path(tempdir(), "baitfindR_example"))
+#' ape::write.FASTA(woodmouse, fs::path(temp_dir, "woodmouse.fasta"))
+#' list.files(temp_dir)
+#' build_blast_db(
+#'   fs::path(temp_dir, "woodmouse.fasta"),
+#'   title = "test db",
+#'   out_name = "wood",
+#'   parse_seqids = TRUE,
+#'   wd = temp_dir)
+#' list.files(temp_dir)
+#' fs::file_delete(temp_dir)
+#' @export
+build_blast_db <- function (in_seqs,
+                            db_type = "nucl",
+                            out_name = NULL,
+                            title = NULL,
+                            parse_seqids = FALSE,
+                            echo = TRUE,
+                            wd, ...) {
+
+  # Check input
+  assertthat::assert_that(assertthat::is.string(in_seqs))
+  assertthat::assert_that(assertthat::is.string(db_type))
+  assertthat::assert_that(assertthat::is.string(wd))
+  assertthat::assert_that(is.logical(parse_seqids))
+  assertthat::assert_that(assertthat::is.string(title) | is.null(title))
+  assertthat::assert_that(assertthat::is.string(out_name) | is.null(out_name))
+
+  assertthat::assert_that(db_type %in% c("nucl", "prot"))
+
+  wd <- fs::path_abs(wd)
+  assertthat::assert_that(assertthat::is.dir(wd))
+
+  in_seqs <- fs::path_abs(in_seqs)
+  assertthat::assert_that(assertthat::is.readable(in_seqs))
+
+  # Prepare arguments
+  parse_seqids <- if(isTRUE(parse_seqids)) "-parse_seqids" else NULL
+  title <- if(!is.null(title)) c("-title", title) else NULL
+  out_name <- if(!is.null(out_name)) c("-out", out_name) else NULL
+
+  arguments <- c("-in", in_seqs,
+                 "-dbtype", db_type,
+                 parse_seqids,
+                 out_name,
+                 title)
+
+  # run command
+  processx::run("makeblastdb", arguments, wd = wd, echo = echo)
+
+}
+
+#' Run a blastn query.
+#'
+#' This is a wrapper for blastn.
+#'
+#' @param query Character vector of length one; the path to the fasta
+#' file to use as the query sequence(s).
+#' @param database Character vector of length one; the name of the blast
+#' database.
+#' @param out_file Character vector of length one; the name to use for
+#' the results file.
+#' @param outfmt Character vector of length one; value to pass to
+#' \code{blastn} \code{outfmt} argument. Default = "6".
+#' @param other_args Character vector; other arguments to pass on to
+#' \code{blastn}.
+#' Must be formatted so that each argument name and its value are
+#' separate, consecutive elements of the vector, e.g.,
+#' \code{c("-evalue", 10, "-num_threads", 1)}.
+#' The argument name must be preceded by a hyphen.
+#' For a list of options, run \code{blastn -help}.
+#' @param wd Character vector of length one; working directory. The blast
+#' search will be conducted here.
+#' @param echo Logical; should standard error and output be printed?
+#' @param ... Additional other arguments. Not used by this function,
+#' but meant to be used by \code{\link[drake]{drake_plan}} for tracking
+#' during workflows.
+#' @return A tab-separated text file with the results of the blastn
+#' search, named with the value of \code{out_file}.
+#' @author Joel H Nitta, \email{joelnitta@@gmail.com}
+#' @references \url{https://www.ncbi.nlm.nih.gov/books/NBK279690/}
+#' @examples
+#' library(ape)
+#'
+#' # Make temp dir for storing files
+#' temp_dir <- fs::dir_create(fs::path(tempdir(), "baitfindR_example"))
+#'
+#' # Write out ape::woodmouse dataset as DNA
+#' data(woodmouse)
+#' ape::write.FASTA(woodmouse, fs::path(temp_dir, "woodmouse.fasta"))
+#'
+#' # Make blast database
+#' build_blast_db(
+#'   fs::path(temp_dir, "woodmouse.fasta"),
+#'   db_type = "nucl",
+#'   out_name = "wood",
+#'   parse_seqids = TRUE,
+#'   wd = temp_dir)
+#'
+#' # Blast the original sequences against the database
+#' blast_n(
+#'   fs::path(temp_dir, "woodmouse.fasta"),
+#'   database = "wood",
+#'   out_file = "blastn_results",
+#'   wd = temp_dir,
+#'   echo = TRUE
+#' )
+#'
+#' # Take a look at the results.
+#' readr::read_tsv(
+#'   fs::path(temp_dir, "blastn_results"),
+#'   col_names = FALSE
+#'   )
+#'
+#' # Cleanup.
+#' fs::file_delete(temp_dir)
+#' @export
+blast_n <- function (query,
+                     database,
+                     out_file = NULL,
+                     outfmt = "6",
+                     other_args = NULL,
+                     echo = TRUE,
+                     wd,
+                     ...) {
+
+  # Check input
+
+  assertthat::assert_that(assertthat::is.string(query))
+  assertthat::assert_that(assertthat::is.string(database))
+  assertthat::assert_that(assertthat::is.string(out_file) | is.null(out_file))
+  assertthat::assert_that(assertthat::is.string(outfmt))
+  assertthat::assert_that(is.character(other_args) | is.null(other_args))
+  assertthat::assert_that(is.logical(echo))
+  assertthat::assert_that(assertthat::is.string(wd))
+  assertthat::assert_that(
+    length(other_args) > 1 | is.null(other_args),
+    msg = "other_args not formatted correctly.")
+
+  wd <- fs::path_abs(wd)
+  assertthat::assert_that(assertthat::is.dir(wd))
+
+  query <- fs::path_abs(query)
+  assertthat::assert_that(assertthat::is.readable(query))
+
+  # modify arguments
+  if(!is.null(out_file)) out_file <- c("-out", out_file)
+
+  arguments <- c("-query", query,
+                 "-db", database,
+                 "-outfmt", outfmt,
+                 out_file,
+                 other_args)
+
+  # run command
+  processx::run("blastn", arguments, wd = wd, echo = echo)
+
+}
+
 #' Make a blast database for ferns
 #'
 #' @param metadata_with_seqs Tibble; fern sequences with column `otu` and `seq`
@@ -878,19 +1067,29 @@ make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
 		fs::path_abs()
 	if(fs::file_exists(pterido_seqs_path)) {fs::file_delete(pterido_seqs_path)}
 	ape::write.FASTA(pterido_seqs, pterido_seqs_path)
-	
+
+  # Define output files
+	out_files <- fs::path(blast_db_dir, out_name) %>%
+		paste0(c(".nhr", ".nin", ".nsq"))
+
+  # Delete any existing output
+  for (i in seq_along(out_files)) {
+    if(fs::file_exists(out_files[[i]])) {
+      fs::file_delete(out_files[[i]])
+    }
+  }
+		
 	# Create blast DB (side-effect)
-	baitfindR::build_blast_db(                                                     
+	build_blast_db(                                                     
 		pterido_seqs_path,                            
 		title = out_name,                                                
 		out_name = out_name,                                                
-		parse_seqids = TRUE,                                              
+		parse_seqids = FALSE,                                              
 		wd = blast_db_dir)
 	
-	# Return path to blast database files
-	fs::path(blast_db_dir, out_name) %>%
-		paste0(c(".nhr", ".nin", ".nog", ".nsd", ".nsi", ".nsq"))
-	
+  # Return path to output file
+  out_files
+
 }
 
 #' Run all-by-all BLAST to detect rogue sequences in GenBank pteridophytes
@@ -904,7 +1103,7 @@ make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
 blast_rogues <- function (metadata_with_seqs) {
   
   ### All-by-all BLAST ###
-  
+   
   # Extract sequences from metadata and rename
   pterido_seqs <- do.call(c, metadata_with_seqs$seq)
   names(pterido_seqs) <- metadata_with_seqs$otu
@@ -936,7 +1135,7 @@ blast_rogues <- function (metadata_with_seqs) {
     "pterido_seqs.fasta"))
   
   # Make blast db.
-  baitfindR::build_blast_db(
+  build_blast_db(
     in_seqs = fs::path(blast_dir, "pterido_seqs.fasta"),
     out_name = "pterido_seqs",
     wd = blast_dir,
@@ -944,7 +1143,7 @@ blast_rogues <- function (metadata_with_seqs) {
   )
   
   # Query all sequences
-  baitfindR::blast_n(
+  blast_n(
     query = fs::path(blast_dir, "pterido_seqs.fasta"),
     database = "pterido_seqs",
     out_file = "blastn_results",
