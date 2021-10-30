@@ -388,14 +388,9 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		str_split("misc_feature") %>%
 		magrittr::extract2(1) %>%
 		# Exclude any empty strings
-		magrittr::extract(. != "") %>%
-		map_chr(
-			~strex::str_before_nth(., '\"', 2) %>%
-				str_remove_all('\"') %>%
-				str_squish())
+		magrittr::extract(. != "")
 	
-	# Make sure target gene is detected
-	# (actually, spacer, but let's call it a gene for simplicity)
+	# Make sure target spacer is detected in at least one of the "misc_feature" groups
 	gene_detected <- any(detect_spacer(gene_range_list, flank_1, flank_2))
 	gene_detected_msg <- assertthat::validate_that(
 		gene_detected,
@@ -406,10 +401,10 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		return(NULL)
 	}
 	
-	note_check <- any(str_detect(gene_range_list, "\\/note"))
+	note_check <- any(str_detect(gene_range_list, "\\/note|\\/gene|\\/product"))
 	note_check_msg <- assertthat::validate_that(
 		note_check,
-		msg = glue::glue("'/note' field not detected in accession {accession}")
+		msg = glue::glue("None of '/note', '/gene', or '/product' detected in accession {accession}")
 	)
 	if(!note_check) {
 		message(note_check_msg)
@@ -420,8 +415,10 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 	# Comes right before "/note"
 	gene_range <-
 		gene_range_list %>%
+    # restrict to the misc feature with both flanking gene names
 		magrittr::extract(detect_spacer(., flank_1, flank_2)) %>% 
-		strex::str_before_first(., " \\/note") %>%
+    # the range is almost always just before '/note', but rarely before '/gene' or '/product'
+		strex::str_before_first(., "\\/note|\\/gene|\\/product") %>%
 		str_split(" +") %>%
 		unlist %>%
 		magrittr::extract(str_detect(., "\\d")) %>%
@@ -535,13 +532,18 @@ fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, retur
 	
 	# Parse flatfile
 	
-	# in the case of trnl-trnf, this is sometimes written as trnl-f
+	# in the case of trnl-trnf, this is sometimes written as 'trnl-f'
 	# so search based on that (otherwise just on genes as normally written)
 	flank_1_grep <- flank_1
 	flank_2_grep <- flank_2
 	if(str_to_lower(spacer) == "trnl-trnf") {
 		flank_1_grep <- "trnl|l"
 		flank_2_grep <- "trnf|f"
+	}
+  # similarly, in some rare cases rps4-trnS is written as 'rps-trnS'
+  if(str_to_lower(spacer) == "rps4-trns") {
+		flank_1_grep <- "rps"
+		flank_2_grep <- "trns"
 	}
 	
 	# Read-in flat file, extract out target spacer, convert to seqs
