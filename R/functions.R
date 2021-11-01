@@ -1040,33 +1040,59 @@ blast_n <- function (query,
 
 }
 
+#' Convert a list-column of DNA sequences in a tibble to a list of class DNAbin
+#'
+#' Helper function
+#'
+#' @param seqtbl Tibble containting DNA sequences downloaded
+#' from GenBank and associated metadata (at one column that can
+#' be used to specify the sequence name)
+#' @param name_col Name of column with sequence name
+#' @param seq_col Name of column with sequences (list-column)
+#' 
+seqtbl_to_dnabin <- function(seqtbl, name_col, seq_col = "seq") {
+  require(ape)
+  
+  # Check input
+  assertthat::assert_that(inherits(seqtbl, "tbl"))
+  assertthat::assert_that(assertthat::is.string(name_col))
+  assertthat::assert_that(name_col %in% colnames(seqtbl))
+
+  # Extract sequences from metadata and rename
+  seqs_dnabin <- do.call(c, seqtbl[[seq_col]])
+  names(seqs_dnabin) <- seqtbl[[name_col]]
+  
+  # Make sure that went OK
+  assertthat::assert_that(is.list(seqs_dnabin))
+  assertthat::assert_that(inherits(seqs_dnabin, "DNAbin"))
+  assertthat::assert_that(all(names(seqs_dnabin) == seqtbl[[name_col]]))
+
+  seqs_dnabin
+}
+
 #' Make a blast database for ferns
 #'
-#' @param metadata_with_seqs Tibble; fern sequences with column `otu` and `seq`
+#' @param seqtbl Tibble; fern sequences with column `otu` and `seq`
 #' @param blast_db_dir Folder to write BLAST database
 #' @param out_name Name of BLAST database
 #'
 #' @return Paths to components of BLAST database. Externally, database will be created
 #' 
-make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
+make_fern_blast_db <- function(seqtbl, blast_db_dir, out_name) {
 
 	# Extract sequences from metadata and rename
-	pterido_seqs <- do.call(c, metadata_with_seqs$seq)
-	names(pterido_seqs) <- metadata_with_seqs$otu
+	fern_seqs <- seqtbl_to_dnabin(seqtbl, "otu")
+	
 	# Remove any gaps
-	# pterido_seqs <- ape::del.gaps(pterido_seqs)
-	# Make sure that went OK
-	assertthat::assert_that(is.list(pterido_seqs))
-	assertthat::assert_that(inherits(pterido_seqs, "DNAbin"))
-	assertthat::assert_that(all(names(pterido_seqs) == metadata_with_seqs$otu))
+	fern_seqs <- ape::del.gaps(fern_seqs)
 	
 	# Write out sequences to temporary file
-	pterido_seqs_path <- tempfile(
-		pattern = digest::digest(pterido_seqs),
+	fern_seqs_path <- tempfile(
+		pattern = digest::digest(fern_seqs),
 		fileext = ".fasta") %>%
 		fs::path_abs()
-	if(fs::file_exists(pterido_seqs_path)) {fs::file_delete(pterido_seqs_path)}
-	ape::write.FASTA(pterido_seqs, pterido_seqs_path)
+	if(fs::file_exists(fern_seqs_path)) {fs::file_delete(fern_seqs_path)}
+	ape::write.FASTA(fern_seqs, fern_seqs_path)
 
   # Define output files
 	out_files <- fs::path(blast_db_dir, out_name) %>%
@@ -1081,7 +1107,7 @@ make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
 		
 	# Create blast DB (side-effect)
 	build_blast_db(                                                     
-		pterido_seqs_path,                            
+		fern_seqs_path,                            
 		title = out_name,                                                
 		out_name = out_name,                                                
 		parse_seqids = FALSE,                                              
@@ -1090,6 +1116,72 @@ make_fern_blast_db <- function(metadata_with_seqs, blast_db_dir, out_name) {
   # Return path to output file
   out_files
 
+}
+
+#' Run BLAST on DNA sequences in a tibble
+#'
+#' @param seqtbl Tibble containing DNA sequences as a list-column
+#' @param name_col Column with sequence names
+#' @param seq_col Column with DNA sequences
+#' @param blastdb_files Full paths to BLAST database files
+#' @param max_target_seqs Number of maximum hits to return per query
+#'
+#' @return Tibble
+#' 
+blast_seqtbl <- function (
+  seqtbl, name_col = "otu", seq_col = "seq", 
+  blastdb_files, max_target_seqs = 10) {
+
+  # Convert sequences to DNAbin
+  query_seqs <- seqtbl_to_dnabin(seqtbl, name_col = name_col, seq_col = seq_col)
+
+  # Remove any gaps
+	query_seqs <- ape::del.gaps(query_seqs)
+	
+	# Write out sequences to temporary file
+	query_seqs_path <- tempfile(
+		pattern = digest::digest(query_seqs),
+		fileext = ".fasta") %>%
+		fs::path_abs()
+	if(fs::file_exists(query_seqs_path)) {fs::file_delete(query_seqs_path)}
+	ape::write.FASTA(query_seqs, query_seqs_path)
+
+  # Define name of output file
+  blast_out_path <- tempfile(
+		pattern = digest::digest(query_seqs),
+		fileext = ".csv") %>%
+		fs::path_abs()
+	if(fs::file_exists(blast_out_path)) {fs::file_delete(blast_out_path)}
+
+  # Query sequences
+  blast_n(
+    query = query_seqs_path,
+    database = fs::path_file(blastdb_files) %>% fs::path_ext_remove() %>% unique(),
+    out_file = blast_out_path, # output as tsv format '6'
+    other_args = c("-max_target_seqs", max_target_seqs),
+    wd = fs::path_dir(blastdb_files) %>% unique(),
+    echo = TRUE
+  )
+  
+  # Read in sequences.
+  # BLAST doesn't output column headers, so we need to specify 
+  # (make sure they match correctly first!)
+  fmt6_cols <- c("qseqid", "sseqid", "pident", "length", "mismatch",
+                 "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+  
+  # Read in BLAST output
+  blast_results <- readr::read_tsv(
+    blast_out_path,
+    col_names = fmt6_cols,
+    col_types = "ccdddddddddd" # two ID cols are char, rest is numeric
+  )
+  
+  # Cleanup
+  if(fs::file_exists(blast_out_path)) fs::file_delete(blast_out_path)
+  if(fs::file_exists(query_seqs_path)) fs::file_delete(query_seqs_path)
+  
+  blast_results
+	
 }
 
 #' Run all-by-all BLAST to detect rogue sequences in GenBank pteridophytes
