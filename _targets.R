@@ -39,6 +39,9 @@ tar_plan(
   # Manually selected synonyms for resolving names of plastid genes
   tar_file(sanger_names_with_mult_syns_select_path, path(data_raw, "genbank_names_with_mult_syns_select.csv")),
   sanger_names_with_mult_syns_select = read_csv(sanger_names_with_mult_syns_select_path),
+  # Manually curated list of raw fasta accessions to exclude from analysis
+  tar_file(raw_fasta_exclude_list_path, path(data_raw, "raw_fasta_exclude_list.csv")),
+  raw_fasta_exclude_list = read_csv(raw_fasta_exclude_list_path),
   
   # Download individual plastid sequences from GenBank (Sanger sequences) ----
   # Define variables used in plan
@@ -50,18 +53,34 @@ tar_plan(
   date_cutoff = "2021/10/26",
   # Download fern plastid gene fasta files
   tar_target(
-    raw_fasta_genes,
-    fetch_fern_gene(target_genes, end_date = date_cutoff),
+    raw_fasta_genes_results,
+    fetch_fern_gene(target_genes, end_date = date_cutoff, accs_exclude_list = raw_fasta_exclude_list),
     pattern = map(target_genes),
     deployment = "main" # don't run in parallel, or will get HTTP status 429 errors
   ),
+  # - extract sequences
+  tar_target(
+    raw_fasta_genes_seqs,
+    seqs_from_raw_gb_fetch(raw_fasta_genes_results, gene = target_genes),
+    pattern = map(raw_fasta_genes_results, target_genes)
+  ),
+  # - extract errors
+  raw_fasta_genes_errors = error_from_raw_gb_fetch(raw_fasta_genes_results),
   # Download fern plastid spacer fasta files
   tar_target(
-    raw_fasta_spacers,
-    fetch_fern_spacer(target_spacers, end_date = date_cutoff),
+    raw_fasta_spacers_results,
+    fetch_fern_spacer(target_spacers, end_date = date_cutoff, accs_exclude_list = raw_fasta_exclude_list),
     pattern = map(target_spacers),
     deployment = "main"
   ),
+  # - extract sequences
+  tar_target(
+    raw_fasta_spacers_seqs,
+    seqs_from_raw_gb_fetch(raw_fasta_spacers_results, gene = target_spacers),
+    pattern = map(raw_fasta_spacers_results, target_spacers)
+  ),
+  # - extract errors
+  raw_fasta_spacers_errors = error_from_raw_gb_fetch(raw_fasta_spacers_results),
   # Download fern plastid gene metadata
   tar_target(
     raw_meta_genes,
@@ -77,8 +96,9 @@ tar_plan(
     deployment = "main"
   ),
   # Combine
-  raw_fasta = bind_rows(raw_fasta_genes, raw_fasta_spacers),
+  raw_fasta = bind_rows(raw_fasta_genes_seqs, raw_fasta_spacers_seqs),
   raw_meta = bind_rows(raw_meta_genes, raw_meta_spacers),
+  raw_fasta_errors = bind_rows(raw_fasta_genes_errors, raw_fasta_spacers_errors),
 
   # Taxonomic name resolution ----
   # Download species names from NCBI

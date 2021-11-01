@@ -74,6 +74,12 @@ extract_fow_from_col <- function(col_data) {
 
 # Download Sanger sequences from GenBank----
 
+# Helper function to make tibble including custom error message,
+# accession, and gene. Uses `accession` and `gene` in parent environment.
+error_tbl <- function(accession, gene, msg) {
+  tibble(accession = accession, gene = gene, msg = msg)
+}
+
 #' Extract a DNA sequence from a single entry
 #' in a genbank flatfile
 #'
@@ -81,38 +87,61 @@ extract_fow_from_col <- function(col_data) {
 #' single entry from a genbank flatfile
 #' @param gene Name of gene
 #'
-#' @return DNA sequence as a character vector, named
-#' for the species + voucher
+#' @return List with two items:
+#'   - seq: Named character vector; DNA sequence
+#'   - error: Tibble with error message, gene name, and accession
 #' 
-extract_sequence <- function (gb_entry, gene) {
-  
-  # Check for FEATURES and ORIGIN field; if either is missing, return NULL
-  if (str_detect(gb_entry, "FEATURES", negate = TRUE)) {
-    message("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
-    return(NULL)
-  }
-  
-  if (str_detect(gb_entry, "ORIGIN",  negate = TRUE)) {
-    message("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
-    return(NULL)
-  }
-  
-  if (str_detect(gb_entry, "ACCESSION",  negate = TRUE)) {
-    message("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
-    return(NULL)
-  }
-  
-  # Extract accession
-  accession <-
-    gb_entry %>%
-    paste(sep = "") %>%
-    str_match('ACCESSION(.+)\n') %>%
-    magrittr::extract(,2) %>%
-    # In very rare cases, may have multiple values for accession,
-    # separated by space. If so, take the first one.
-    str_trim(side = "both") %>%
-    str_split(" ") %>%
-    purrr::pluck(1,1)
+extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
+
+  # Check for accession number
+  accession_detected <- str_detect(gb_entry, "ACCESSION")
+	accession_detected_msg <- assertthat::validate_that(
+		accession_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
+	)
+  if (!accession_detected) {
+		message(accession_detected_msg)
+		return(
+      list(
+        seq = NULL,
+        error = tibble(gene = gene, msg = accession_detected_msg)
+      )
+    )
+	}
+
+   # Extract accession number
+	accession <-
+		gb_entry %>%
+		paste(sep = "") %>%
+		str_match('ACCESSION(.+)\n') %>%
+		magrittr::extract(,2) %>%
+		# In very rare cases, may have multiple values for accession,
+		# separated by space. If so, take the first one.
+		str_trim(side = "both") %>%
+		str_split(" ") %>%
+		purrr::pluck(1,1)
+
+  # If exclusion list is present and it's on the list, skip it
+  if(!is.null(accs_exclude) && accession %in% accs_exclude) return (list(seq = NULL, error = NULL))
+	
+	# Check for FEATURES and ORIGIN fields
+  features_detected <- str_detect(gb_entry, "FEATURES")
+	features_detected_msg <- assertthat::validate_that(
+		features_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
+	)
+  if(!features_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = features_detected_msg))
+  )
+
+  origin_detected <- str_detect(gb_entry, "ORIGIN")
+	origin_detected_msg <- assertthat::validate_that(
+		origin_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
+	)
+  if(!origin_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = origin_detected_msg))
+  )
   
   # Extract start and end of target gene
   gene_range_list <-
@@ -135,10 +164,9 @@ extract_sequence <- function (gb_entry, gene) {
     gene_detected,
     msg = glue::glue("Gene {gene} not detected in accession {accession}")
   )
-  if(!gene_detected) {
-    message(gene_detected_msg)
-    return(NULL)
-  }
+  if(!gene_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_detected_msg))
+  )
   
   # Subset to only the target gene
   gene_range <-
@@ -154,16 +182,15 @@ extract_sequence <- function (gb_entry, gene) {
     sort()
   
   # Check for duplicated genes
-  gene_duplicated <- length(unique(gene_range)) <= 2
-  gene_duplicated_msg <- assertthat::validate_that(
-    gene_duplicated,
-    msg = glue::glue("Duplicate copies of gene {gene} detected in accession {accession}")
+  gene_not_duplicated <- length(unique(gene_range)) <= 2
+	gene_not_duplicated_msg <- assertthat::validate_that(
+		gene_not_duplicated,
+		msg = glue::glue("Duplicate copies of {gene} gene detected in accession {accession}")
+	)
+  if(!gene_not_duplicated) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_not_duplicated_msg))
   )
-  if(!gene_duplicated) {
-    message(gene_duplicated_msg)
-    return(NULL)
-  }
-  
+	
   # Check that full range of gene was detected
   gene_full <- length(gene_range) > 1 && 
     is.numeric(gene_range) && 
@@ -171,15 +198,13 @@ extract_sequence <- function (gb_entry, gene) {
     gene_range[1] <= gene_range[2] && 
     gene_range[2] >= gene_range[1]
   
-  gene_full_msg <- assertthat::validate_that(
-    gene_full,
-    msg = glue::glue("Full range of gene {gene} not detected in accession {accession}")
+ 	gene_full_msg <- assertthat::validate_that(
+		gene_full,
+		msg = glue::glue("Full range of {gene} gene not detected in accession {accession}")
+	)
+	if(!gene_full) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_full_msg))
   )
-  
-  if(!gene_full) {
-    message(gene_full_msg)
-    return(NULL)
-  }
   
   # Extract sequence, subset to target gene
 	sequence <- 
@@ -196,49 +221,23 @@ extract_sequence <- function (gb_entry, gene) {
   # - make a grep query that will hit any non-IUPAC character (in upper case)
   non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
 
-  non_iupac_seq <- str_detect(str_to_upper(sequence), non_iupac)
+  iupac_only <- str_detect(str_to_upper(sequence), non_iupac, negate = TRUE)
 
-  non_iupac_seq_msg <- assertthat::validate_that(
-		!non_iupac_seq,
-		msg = glue::glue("Non-IUPAC characters detected in gene {gene} of accession {accession}")
+  iupac_only_msg <- assertthat::validate_that(
+		iupac_only,
+		msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
 	)
 
-	if(non_iupac_seq) {
-		message(non_iupac_seq_msg)
-		return(NULL)
-	}
+	if(!iupac_only) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = iupac_only_msg))
+  )
   
-  set_names(sequence, accession)
-}
-
-#' Parse a genbank file and extract all the DNA sequences for a given gene
-#'
-#' @param gbff_path Path to genbank flat file
-#' @param gene Name of gene
-#'
-#' @return List of class "AAbin"
-#' 
-parse_dna_from_flatfile <- function (gbff_path, gene) {
-  
-  # Read-in flat file
-  readr::read_file(gbff_path) %>%
-    # '\\' is delimiter between entries
-    stringr::str_split("\n\\/\\/\n") %>%
-    unlist %>%
-    # Drop the last item, as it is just an empty line (after the last '\\')
-    magrittr::extract(-length(.)) %>%
-    # Extract DNA sequences from each entry
-    purrr::map2(gene, extract_sequence) %>%
-    # Drop any NULL values
-    purrr::compact() %>%
-    # Name them as the accession
-    purrr::set_names(map_chr(., names)) %>%
-    # Convert to ape format
-    # - each sequence needs to be a character vector with each letter as an element
-    map(stringr::str_split, "") %>%
-    map(ape::as.DNAbin) %>%
-    do.call(c, .)
-  
+  # If pass all checks, return sequence with no error
+  list(
+    # convert sequence to ape DNAseq
+    seq = set_names(sequence, accession),
+    error = NULL
+  ) 
 }
 
 #' Download a set of fern sequences for a given gene
@@ -246,6 +245,8 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 #' @param gene Name of gene
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
+#' @param accs_exclude_list Data frame with accession numbers to
+#' exclude from results, including columns "gene" and "accession"
 #' @param return_df Logical; return results as a dataframe? If FALSE, returns results
 #' as a list
 #'
@@ -253,10 +254,22 @@ parse_dna_from_flatfile <- function (gbff_path, gene) {
 #' for the sequence and accession
 #' 
 #' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
-fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, return_df = TRUE) {
+fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, accs_exclude_list = NULL, return_df = TRUE) {
   
   assertthat::assert_that(assertthat::is.string(gene))
   assertthat::assert_that(assertthat::is.string(end_date))
+  assertthat::assert_that(assertthat::is.string(start_date))
+
+  # filter accessions to exclude
+  accs_exclude <- NULL
+  if(!is.null(accs_exclude_list)) {
+  accs_exclude <- accs_exclude_list %>%
+    # to avoid gene == gene
+    rename(gene_in_exclude_data = gene) %>%
+    filter(gene_in_exclude_data == gene) %>%
+    pull(accession)
+    }
+  if(length(accs_exclude) == 0) accs_exclude <- NULL
   
   # Format GenBank query: all ferns matching the gene name.
   # Assume that we only want single genes or small sets of genes, not entire plastome.
@@ -279,17 +292,27 @@ fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, return_df
   
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
   
-  # Parse flatfile
-  seqs <- parse_dna_from_flatfile(temp_file, gene)
-  
+  # Read-in flat file, extract out target spacer or error
+  results <- readr::read_file(temp_file) %>%
+		# '\\' is delimiter between entries; split up into one string each
+		stringr::str_split("\n\\/\\/\n") %>%
+		unlist %>%
+		# Drop the last item, as it is just an empty line (after the last '\\')
+		magrittr::extract(-length(.)) %>%
+		# Extract spacer sequence and accession, or return error
+		map(~extract_sequence(., gene = gene, accs_exclude = accs_exclude)) %>%
+    # Transpose the list (so it includes two items, "seq" and "error")
+		transpose()
+
+  # convert to tibble
+  results <- tibble(
+      seq = results$seq,
+      error = results$error
+  )
+
   fs::file_delete(temp_file)
-  
-  # Return list 
-  if(return_df == FALSE) return(seqs)
-  
-  # Or return dataframe
-  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = gene)
-  
+
+  return(results)
 }
 
 #' Detect a spacer region, non-vectorized version
@@ -327,34 +350,39 @@ detect_spacer <- function(x, flank_1, flank_2) {map_lgl(x, ~detect_spacer_single
 #' @param gb_entry String (character vector of length 1);
 #' single entry from a genbank flatfile
 #' @param flank_1 String (character vector of length 1); 
-#' name of one flanking gene
+#' name of one flanking gene (may be a grep expression)
 #' @param flank_2 String (character vector of length 1); 
-#' name of other flanking gene
+#' name of other flanking gene (may be a grep expression)
+#' @param spacer String; name of spacer
+#' @param accs_exclude Character vector of accession numbers to
+#' exclude from results
 #'
-#' @return DNA sequence as a character vector, named
-#' for the species + voucher
+#' @return List with two items:
+#'   - seq: Named character vector; DNA sequence
+#'   - error: Tibble with error message, gene name, and accession
 #' 
-extract_spacer <- function (gb_entry, flank_1, flank_2) {
-	
-	# General behavior on failures is to return NULL with a message
-	# so the function doesn't fail in a loop
-	
-	# Check for FEATURES and ORIGIN field; if either is missing, return NULL
-	if (str_detect(gb_entry, "FEATURES", negate = TRUE)) {
-		message("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
-		return(NULL)
+extract_spacer <- function (gb_entry, flank_1, flank_2, spacer, accs_exclude = NULL) {
+  
+	# Output always consists of list with "seq" or "error";
+  # one is NULL, other contains either sequence or error message
+
+  # Check for accession number
+  accession_detected <- str_detect(gb_entry, "ACCESSION")
+	accession_detected_msg <- assertthat::validate_that(
+		accession_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
+	)
+  if (!accession_detected) {
+		message(accession_detected_msg)
+		return(
+      list(
+        seq = NULL,
+        error = tibble(gene = spacer, msg = accession_detected_msg)
+      )
+    )
 	}
-	
-	if (str_detect(gb_entry, "ORIGIN",  negate = TRUE)) {
-		message("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
-		return(NULL)
-	}
-	
-	if (str_detect(gb_entry, "ACCESSION",  negate = TRUE)) {
-		message("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
-		return(NULL)
-	}
-	
+  
+  # Extract accession number
 	accession <-
 		gb_entry %>%
 		paste(sep = "") %>%
@@ -366,11 +394,61 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		str_split(" ") %>%
 		purrr::pluck(1,1)
 	
-	if (str_detect(gb_entry, "misc_feature",  negate = TRUE)) {
-		message(glue::glue("'misc_feature' not detected in accession {accession}"))
-		return(NULL)
-	}
+  # If exclusion list is present and it's on the list, skip it
+  if(!is.null(accs_exclude) && accession %in% accs_exclude) return (list(seq = NULL, error = NULL))
 	
+	# Check for FEATURES, ORIGIN, misc_feature fields
+  features_detected <- str_detect(gb_entry, "FEATURES")
+	features_detected_msg <- assertthat::validate_that(
+		features_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
+	)
+  if(!features_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = features_detected_msg))
+  )
+
+  origin_detected <- str_detect(gb_entry, "ORIGIN")
+	origin_detected_msg <- assertthat::validate_that(
+		origin_detected,
+		msg = glue::glue("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
+	)
+  if(!origin_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = origin_detected_msg))
+  )
+
+  # Check if spacer is mentioned in FEATURES
+  # (that is where it will indicate range of spacer)
+  features <- 
+    gb_entry %>% 
+		paste(sep = "") %>%
+		str_remove_all("\n") %>%
+		str_match("FEATURES(.*)ORIGIN") %>%
+		magrittr::extract(,2) %>%
+    str_squish()
+
+  flank_1_detected_in_features <- str_detect(features, regex(flank_1, ignore_case = TRUE))
+  flank_2_detected_in_features <- str_detect(features, regex(flank_2, ignore_case = TRUE))
+
+  spacer_detected_in_features <- flank_1_detected_in_features && flank_2_detected_in_features
+  spacer_detected_in_features_msg <- assertthat::validate_that(
+		spacer_detected_in_features,
+		msg = glue::glue("{spacer} not detected in accession {accession}")
+	)
+  if(!spacer_detected_in_features) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = spacer_detected_in_features_msg))
+  )
+
+  # 99% of time spacer is listed in 'misc_feature'
+  # but very rarely in 'misc_RNA' or 'misc_difference'
+  misc_feature_detected <- str_detect(gb_entry, "misc_feature|misc_RNA|misc_difference")
+	misc_feature_msg <- assertthat::validate_that(
+		misc_feature_detected,
+		msg = glue::glue("'misc_feature', 'misc_RNA', or 'misc_difference' not detected in accession {accession}")
+	)
+  if(!misc_feature_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = misc_feature_msg))
+  )
+
 	# Extract line including start and end of target region
 	gene_range_list <-
 		gb_entry %>% 
@@ -381,11 +459,11 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		# Match strings like 'misc_feature 572..902 /note=\"trnL-trnF intergenic spacer\"' 
 		# (we want the misc_feature, the range it contains, and the note)
 		# the note may stretch over multiple lines, but is contained between two escaped quotation marks
-		str_match_all("misc_feature .*$") %>%
+		str_match_all("misc_feature .*$|misc_RNA .*$|misc_difference .*$") %>%
 		unlist %>%
 		unique() %>%
 		# May be multiple misc_features, so split these
-		str_split("misc_feature") %>%
+		str_split("misc_feature|misc_RNA|misc_difference") %>%
 		magrittr::extract2(1) %>%
 		# Exclude any empty strings
 		magrittr::extract(. != "")
@@ -396,21 +474,19 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		gene_detected,
 		msg = glue::glue("{flank_1}-{flank_2} spacer not detected in accession {accession}")
 	)
-	if(!gene_detected) {
-		message(gene_detected_msg)
-		return(NULL)
-	}
+  if(!gene_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_detected_msg))
+  )
 	
-	note_check <- any(str_detect(gene_range_list, "\\/note|\\/gene|\\/product"))
-	note_check_msg <- assertthat::validate_that(
-		note_check,
+	note_detected <- any(str_detect(gene_range_list, "\\/note|\\/gene|\\/product"))
+	note_detected_msg <- assertthat::validate_that(
+		note_detected,
 		msg = glue::glue("None of '/note', '/gene', or '/product' detected in accession {accession}")
 	)
-	if(!note_check) {
-		message(note_check_msg)
-		return(NULL)
-	}
-	
+  if(!note_detected) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = note_detected_msg))
+  )
+  	
 	# Get range (start and end position) of spacer region.
 	# Comes right before "/note"
 	gene_range <-
@@ -428,15 +504,14 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		sort()
 	
 	# Check for duplicated genes
-	gene_duplicated <- length(unique(gene_range)) <= 2
-	gene_duplicated_msg <- assertthat::validate_that(
-		gene_duplicated,
+	gene_not_duplicated <- length(unique(gene_range)) <= 2
+	gene_not_duplicated_msg <- assertthat::validate_that(
+		gene_not_duplicated,
 		msg = glue::glue("Duplicate copies of {flank_1}-{flank_2} spacer detected in accession {accession}")
 	)
-	if(!gene_duplicated) {
-		message(gene_duplicated_msg)
-		return(NULL)
-	}
+  if(!gene_not_duplicated) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_not_duplicated_msg))
+  )
 	
 	# Check that full range of gene was detected
 	gene_full <- length(gene_range) > 1 && 
@@ -444,16 +519,13 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 		!anyNA(gene_range) && 
 		gene_range[1] <= gene_range[2] && 
 		gene_range[2] >= gene_range[1]
-	
 	gene_full_msg <- assertthat::validate_that(
 		gene_full,
 		msg = glue::glue("Full range of {flank_1}-{flank_2} spacer not detected in accession {accession}")
 	)
-	
-	if(!gene_full) {
-		message(gene_full_msg)
-		return(NULL)
-	}
+	if(!gene_full) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_full_msg))
+  )
 	
 	# Extract sequence, subset to target gene
 	sequence <- 
@@ -470,19 +542,23 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
   # - make a grep query that will hit any non-IUPAC character (in upper case)
   non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
 
-  non_iupac_seq <- str_detect(str_to_upper(sequence), non_iupac)
+  iupac_only <- str_detect(str_to_upper(sequence), non_iupac, negate = TRUE)
 
-  non_iupac_seq_msg <- assertthat::validate_that(
-		!non_iupac_seq,
+  iupac_only_msg <- assertthat::validate_that(
+		iupac_only,
 		msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
 	)
 
-	if(non_iupac_seq) {
-		message(non_iupac_seq_msg)
-		return(NULL)
-	}
+	if(!iupac_only) return(
+    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = iupac_only_msg))
+  )
 	
-	set_names(sequence, accession)
+  # If pass all checks, return sequence with no error
+  list(
+    # convert sequence to ape DNAseq
+    seq = set_names(sequence, accession),
+    error = NULL
+  ) 	
 }
 
 #' Download a set of fern sequences for a given spacer region
@@ -492,15 +568,29 @@ extract_spacer <- function (gb_entry, flank_1, flank_2) {
 #' e.g., "trnl-trnf" or "rps4-trns". (order doesn't matter).
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
+#' @param accs_exclude_list Data frame with accession numbers to
+#' exclude from results, including columns "gene" and "accession"
 #' @param return_df Logical; return results as a dataframe? If FALSE, returns results
 #' as a list
 #'
-#' @return List of class DNAbin or dataframe with one row per sequence and columns
-#' for the sequence and accession
+#' @return Tibble with two list-columns:
+#'   - seq: Named character vector; DNA sequence
+#'   - error: Tibble with error message, gene name, and accession
 #' 
-#' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
-fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, return_df = TRUE) {
+fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, accs_exclude_list = NULL, return_df = TRUE) {
 	
+  assertthat::assert_that(assertthat::is.string(end_date))
+  assertthat::assert_that(assertthat::is.string(start_date))
+
+  # filter accessions to exclude
+  accs_exclude <- NULL
+  if(!is.null(accs_exclude_list)) {
+  accs_exclude <- accs_exclude_list %>%
+    filter(gene == spacer) %>%
+    pull(accession) 
+    }
+  if(length(accs_exclude) == 0) accs_exclude <- NULL
+
 	# `spacer` should have exactly one hyphen
 	assertthat::assert_that(isTRUE(str_count(spacer, "-") == 1))
 	
@@ -546,17 +636,42 @@ fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, retur
 		flank_2_grep <- "trns"
 	}
 	
-	# Read-in flat file, extract out target spacer, convert to seqs
-	seqs <-
-		readr::read_file(temp_file) %>%
+	# Read-in flat file, extract out target spacer or error
+	results <- readr::read_file(temp_file) %>%
 		# '\\' is delimiter between entries; split up into one string each
 		stringr::str_split("\n\\/\\/\n") %>%
 		unlist %>%
 		# Drop the last item, as it is just an empty line (after the last '\\')
 		magrittr::extract(-length(.)) %>%
-		# Extract spacer sequence and accession
-		map(~extract_spacer(., flank_1_grep, flank_2_grep)) %>%
-		# Drop any NULL values
+		# Extract spacer sequence and accession, or return error
+		map(~extract_spacer(., flank_1_grep, flank_2_grep, spacer, accs_exclude)) %>%
+    # Transpose the list (so it includes two items, "seq" and "error")
+		transpose()
+
+  # convert to tibble
+  results <- tibble(
+      seq = results$seq,
+      error = results$error
+  )
+
+  fs::file_delete(temp_file)
+
+  return(results)
+	
+}
+
+#' Extract gene sequences from raw output of a fetch_fern_*() function
+#'
+#' @param raw_gb_dat Output of fetch_fern_gene() or fetch_fern_spacer()
+#' @param gene Name of gene
+#' @param return_tbl Logical; should results be returned as a tibble?
+#'
+#' @return Either tibble with gene sequences in row, or list of class DNAseq
+seqs_from_raw_gb_fetch <- function(raw_gb_dat, gene, return_tbl = TRUE) {
+	
+	# Drop any NULL values
+	seqs <-
+		raw_gb_dat[["seq"]] %>%
 		purrr::compact() %>%
 		# Name them as the accession
 		purrr::set_names(map_chr(., names)) %>%
@@ -566,13 +681,24 @@ fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, retur
 		map(ape::as.DNAbin) %>%
 		do.call(c, .)
 	
-	fs::file_delete(temp_file)
-	
 	# Return list 
-	if(return_df == FALSE) return(seqs)
+	if(return_tbl == FALSE) return(seqs)
 	
 	# Or return dataframe
-	tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = spacer)
+	tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = gene)
+	
+}
+
+#' Extract errors from raw output of a fetch_fern_*() function
+#'
+#' @param raw_gb_dat Output of fetch_fern_gene() or fetch_fern_spacer()
+#'
+#' @return Tibble
+error_from_raw_gb_fetch <- function(raw_gb_dat) {
+	
+	raw_gb_dat[["error"]] %>%
+		purrr::compact() %>%
+		bind_rows()
 	
 }
 
