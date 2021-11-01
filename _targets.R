@@ -133,12 +133,24 @@ tar_plan(
   tar_file(
     sanger_blast_db,
     make_fern_blast_db(
-      metadata_with_seqs = sanger_seqs_combined_filtered, 
+      seqtbl = sanger_seqs_combined_filtered, 
       blast_db_dir = "intermediates/blast_sanger", 
       out_name = "ferns_sanger")
   ),
-  # Conduct all-by-all blast
-  all_by_all_blast = blast_rogues(sanger_seqs_combined_filtered),
+  # Group query sequences for parallel computing
+  tar_group_count(
+    sanger_blast_query,
+    dplyr::select(sanger_seqs_combined_filtered, seq, otu),
+    count = 30), # number of jobs to run in parallel
+  # Conduct all-by-all blast in parallel
+  tar_target(
+    all_by_all_blast,
+    blast_seqtbl(
+      seqtbl = sanger_blast_query,
+      blastdb_files = sanger_blast_db
+    ),
+    pattern = map(sanger_blast_query)
+  ),
   # Identify rogues (sequences matching wrong family)
   # FIXME: many of these are due to bad taxonomy. inspect results and modify WF taxonomy as needed
   sanger_seqs_rogues = detect_rogues(
