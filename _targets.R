@@ -27,8 +27,9 @@ tar_plan(
   # with new genera and slightly different treatments following World Ferns list
   tar_file(ppgi_taxonomy_path, path(data_raw, "ppgi_taxonomy_mod.csv")),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
-  # List of plastid coding genes from Wei et al 2017
-  tar_file(target_plastome_genes_path, path(data_raw, "wei_2017_coding_genes.txt")),
+  # List of coding genes to extract from plastomes
+  # (based on genes of Wei et al 2017, then trimmed to non-duplicated genes)
+  tar_file(target_plastome_genes_path, path(data_raw, "target_coding_genes.txt")),
   target_plastome_genes = read_lines(target_plastome_genes_path),
   # Outgroup plastome accessions
   tar_file(plastome_outgroups_path, path(data_raw, "plastome_outgroups.csv")),

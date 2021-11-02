@@ -156,7 +156,8 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
     # use negative look-ahead to match middle part NOT containing the word "/gene"
     # use '?' for non-greedy match, that will stop on the first instance of "/gene"
     str_match_all("gene +(?!/gene).*?/gene=[:alnum:]+") %>%
-    unlist
+    unlist %>%
+    str_squish()
   
   # Make sure target gene is detected
   gene_detected <- any(str_detect(gene_range_list, regex(gene, ignore_case = TRUE)))
@@ -1763,8 +1764,10 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
   # Parse flatfile
   gb_entry <- readr::read_file(temp_file)
   
-  # get the results
-  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .))
+  # get the results (includes NULL if errored)
+  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>% 
+    transpose() %>% 
+    magrittr::extract2("seq")
   
   # subset gene names to those to successfully extracted
   genes_successful <- genes[!map_lgl(extracted_genes, is.null)]
@@ -1774,7 +1777,15 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     extracted_genes %>%
     # Drop errors
     compact() %>%
-    flatten() %>%
+    flatten()
+  
+  # Make sure length of filtered names matches
+  assertthat::assert_that(
+    length(extracted_genes_filtered) == length(genes_successful)
+  )
+  
+  extracted_genes_filtered <-
+    extracted_genes_filtered %>%
     # Name each list item as the gene
     set_names(genes_successful) %>%
     # Convert to DNAbin
