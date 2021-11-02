@@ -1458,9 +1458,10 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
   
   ### Some pre-processing ### 
   # extract voucher specimen, count number of bases in sequence
-  genbank_seqs_tibble_clean <- 
+  genbank_seqs_tibble_with_specimen_dat <- 
     genbank_seqs_tibble %>%
-    # Filter to only records with specimen voucher
+    assert(is_uniq, otu) %>%
+    # First, filter to only records with specimen voucher
     select(subtype, subname) %>%
     unique() %>%
     filter(str_detect(subtype, "specimen_voucher")) %>%
@@ -1480,81 +1481,83 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     ) %>%
     unnest(specimen_voucher) %>%
     select(subtype, subname, specimen_voucher) %>%
+    # Join back onto original data (so, adds `specimen_voucher` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
-    # Extract actual length of sequence (different from `slen` in gb metadata)
-    mutate(length = map_dbl(seq, ~length(.[[1]]))) %>%
-    select(gene, taxon, specimen_voucher, accession, length) %>%
+    select(gene, taxon, specimen_voucher, accession, seq_len, otu) %>%
     # In some cases, there are multiple vouchers including `s.n.` and 
     # a numbered voucher. Use only the numbered voucher.
+    # (still have some cases with multiple vouchers per accession though
+    #  eg., MH101453, KY711736)
+    assert(not_na, gene, taxon, accession) %>%
     add_count(gene, taxon, accession) %>%
     filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
-    # Now there should be a unique combination of `gene`, `taxon`, `accession` per row
-    assert_rows(col_concat, is_uniq, gene, taxon, accession) %>%
-    select(-n)
-  
+    select(-n) %>%
+    # Check that all OTUs are accounted for
+    verify(all(otu %in% genbank_seqs_tibble$otu)) %>%
+    verify(all(genbank_seqs_tibble$otu %in% otu))
+
   ### Convert to wide format ###
-  gb_data <-
-    genbank_seqs_tibble_clean %>%
+  genbank_seqs_tibble_wide <-
+    # Select single longest sequence per voucher per gene
+    genbank_seqs_tibble_with_specimen_dat %>%
+    assert(not_na, seq_len) %>%
     group_by(gene, specimen_voucher, taxon) %>%
-    arrange(desc(length)) %>%
-    slice(1) %>%
+    slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
+    assert_rows(col_concat, is_uniq, gene, specimen_voucher, taxon) %>%
     # Convert to wide format, joining on voucher
     # - first split into a list of dataframes by gene
     group_by(gene) %>%
     group_split() %>%
     # For each dataframe, convert to wide format and
-    # rename "length" and "accession" columns by gene
+    # rename "seq_len" and "accession" columns by gene
     map(
       ~pivot_wider(.,
                    id_cols = c("taxon", "specimen_voucher"),
                    names_from = gene,
-                   values_from = c("length", "accession")
+                   values_from = c("seq_len", "accession")
       )
     ) %>%
     # Join the gene sequences by taxon + voucher
     reduce(full_join, by = c("taxon", "specimen_voucher"), na_matches = "never") %>%
-    mutate_at(vars(contains("length")), ~replace_na(., 0)) %>%
+    mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
     # Add total length of all genes (need to sum row-wise)
     # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
-    mutate(total_length = pmap_dbl(select(., contains("length")), sum))
-  
+    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum))
+    
   ### Select final sequences ###
   
   # Highest priority taxon: those with rbcL and at least one other gene.
   # Choose best specimen per taxon by total sequence length
   rbcl_and_at_least_one_other <-
-    gb_data %>% 
+    genbank_seqs_tibble_wide %>% 
     filter(!is.na(accession_rbcL)) %>%
     filter_at(
-      vars(accession_atpA, accession_atpB, accession_rps4), 
+      vars(matches("accession_[^rbcL]")), 
       any_vars(!is.na(.))) %>%
     group_by(taxon) %>%
-    arrange(desc(total_length)) %>%
-    slice(1) %>%
-    ungroup
+    slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup()
   
   # Next priority: anything with rbcL only
   rbcl_only <-
-    gb_data %>%
-    filter(!taxon %in% rbcl_and_at_least_one_other$taxon) %>%
+    genbank_seqs_tibble_wide %>%
+    anti_join(rbcl_and_at_least_one_other, by = "taxon") %>%
     filter(!is.na(accession_rbcL)) %>%
     group_by(taxon) %>%
-    arrange(desc(total_length)) %>%
-    slice(1) %>%
-    ungroup
+    slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup()
   
-  # Next priority: any other taxon on basis of total seq. length
+  # Next priority: any other taxon on basis of total seq. seq_len
   other_genes <-
-    gb_data %>%
-    filter(!taxon %in% rbcl_and_at_least_one_other$taxon) %>%
-    filter(!taxon %in% rbcl_only$taxon) %>%
+    genbank_seqs_tibble_wide %>%
+    anti_join(rbcl_and_at_least_one_other, by = "taxon") %>%
+    anti_join(rbcl_only, by = "taxon") %>% 
     group_by(taxon) %>%
-    arrange(desc(total_length)) %>%
-    slice(1) %>%
-    ungroup
+    slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup()
   
-  # Combine into final list
+  # Combine into final list: single set of accessions per taxon
   bind_rows(
     rbcl_and_at_least_one_other,
     rbcl_only,
