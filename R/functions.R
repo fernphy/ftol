@@ -1671,14 +1671,22 @@ tidy_genbank_metadata <- function(data) {
 download_plastome_metadata <- function (start_date = "1980/01/01", end_date, outgroups) {
   
   assertthat::assert_that(assertthat::is.string(start_date))
-  
   assertthat::assert_that(assertthat::is.string(end_date))
   
   # Format GenBank query: all ferns plastomes within specified dates
-  query = glue('genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete) AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  ingroup_query = glue('genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete) AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
   
-  # Download metadata and accession numbers.
-  pterido_metadata <- gbfetch::fetch_metadata(query) %>%
+  # Fetch standard metadata
+  ingroup_metadata_raw <- fetch_metadata(
+    query = ingroup_query,
+    col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
+  
+  ingroup_metadata <-
+    ingroup_metadata_raw %>%
+    rename(accession = caption) %>%
+    # GenBank accession should be non-missing, unique
+    assert(not_na, accession) %>%
+    assert(is_uniq, accession) %>%
     # "genome" hit in some unexpeted places, so filter out short seqs
     # that are not actually plastomes
     filter(slen > 7000) %>%
@@ -1686,30 +1694,37 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
     # with biofiles::getFeatures() and biofiles::filter()
     # (AP004638, Psilotum nudum)
     filter(accession != "AP004638") %>%
-    # Remove weird brackets from species names
-    mutate(species = str_remove_all(species, "\\[") %>% str_remove_all("\\]")) %>%
     # Remove GenBank duplicate sequences starting with "NC_"
     # - consider accessions with same species and seq length to be same
     # if they only differ in accession.
     mutate(maybe_dup = case_when(
       str_detect(accession, "NC_") ~ 1,
       TRUE ~ 0)) %>%
-    group_by(species, slen) %>%
+    group_by(taxid, slen) %>%
     arrange(maybe_dup) %>%
     slice(1) %>%
     ungroup %>%
     # Sort by accession
-    arrange(accession)
+    arrange(accession) %>%
+    select(-maybe_dup)
   
   # Download outgroup metadata: use one representative of each major 
   # seed plant, lycophyte, and bryo group
   og_query <- outgroups %>% pull(accession) %>% paste(collapse = "[accession] OR ") %>%
     paste("[accession]", collapse = "", sep = "")
   
-  outgroup_metadata <- gbfetch::fetch_metadata(og_query)
+  outgroup_metadata_raw <- fetch_metadata(
+    query = og_query,
+    # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
+    col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
   
-  bind_rows(pterido_metadata, outgroup_metadata) %>%
-    select(-maybe_dup)
+  outgroup_metadata <-
+    outgroup_metadata_raw %>%
+    rename(accession = caption) %>%
+    verify(all(accession %in% outgroups$accession)) %>%
+    verify(all(outgroups$accession %in% accession))
+  
+  bind_rows(ingroup_metadata, outgroup_metadata)
   
 }
 
@@ -2167,7 +2182,7 @@ concatenate_genes <- function (dna_list) {
 #' original species names from GenBank
 #' @param plastome_outgroups Dataframe with metadata on outgroups
 #' @param wf_ref_names Dataframe with parsed scientific names for taxonomic name resolution
-#' of fern species; output of tt_parse_names()
+#' of fern species; output of ts_parse_names()
 #' @param world_ferns_data Reference data for taxonomic name resolution of fern species
 #' extracted from Catalog of Life data; output of extract_fow_from_col()
 #' 
@@ -2175,12 +2190,15 @@ concatenate_genes <- function (dna_list) {
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
 #' 
-resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups, wf_ref_names, world_ferns_data) {
+resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data) {
+
+  # Check that input names match arguments
+  check_args(match.call())
   
   ### outgroups ###
   # Fetch full scientific names for plastome outgroups
   plastome_outgroup_sci_names <-
-  plastome_metadata %>%
+  plastome_metadata_raw %>%
     inner_join(plastome_outgroups, by = "accession") %>%
     # Look up NCBI name from taxid
     pull(taxid) %>% 
@@ -2195,14 +2213,14 @@ resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups
         TRUE ~ scientific_name
       )
     ) %>%
-    assert(not_na, scientific_name) %>%
+    assert(not_na, scientific_name)  #%>%
     # Convert taxid back to numeric
-    mutate(taxid = parse_number(taxid))
+    # mutate(taxid = parse_number(taxid))
 
   ### ferns ###
   # Specify names to query against World Ferns for taxonomic name resolution of ferns
   plastome_names_query <- 
-    plastome_metadata %>%
+    plastome_metadata_raw %>%
     # Exclude outgroups
     anti_join(plastome_outgroups, by = "accession") %>%
     # Look up NCBI name from taxid
@@ -2215,53 +2233,54 @@ resolve_pterido_plastome_names <- function(plastome_metadata, plastome_outgroups
     filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
     # Specify query name: scientific name if available, species if not
     mutate(query_name = coalesce(scientific_name, species)) %>%
-    assert(not_na, query_name) %>%
-    # Convert taxid back to numeric
-    mutate(taxid = parse_number(taxid))
+    assert(not_na, query_name)
    
   # Match names to world ferns
-  match_results_plastome <- tt_match_names(
+  match_results_plastome <- ts_match_names(
     query = plastome_names_query$query_name, 
     reference = wf_ref_names,
-    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE) %>%
-    as_tibble()
-
-  # Classify matching results
-  match_results_plastome_classified <- tt_classify_result(match_results_plastome)
+    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE)
 
   # Resolve synonyms
-  match_results_plastome_resolved <- tt_resolve_synonyms(match_results_plastome_classified, world_ferns_data)
+  match_results_plastome_resolved <- ts_resolve_names(match_results_plastome, world_ferns_data)
 
   ### Combine results ###
   plastome_metadata_ferns_resolved <-
-    plastome_metadata %>%
+    plastome_metadata_raw %>%
+    # filter to only ingroup
     anti_join(plastome_outgroups, by = "accession") %>%
-    select(-matches("species|variety")) %>%
+    # add queried taxonomic name
     left_join(select(plastome_names_query, taxid, query_name), by = "taxid") %>%
-    left_join(select(match_results_plastome_resolved, query_name = query, accepted_name), by = "query_name") %>%
+    assert(is_uniq, accession) %>%
+    # add resolved name
+    left_join(select(match_results_plastome_resolved, query_name = query, resolved_name), by = "query_name") %>%
     select(-query_name) %>%
     mutate(outgroup = FALSE)
 
   plastome_metadata_outgroups_resolved <-
-    plastome_metadata %>%
+    plastome_metadata_raw %>%
     inner_join(plastome_outgroups, by = "accession") %>% 
     select(-matches("species|variety")) %>%
-    left_join(select(plastome_outgroup_sci_names, taxid, accepted_name = scientific_name), by = "taxid") %>%
+    left_join(select(plastome_outgroup_sci_names, taxid, resolved_name = scientific_name), by = "taxid") %>%
     mutate(outgroup = TRUE)
 
+  # Combine results
   bind_rows(
     plastome_metadata_ferns_resolved,
     plastome_metadata_outgroups_resolved
   ) %>% 
   # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
   mutate(
-    rgnparser::gn_parse_tidy(accepted_name) %>% 
+    rgnparser::gn_parse_tidy(resolved_name) %>% 
       select(taxon = canonicalsimple)
   ) %>%
   mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
   # Make sure all accessions are included
-  verify(all(accession %in% plastome_metadata$accession)) %>%
-  verify(all(plastome_metadata$accession %in% accession))
+  verify(all(accession %in% plastome_metadata_raw$accession)) %>%
+  verify(all(plastome_metadata_raw$accession %in% accession)) %>%
+  select(taxon, accession, subtype, subname, slen, outgroup) %>%
+  # Drop any without resolved taxon
+  filter(!is.na(taxon))
 
 }
 
@@ -3824,353 +3843,6 @@ archive_raw_data <- function (version, metadata, out_path) {
 
 # Taxonomic name resolution ----
 
-#' Make a dataframe with taxonomic names
-#'
-#' @param taxa Character vector; taxon names to be parsed by taxon-tools `parsenames`.
-#' Missing values not allowed. Must all be unique.
-#'
-#' @return Dataframe with two columns: `id` and `name`
-#' 
-#' @examples
-#' tt_make_name_df("Foogenus x barspecies var. foosubsp (L.) F. Bar")
-tt_make_name_df <- function(taxa) {
-  
-  assertthat::assert_that(all(assertr::is_uniq(taxa)))
-  assertthat::assert_that(assertthat::noNA(taxa))
-  
-  # Format input names as data frame with unique ID
-  # ID is combination of first 4 chars of hash of the input (taxa), followed by "-" and integer
-  taxa_tbl <- data.frame(name = taxa)
-  taxa_tbl$id <- 1:nrow(taxa_tbl)
-  taxa_tbl$id <- paste(substr(digest::digest(taxa), 1, 4), taxa_tbl$id, sep = "-")
-  
-  taxa_tbl[, c("id", "name")]
-}
-
-#' Parse taxonomic names with (and for) taxon-tools
-#' 
-#' Requires [taxon-tools](https://github.com/camwebb/taxon-tools) to be installed.
-#' 
-#' Parses scientific names into their component parts (genus, species, variety, author, etc).
-#'
-#' @param taxa Character vector; taxon names to be parsed by taxon-tools `parsenames`.
-#' Missing values not allowed. Must all be unique.
-#' @param file Character vector of length 1; path to write parsed names (optional).
-#'
-#' @return A dataframe including the following columns.
-#' - id: A unique ID number assigned to the input name
-#' - name: The input name
-#' - genus_hybrid_sign: Hybrid sign for genus
-#' - genus_name: Genus name
-#' - species_hybrid_sign: Hybrid sign for species
-#' - specific_epithet: Specific epithet (name)
-#' - infraspecific_rank: Infraspecific rank
-#' - infraspecific_epithet: Infraspecific epithet (name)
-#' - author: Name of taxon
-#' 
-#' If `file` is specified, the parsed names will be written to that path in a format
-#' for taxon-tools `matchnames`.
-#' 
-#' @examples 
-#' tt_parse_names(c("Foogenus x barspecies var. foosubsp (L.) F. Bar", " "))
-#'
-tt_parse_names <- function(taxa) {
-  
-  # Check input: must be character vector, no NA values, all unique
-  assertthat::assert_that(is.character(taxa))
-  
-  # Write out names formatted for parsing with taxon-tools to temp file
-  # format: 
-  # `id_num|taxon_name`
-  # for example,
-  # `x-234|Foogenus x barspecies var. foosubsp (L.) F. Bar`
-  taxa_tbl <- tt_make_name_df(taxa)
-  taxa_tbl$record <- paste(taxa_tbl$id, taxa_tbl$name, sep = "|")
-  ref_taxa_txt_file <- tempfile(
-    pattern = digest::digest(taxa),
-    fileext = ".txt"
-  )
-  if(fs::file_exists(ref_taxa_txt_file)) fs::file_delete(ref_taxa_txt_file)
-  writeLines(taxa_tbl$record, ref_taxa_txt_file)
-  
-  # Parse reference names with taxon tools
-  ref_parsed <- processx::run("parsenames", ref_taxa_txt_file)
-  if(fs::file_exists(ref_taxa_txt_file)) fs::file_delete(ref_taxa_txt_file)
-  
-  # Read in results of parsing, format as dataframe
-  
-  # The output is originally one record per line, with fields separated by '|' (pipe symbol)
-  parsed_res <- data.frame(record = strsplit(ref_parsed[["stdout"]], "\n")[[1]])
-  
-  # Split these into separate columns
-  name_parts <- c(
-    "genus_hybrid_sign",
-    "genus_name",
-    "species_hybrid_sign",
-    "specific_epithet",
-    "infraspecific_rank",
-    "infraspecific_epithet",
-    "author"
-  )
-  
-  parsed_res <- tidyr::separate(
-    data = parsed_res, 
-    col = record, 
-    into = c("id", name_parts), 
-    sep = "\\|", 
-    fill = "right",
-    remove = FALSE)
-  
-  # Fill in NA if that name part is missing
-  parsed_res[parsed_res == ""] <- NA
-  
-  # Add "fail" column if all name parts are missing (couldn't be parsed properly)
-  parsed_res$fail <- sapply(1:nrow(parsed_res), function(x) all(is.na(parsed_res[x, name_parts])))
-  
-  # Early exit if everything failed
-  assertthat::assert_that(
-    !all(parsed_res$fail == TRUE),
-    msg = "No names could be successfully parsed")
-  
-  # Emit warning for failures
-  if(sum(parsed_res$fail) > 0) {
-    failed_ids <- parsed_res$id[parsed_res$fail == TRUE]
-    failed_names <- paste(taxa_tbl$name[taxa_tbl$id %in% failed_ids], collapse = ", ") 
-    warning(glue::glue("The following names could not be parsed and are excluded from results: {failed_names}"))
-  }
-  
-  # Add back in original name
-  parsed_res <- dplyr::left_join(
-    parsed_res,
-    dplyr::select(taxa_tbl, id, name), by = "id")
-  
-  # Remove failures, drop "fail" column
-  parsed_res <- parsed_res[parsed_res$fail == FALSE, ]
-  parsed_res$fail <- NULL
-  
-  # Return parsed names as dataframe
-  parsed_res[, c("name", "id", name_parts)]
-}
-
-#' Load parsed taxon names
-#'
-#' @param path Path to taxon names that were parsed with taxon-tools
-#' https://github.com/camwebb/taxon-tools
-#'
-#' @return Dataframe (tibble)
-#' 
-tt_load_names <- function(path) {
-  suppressMessages(
-    # Read in the parsed names as a dataframe
-    readr::read_delim(
-      path, delim = "|", 
-      col_types = cols(.default = readr::col_character()),
-      col_names = c(
-        "id",
-        "genus_hybrid_sign",
-        "genus_name",
-        "species_hybrid_sign",
-        "specific_epithet",
-        "infraspecific_rank",
-        "infraspecific_epithet",
-        "author"
-      )
-    )
-  )
-}
-
-#' Write out parsed names for taxon-tools from a dataframe to a text file
-#'
-#' @param df Dataframe with parsed names
-#' @param path Path to write dataframe
-#'
-#' @return Path to parsed names
-tt_write_names <- function(df, path) {
-  
-  # Make vector of standard taxon-tools columns
-  tt_col_names = c(
-    "id",
-    "genus_hybrid_sign",
-    "genus_name",
-    "species_hybrid_sign",
-    "specific_epithet",
-    "infraspecific_rank",
-    "infraspecific_epithet",
-    "author"
-  )
-  
-  # Replace NA values with ""
-  df <- dplyr::mutate(df, dplyr::across(dplyr::everything(), ~tidyr::replace_na(., "")))
-  
-  # Subset to only taxon-tools columns, in order
-  df <- df[, tt_col_names]
-  
-  # taxon-tools uses pipe as separator
-  df <- tidyr::unite(df, col = "text", dplyr::all_of(tt_col_names), sep = "|")
-  
-  # write out text
-  writeLines(df$text, path)
-  
-  path
-  
-}
-
-#' Match names using taxon-tools
-#' 
-#' Requires [taxon-tools](https://github.com/camwebb/taxon-tools) to be
-#' installed.
-#' 
-#' `taxon-tools` matches names in two steps: first scientific names are
-#' parsed into their component parts (genus, species, variety, author, etc). 
-#' Next, names are fuzzily matched following rules using the component parts.
-#' 
-#' Parsing is fairly fast (much faster than matching) but can take some time if the
-#' number of names is very large. If multiple queries will be made, it is recommended
-#' to first parse the names to a file using `tt_parse_names()`, and use the file(s) as
-#' input to `query` and/or `reference`.
-#' 
-#' One of either `reference` or `cache` must be provided.
-#'
-#' @param query Character vector; taxon names to be queried, or the path to a text
-#' file with taxon names that have been parsed with `tt_parse_names()`.
-#' Missing values not allowed. Must all be unique.
-#' @param reference  Character vector; taxon names to use as reference, or the path to a text
-#' file with taxon names that have been parsed with `tt_parse_names()`.
-#' Missing values not allowed. Must all be unique.
-#' @param max_dist Max Levenshtein distance to allow during fuzzy matching. 
-#' (total insertions, deletions and substitutions)
-#' @param match_no_auth Logical; If no author is given in the query and the name (without author) 
-#' occurs only once in the reference, accept the name in the reference as a match. 
-#' Default: to not allow such a match.
-#' @param match_canon Logical; Allow a "canonical name" match if only the genus, species epithet, 
-#' and infraspecific epithet (if present) match exactly. Default: to not allow such a match.
-#' @param simple Logical; return the output in a simplified format with only the query
-#' name, matched reference name, and match type.
-#'
-#' @return Dataframe
-#' 
-tt_match_names <- function(
-  query, reference, 
-  max_dist = 10, match_no_auth = FALSE, match_canon = FALSE, simple = FALSE
-) {
-  
-  # Check input
-  assertthat::assert_that(is.character(query) | inherits(query, "data.frame"))
-  # assertthat::assert_that(assertthat::noNA(query))
-  # assertthat::assert_that(all(assertr::is_uniq(query)))
-  assertthat::assert_that(is.character(reference) | inherits(reference, "data.frame"))
-  # assertthat::assert_that(assertthat::noNA(reference))
-  # assertthat::assert_that(all(assertr::is_uniq(reference)))
-  assertthat::assert_that(assertthat::is.number(max_dist))
-  assertthat::assert_that(is.logical(match_no_auth))
-  assertthat::assert_that(is.logical(match_canon))
-  assertthat::assert_that(is.logical(simple))
-  
-  # Parse or load query names
-  if(is.character(query)) {
-    # Parse the names (adds 'name' column)
-    query_parsed_df <- tt_parse_names(query)
-  } else {
-    # Or, names are already parsed
-    query_parsed_df <- query
-  }
-  
-  # Write out parsed names to temporary file
-  query_parsed_txt <- tempfile(pattern = digest::digest(query), fileext = ".txt")
-  if(fs::file_exists(query_parsed_txt)) fs::file_delete(query_parsed_txt)
-  tt_write_names(query_parsed_df, query_parsed_txt)
-  
-  # Parse or load reference names
-  if(is.character(reference)) {
-    # Parse the names (adds 'name' column)
-    ref_parsed_df <- tt_parse_names(reference)
-  } else {
-    # Or, names are already parsed
-    ref_parsed_df <- reference
-  }
-  
-  # Write out parsed names to temporary file
-  ref_parsed_txt <- tempfile(pattern = digest::digest(reference), fileext = ".txt")
-  if(fs::file_exists(ref_parsed_txt)) fs::file_delete(ref_parsed_txt)
-  tt_write_names(ref_parsed_df, ref_parsed_txt)
-  
-  # Format argument flags
-  if(match_no_auth) match_no_auth <- "-1" else match_no_auth <- NULL
-  if(match_canon) match_canon <- "-c" else match_canon <- NULL
-  
-  # Specify temporary output file
-  match_results_txt <- tempfile(pattern = digest::digest(c(query, reference)), fileext = ".txt")
-  if(fs::file_exists(match_results_txt)) fs::file_delete(match_results_txt)
-  
-  # Run taxon-tools matchnames
-  match_results <- processx::run(
-    command = "matchnames", 
-    args = c(
-      "-a", query_parsed_txt,
-      "-b", ref_parsed_txt,
-      "-o", match_results_txt,
-      "-e", max_dist,
-      "-F", # no manual matching
-      match_no_auth,
-      match_canon
-    )
-  )
-  
-  # Read in results
-  # Each line represents a single name from the query list (list A). 
-  # Seventeen pipe-delimited (“|”) fields per row: 
-  #  1. User ID code in list A, 
-  #  2. Code in list B (if matched), 
-  #  3. Match type (see codes below), 
-  #  4-10. Parsed elements of name in list A. 
-  #  11-17 (in same format as name input), Parsed elements of name in list B.
-  matchnames_cols <- c(
-    "id_query",
-    "id_ref",
-    "match_type",
-    "genus_hybrid_sign_query",
-    "genus_name_query",
-    "species_hybrid_sign_query",
-    "specific_epithet_query",
-    "infraspecific_rank_query",
-    "infraspecific_epithet_query",
-    "author_query",
-    "genus_hybrid_sign_ref",
-    "genus_name_ref",
-    "species_hybrid_sign_ref",
-    "specific_epithet_ref",
-    "infraspecific_rank_ref",
-    "infraspecific_epithet_ref",
-    "author_ref"
-  )
-  
-  results <- data.frame(record = readLines(match_results_txt))
-  
-  results <- tidyr::separate(
-    data = results, 
-    col = record, 
-    into = matchnames_cols, 
-    sep = "\\|", 
-    fill = "right",
-    remove = TRUE)
-  
-  # Add back in the original search terms (query and reference)
-  results <- dplyr::left_join(
-    results,
-    dplyr::select(query_parsed_df, id_query = id, query = name), 
-    by = "id_query") 
-  
-  results <- dplyr::left_join(
-    results,
-    dplyr::select(ref_parsed_df, id_ref = id, reference = name), 
-    by = "id_ref")
-  
-  if(simple == TRUE) results <- dplyr::select(results, query, reference, match_type)
-  
-  results
-  
-}
-
 #' Fetch taxonomic data from the NCBI taxonomy database
 #' 
 #' This should only be run on a maximum of 200 IDs at a time,
@@ -4365,80 +4037,11 @@ select_ncbi_names_round_1 <- function(ncbi_names) {
     assertr::assert(is_uniq, taxid, scientific_name)
 }
 
-
-#' Classify results of taxon-tools matching
-#'
-#' @param match_results Dataframe; output of tt_match_names()
-#'
-#' @return Dataframe with column `result_type` added
-#' 
-tt_classify_result <- function(match_results) {
-  match_results %>%
-    add_count(query) %>%
-    mutate(
-      result_type = case_when(
-        match_type != "no_match" & n == 1 ~ "single_match",
-        match_type != "no_match" & n > 1 ~ "mult_match",
-        match_type == "no_match" ~ "no_match",
-        TRUE ~ NA_character_
-      )
-    ) %>%
-    assert(not_na, result_type) %>%
-    select(-n)
-}
-
-#' Resolve synonyms after matching names
-#'
-#' @param match_results_classified Dataframe; output of tt_classify_result() 
-#' @param taxonomy_data Dataframe; taxonomic data with columns 
-#' `taxon_id` `accepted_name_taxon_id` `status` `scientific_name`
-#'
-#' @return Dataframe; match results with column name `accepted_name` added.
-#' Failures have `NA` for `accepted_name`.
-#' 
-tt_resolve_synonyms <- function(match_results_classified, taxonomy_data) {
-  match_results_classified_with_taxonomy <-
-    match_results_classified %>% 
-    select(query, reference, match_type, result_type) %>%
-    left_join(taxonomy_data, by = c(reference = "scientific_name"))
-  
-  accepted_single_match <-
-    match_results_classified_with_taxonomy %>%
-    filter(status == "accepted" & result_type == "single_match") %>%
-    mutate(accepted_name = reference) %>%
-    select(query, reference, accepted_name, match_type, status)
-  
-  accepted_single_synonyms <-
-    match_results_classified_with_taxonomy %>% 
-    filter(status == "synonym") %>%
-    left_join(
-      select(taxonomy_data, taxon_id, accepted_name = scientific_name), 
-      by = c(accepted_name_taxon_id = "taxon_id"))  %>%
-    select(query, reference, accepted_name, match_type, status) %>%
-    group_by(query) %>%
-    # Add count of number of resolved, accepted names per query
-    mutate(n = n_distinct(accepted_name)) %>%
-    ungroup() %>%
-    filter(n == 1) %>%
-    select(-n)
-  
-  success <- bind_rows(accepted_single_match, accepted_single_synonyms)
-  
-  failure <-
-    match_results_classified_with_taxonomy %>%
-    select(query, reference, match_type, status) %>%
-    anti_join(success, by = "query")
-  
-  bind_rows(success, failure) %>% 
-    verify(all(query %in% match_results_classified$query)) %>%
-    verify(all(match_results_classified$query %in% query))
-}
-
 #' Select NCBI names for second round of taxonomic name resolution
 #' 
 #' Names that are considered synonyms by NCBI and have full scientific name (with author)
 #'
-#' @param match_results_resolved Dataframe; output of tt_resolve_synonyms() 
+#' @param match_results_resolved Dataframe; output of ts_resolve_names() 
 #' @param ncbi_names Names downloaded from NCBI taxonomy database.
 #'
 #' @return Dataframe (tibble)
@@ -4465,8 +4068,8 @@ select_ncbi_names_round_2 <- function(match_results_resolved_round_1, ncbi_names
 #' 
 #' NCBI names that are species only (lack scientific name)
 #'
-#' @param match_results_resolved_round_1 Dataframe; output of tt_resolve_synonyms() 
-#' @param match_results_resolved_round_2 Dataframe; output of tt_resolve_synonyms() 
+#' @param match_results_resolved_round_1 Dataframe; output of ts_resolve_names() 
+#' @param match_results_resolved_round_2 Dataframe; output of ts_resolve_names() 
 #' @param ncbi_names Names downloaded from NCBI taxonomy database.
 #'
 #' @return Dataframe (tibble)
@@ -4494,7 +4097,7 @@ select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_resu
 #' Combine results of name matching rounds 1-3
 #'
 #' @param ncbi_names_query Names downloaded from NCBI taxonomy database. 
-#' @param ... Dataframes; output of tt_resolve_synonyms() 
+#' @param ... Dataframes; output of ts_resolve_names() 
 #'
 #' @return Dataframe; match results with NCBI taxid added
 #'

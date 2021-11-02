@@ -197,6 +197,9 @@ tar_plan(
     end_date = date_cutoff,
     outgroups = plastome_outgroups),
   # Resolve species names in plastome metadata
+  # (will drop accession if name could not be resolved)
+  # FIXME: add Lepisorus hederaceus (Christ) R.Wei & X.C.Zhang
+  # and Elaphoglossum marginatum var. marginatum to World Ferns taxonomy
   plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data
   ),
@@ -204,7 +207,7 @@ tar_plan(
   # don't run in parallel, or will get HTTP status 429 errors
   target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
   tar_target(
-    plastome_seqs_raw,
+    plastome_genes_raw,
     fetch_fern_genes_from_plastome(
       genes = target_plastome_genes, 
       accession = target_plastome_accessions),
@@ -212,7 +215,7 @@ tar_plan(
     deployment = "main"),
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
-    plastome_seqs_raw, plastome_metadata_raw_renamed),
+    plastome_genes_raw, plastome_metadata_raw_renamed),
 
   # Combine and align Sanger and plastome sequences ----
   # Combine Sanger and plastome sequences into single dataframe, group by gene
