@@ -144,10 +144,10 @@
     },
     "assertr": {
       "Package": "assertr",
-      "Version": "2.7",
+      "Version": "2.8",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "00c92738b9dfc39ad7ade471b546b196"
+      "Hash": "38c61c51fa8311904551d58895da2858"
     },
     "assertthat": {
       "Package": "assertthat",
@@ -478,13 +478,6 @@
       "Repository": "CRAN",
       "Hash": "44594a07a42e5f91fac9f93fda6d0109"
     },
-    "furrr": {
-      "Package": "furrr",
-      "Version": "0.1.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "c1f60eafdbcbea57078aa6f501974d2a"
-    },
     "future": {
       "Package": "future",
       "Version": "1.22.1",
@@ -498,19 +491,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "2777ddd75a7aff236990c98825144d0a"
-    },
-    "gbfetch": {
-      "Package": "gbfetch",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "Remotes": "joelnitta/jntools",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "gbfetch",
-      "RemoteUsername": "joelnitta",
-      "RemoteRef": "master",
-      "RemoteSha": "b305eee1d8006c5a993f3f62b88775cab3ca2c82",
-      "Hash": "7883239ca2b1c5903b6abf0cde1f4bcc"
     },
     "gdata": {
       "Package": "gdata",
@@ -1287,9 +1267,9 @@
       "RemoteUsername": "joelnitta",
       "RemoteRepo": "taxastand",
       "RemoteRef": "main",
-      "RemoteSha": "754fd2322c326d10d4dde067d591d9025ca780ad",
+      "RemoteSha": "6d9e14e9f15119e01edd193125bce5060dd2f9dc",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "555ac76d44268ad38bf0745e04931fc0"
+      "Hash": "38c22ed4998e8a9c574b560e0e039125"
     },
     "taxize": {
       "Package": "taxize",
