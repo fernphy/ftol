@@ -43,64 +43,118 @@ tar_plan(
   # Manually curated list of raw fasta accessions to exclude from analysis
   tar_file(raw_fasta_exclude_list_path, path(data_raw, "raw_fasta_exclude_list.csv")),
   raw_fasta_exclude_list = read_csv(raw_fasta_exclude_list_path),
-  
-  # Download individual plastid sequences from GenBank (Sanger sequences) ----
-  # Define variables used in plan
-  # - Target plastid fern genes to download
-  target_genes = c("atpA", "atpB", "matK", "rbcL", "rps4"),
-  # - Target plastid spacing regions to download
-  target_spacers = c("trnL-trnF", "rps4-trnS"),
+
+  # Prep for assembling Sanger plastid regions ----
+  # Define variables used in plan:
+  # - Target plastic loci (coding genes and spacers)
+  target_loci = c("atpA", "atpB", "matK", "rbcL", "rps4", "trnL-trnF", "rps4-trnS"),
   # - Most recent date cutoff for sampling genes
   date_cutoff = "2021/10/26",
-  # Download fern plastid gene fasta files
+
+  # Assemble reference Sanger sequences ----
+  # Download raw gene sequences for each target locus
   tar_target(
-    raw_fasta_genes_results,
-    fetch_fern_gene(target_genes, end_date = date_cutoff, accs_exclude_list = raw_fasta_exclude_list),
-    pattern = map(target_genes),
+    fern_ref_seqs_raw,
+    fetch_fern_ref_seqs(
+      target = target_loci, end_date = date_cutoff, 
+      # Only include intron for trnL-trnF
+      req_intron = str_detect(target_loci, "trnL-trnF"), 
+      workers = 48),
+    pattern = map(target_loci),
+    deployment = "main"
+  ),
+  # Filter to one longest seq per genus per target
+  fern_ref_seqs = filter_ref_seqs(fern_ref_seqs_raw),
+  # Align sequences
+  tar_target(
+    fern_ref_seqs_aligned,
+    align_ref_seqs(fern_ref_seqs, target_loci),
+    pattern = map(target_loci)
+  ),
+  # Trim sequences (lightly)
+  # - dnabin format for IQTREE
+  tar_target(
+    fern_ref_seqs_trimmed_dnabin,
+    trimal(
+      fern_ref_seqs_aligned,
+      c("-gt", "0.05", "-terminalonly"),
+      return_seqtbl = FALSE),
+    pattern = map(fern_ref_seqs_aligned)
+  ),
+  # - seqtbl format for downstream steps
+  tar_target(
+    fern_ref_seqs_trimmed,
+    dnabin_to_seqtbl(fern_ref_seqs_trimmed_dnabin),
+    pattern = map(fern_ref_seqs_trimmed_dnabin)
+  ),
+  # Convert to format for extract_from_ref_blast()
+  fern_ref_seqs_trimmed_clean = separate(
+    fern_ref_seqs_trimmed,
+    accession,
+    c("accession", "species", "target"),
+    sep = "__"),
+  # Build trees (to check quality of reference sequences)
+  tar_target(
+    fern_ref_seqs_tree,
+    jntools::iqtree(
+      fern_ref_seqs_trimmed_dnabin,
+      m = "GTR+I+G", bb = 1000, nt = "AUTO",
+      redo = TRUE, echo = TRUE, wd = tempdir()
+      ),
+    pattern = map(fern_ref_seqs_trimmed_dnabin)
+  ),
+  # Write out alignments for inspection
+  tar_file(
+    fern_ref_seqs_trimmed_out,
+    write_fasta_tar(
+      fern_ref_seqs_trimmed_dnabin,
+      paste0("results/ref_seqs/", target_loci, "_ref_aln.fasta")
+    ),
+    pattern = map(fern_ref_seqs_trimmed_dnabin, target_loci)
+  ),
+  # Write out trees for inspection
+  tar_file(
+    fern_ref_seqs_tree_out,
+    write_tree_tar(
+      fern_ref_seqs_tree,
+      paste0("results/ref_seqs/", target_loci, "_ref_phy.tree")
+    ),
+    pattern = map(fern_ref_seqs_tree, target_loci)
+  ),
+
+  # Download individual plastid sequences from GenBank (Sanger sequences) ----
+  
+  # Download raw fasta files
+  tar_target(
+    fern_sanger_seqs_raw,
+    fetch_fern_sanger_seqs(target_loci, end_date = date_cutoff, accs_exclude_list = NULL),
+    pattern = map(target_loci),
     deployment = "main" # don't run in parallel, or will get HTTP status 429 errors
   ),
-  # - extract sequences
+  # Extract target regions
+  flavors = c("blastn", "dc-megablast"),
   tar_target(
-    raw_fasta_genes_seqs,
-    seqs_from_raw_gb_fetch(raw_fasta_genes_results, gene = target_genes),
-    pattern = map(raw_fasta_genes_results, target_genes)
+    fern_sanger_extract_res,
+    extract_from_ref_blast(
+      query_seqtbl = fern_sanger_seqs_raw,
+      ref_seqtbl = fern_ref_seqs_trimmed_clean,
+      target = target_loci,
+      blast_flavor = flavors,
+      other_args = c("-m", "span", "--threads", "4")
+    ),
+    pattern = cross(target_loci, flavors)
   ),
-  # - extract errors
-  raw_fasta_genes_errors = error_from_raw_gb_fetch(raw_fasta_genes_results),
-  # Download fern plastid spacer fasta files
+  # after comparing results between blastn and dc-megablast, dc-megablast seems to work better
+  raw_fasta = clean_extract_res(fern_sanger_extract_res, "dc-megablast"),
+  # Fetch metadata
   tar_target(
-    raw_fasta_spacers_results,
-    fetch_fern_spacer(target_spacers, end_date = date_cutoff, accs_exclude_list = raw_fasta_exclude_list),
-    pattern = map(target_spacers),
+    raw_meta_all,
+    fetch_fern_metadata(target_loci, end_date = date_cutoff),
+    pattern = map(target_loci),
     deployment = "main"
   ),
-  # - extract sequences
-  tar_target(
-    raw_fasta_spacers_seqs,
-    seqs_from_raw_gb_fetch(raw_fasta_spacers_results, gene = target_spacers),
-    pattern = map(raw_fasta_spacers_results, target_spacers)
-  ),
-  # - extract errors
-  raw_fasta_spacers_errors = error_from_raw_gb_fetch(raw_fasta_spacers_results),
-  # Download fern plastid gene metadata
-  tar_target(
-    raw_meta_genes,
-    fetch_fern_metadata(target_genes, end_date = date_cutoff, is_spacer = FALSE),
-    pattern = map(target_genes),
-    deployment = "main"
-  ),
-  # Download fern plastid spacer metadata
-  tar_target(
-    raw_meta_spacers,
-    fetch_fern_metadata(target_spacers, end_date = date_cutoff, is_spacer = TRUE),
-    pattern = map(target_spacers),
-    deployment = "main"
-  ),
-  # Combine
-  raw_fasta = bind_rows(raw_fasta_genes_seqs, raw_fasta_spacers_seqs),
-  raw_meta = bind_rows(raw_meta_genes, raw_meta_spacers),
-  raw_fasta_errors = bind_rows(raw_fasta_genes_errors, raw_fasta_spacers_errors),
-
+  raw_meta = unique(raw_meta_all),
+  
   # Taxonomic name resolution ----
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
@@ -148,8 +202,7 @@ tar_plan(
   min_spacer_len = 20,
   sanger_seqs_combined_filtered = combine_and_filter_sanger(
     raw_meta, raw_fasta, ncbi_accepted_names_map, 
-    ppgi_taxonomy, target_genes, target_spacers,
-    min_gene_len, min_spacer_len),
+    ppgi_taxonomy, min_gene_len, min_spacer_len),
   # Make BLAST database including all fern sequences
   tar_file(
     sanger_blast_db,

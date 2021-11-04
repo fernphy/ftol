@@ -74,6 +74,630 @@ extract_fow_from_col <- function(col_data) {
 
 # Download Sanger sequences from GenBank----
 
+#' Format a query string to download fern sequences from GenBank
+#'
+#' Helper function for fetch_fern_ref_seqs()
+#'
+#' @param target String; name of spacer region
+#' @param start_date String; start date to include sequences
+#' @param end_date String; end date to include sequences
+#'
+#' @return String
+format_fern_query <- function(target, start_date = "1980/01/01", end_date, strict = FALSE) {
+  
+  # Format query
+	# Assume that we only want single genes or small sets of genes, not entire plastome.
+	# Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
+
+  # Define query based on whether it is a spacer region or not
+  is_spacer <- str_detect(target, "-")
+  if(isTRUE(is_spacer)) {
+    # `spacer` should have exactly one hyphen
+	  assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
+	  
+	  # split into names of two flanking genes
+	  flank_1 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
+	  flank_2 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
+	  
+    if(isTRUE(strict)) {
+      query <- glue('({flank_1}[GENE] AND {flank_2}[GENE]) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+    } else {
+	    query <- glue('({flank_1} OR {flank_2}) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+    }
+  } else {
+    if(isTRUE(strict)) {
+      query <- glue('{target}[GENE] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+    } else {
+      query <- glue('{target} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+    }
+  }
+
+  query
+
+}
+
+
+# FIXME: change names(results) <- str_remove_all(names(results), "\\.1")
+# to names(results) <- str_remove_all(names(results), "\\.[0-9]$")
+#' Fetch raw sequences from GenBank
+#'
+#' Helper function for fetch_fern_ref_seqs()
+#'
+#' If ret_type is "gb", results will be in GenBank flat file format, as a
+#' single string. Records are separated by '\\' within the string.
+#'
+#' @param query String; query string (formatted as if querying https://www.ncbi.nlm.nih.gov/nuccore/)
+#' @param ret_type Return type; choose from "gb" 
+#'   (raw text in GenBank flat-file format) or "fasta" (list of class DNAbin)
+#' @param clean_names Logical; should names be cleaned to accession number only?
+#'
+#' @return String or list of class DNAbin
+#' 
+fetch_gb_raw <- function(query, ret_type = c("gb", "fasta"), clean_names = TRUE) {
+  
+  assertthat::assert_that(assertthat::is.string(query))
+  assertthat::assert_that(assertthat::is.string(ret_type))
+  assertthat::assert_that(assertthat::is.flag(clean_names))
+  
+  # Get list of GenBank IDs (GIs)
+  uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
+  
+  # Extract number of hits and print
+  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
+  message(glue("Found {num_hits} accessions (UIDs) for query '{query}'"))
+  
+  # Download complete GenBank record for each and write it to a temporary file
+  temp_dir <- tempdir()
+  temp_file <- fs::path(temp_dir, digest::digest(query))
+  
+  # Make sure temp file doesn't already exist
+  if (fs::file_exists(temp_file)) fs::file_delete(temp_file)
+  
+  # Download data
+  reutils::efetch(uid, "nucleotide", rettype = ret_type, retmode = "text", outfile = temp_file)
+  
+  # Load results back in to R
+  if (ret_type == "fasta") {
+    results <- ape::read.FASTA(temp_file)
+    # Clean names: keep only accession number
+    if (isTRUE(clean_names)) {
+      names(results) <- str_split(names(results), " ") %>% map_chr(1)
+      names(results) <- str_remove_all(names(results), "\\.1")
+    }
+  } else if (ret_type == "gb") {
+    results <- readr::read_file(temp_file)
+  } else {
+    error("'ret_type' must be 'gb' or 'fasta'")
+  }
+  
+  # Clean up
+  fs::file_delete(temp_file)
+  
+  results
+  
+}
+
+#' Parse a GenBank flatfile and retrieve integeneic spacer sequences
+#'
+#' Helper function for fetch_fern_ref_seqs()
+#'
+#' @param gb_raw String (character vector of length 1);
+#' GenBank flatfile, possibly including multiple entries
+#' @param target String; name of spacer to extract (e.g., "trnL-trnF")
+#' @param req_intron Logical; should the intron in the left-side
+#' flanking gene be included?
+#' @param workers  Number of CPUs to run in parallel during parsing
+#'
+#' @return Tibble including columns for "seq", "error", and "target"
+parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
+
+  # Change back to sequential when done (including on failure)
+  on.exit(future::plan(future::sequential), add = TRUE)
+  
+  assertthat::assert_that(assertthat::is.string(gb_raw))
+  assertthat::assert_that(assertthat::is.number(workers))
+  
+  # Set backend for parallelization
+  future::plan(future::multisession, workers = workers)
+  
+  seqs_and_errors <-
+    # Start with raw GenBank flat-file as single text string
+    gb_raw %>%
+    # '\\' is delimiter between entries; split up into one string each
+    stringr::str_split("\n\\/\\/\n") %>%
+    unlist %>%
+    # Drop the last item, as it is just an empty line (after the last '\\')
+    magrittr::extract(-length(.)) %>%
+    # Can't start with any empty lines
+    map(~str_remove(., "^[\n]+")) %>%
+    # Loop over entries and extract spacer
+    # genbankr::readGenBank() is slow, so do in parallel
+    furrr::future_map(
+      ~extract_spacer(
+        ., target = target, req_intron = req_intron)) %>%
+    transpose()
+
+  # Close parallel workers
+  future::plan(future::sequential)
+  
+  # Convert results to tibble
+  seqs <- seqs_and_errors[["result"]] %>%
+    purrr::compact() %>%
+    do.call(c, .) %>%
+    dnabin_to_seqtbl() %>%
+    separate(accession, c("accession", "species"), sep = "__", fill = "right")
+
+  tibble(
+    seq = list(seqs), # seq is a nested tibble
+    error = seqs_and_errors["error"], # error is a list-column with errors
+    target = target
+  )
+
+}
+
+#' Parse a GenBank flatfile and retrieve gene sequences
+#'
+#' Helper function for fetch_fern_ref_seqs()
+#'
+#' @param gb_raw String (character vector of length 1);
+#' GenBank flatfile, possibly including multiple entries
+#' @param target String; name of gene to extract
+#' @param workers Number of CPUs to run in parallel during parsing
+#'
+#' @return Tibble including columns for "seq", "error", and "target"
+parse_gb_gene <- function(gb_raw, target, workers) {
+
+  # Change back to sequential when done (including on failure)
+  on.exit(future::plan(future::sequential), add = TRUE)
+  
+  assertthat::assert_that(assertthat::is.string(gb_raw))
+  assertthat::assert_that(assertthat::is.number(workers))
+  
+  # Set backend for parallelization
+  future::plan(future::multisession, workers = workers)
+  
+  seqs_and_errors <-
+    # Start with raw GenBank flat-file as single text string
+    gb_raw %>%
+    # '\\' is delimiter between entries; split up into one string each
+    stringr::str_split("\n\\/\\/\n") %>%
+    unlist %>%
+    # Drop the last item, as it is just an empty line (after the last '\\')
+    magrittr::extract(-length(.)) %>%
+    # Can't start with any empty lines
+    map(~str_remove(., "^[\n]+")) %>%
+    # Loop over entries and extract gene
+    # genbankr::readGenBank() is slow, so do in parallel
+    furrr::future_map(~extract_gene(., target = target)) %>%
+    transpose()
+
+  # Close parallel workers
+  future::plan(future::sequential)
+  
+  # Convert results to tibble
+  seqs <- seqs_and_errors[["result"]] %>%
+    purrr::compact() %>%
+    do.call(c, .) %>%
+    dnabin_to_seqtbl()
+    
+  # Split accession and species columns
+  if(nrow(seqs > 0)) {
+  seqs <-
+    seqs %>%
+    separate(accession, c("accession", "species"), sep = "__", fill = "right")
+  }
+
+  tibble(
+    seq = list(seqs), # seq is a nested tibble
+    error = seqs_and_errors["error"], # error is a list-column with errors
+    target = target
+  )
+
+}
+
+#' Extract a DNA sequence for a single spacer region from a genbank flat file
+#'
+#' Helper function for parse_gb_spacer()
+#'
+#' @param gb_entry String (character vector of length 1);
+#' single entry from a genbank flatfile
+#' @param target String; name of genes containing the spacer.
+#' Must be formatted as two gene names separated by hyphen; e.g., 'trnL-trnF'
+#' @param req_intron Logical; should an intron in the left-flanking gene
+#' (in the case of trnL-trnF, trnL) be included?
+#'
+#' @return DNA sequence
+#' 
+extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
+
+  # `target` should have exactly one hyphen
+	assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
+	
+	# split into names of two flanking genes
+	flank_1 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
+	flank_2 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
+
+  # Parse the GenBank file
+  gb_parsed <- suppressMessages(genbankr::readGenBank(text = gb_entry, partial = TRUE, verbose = FALSE))
+
+  if(is.null(gb_parsed)) {
+    stop("Could not parse GenBank file")
+  }
+  
+  # Extract the accession
+  accession <- attributes(gb_parsed)$accession
+  if(is.null(accession)) {
+    stop(glue::glue("No accession detected"))
+  }
+  # Extract the feature locations
+  other_features <-
+    genbankr::otherFeatures(gb_parsed) %>% 
+    as_tibble() %>%
+    mutate(across(where(is.factor), as.character))
+
+  if(!"type" %in% colnames(other_features)) {
+    stop(glue::glue("No 'type' for {target} gene detected in accession {accession}"))
+  }
+
+  # Optionally check for intron in flank_1  
+  if(isTRUE(req_intron)) {
+    # Return NULL if no gene detected
+    if(!"gene" %in% colnames(other_features)) {
+      stop(glue::glue("No {flank_1} gene detected in accession {accession}"))
+    }
+    # Find position of intron
+    intron_features <-
+      other_features %>%
+      filter(type == "intron", str_detect(gene, regex(flank_1, ignore_case = TRUE)))
+    # Error if no intron detected
+    if(nrow(intron_features) == 0) {
+      stop(glue::glue("No intron for {flank_1} gene detected in accession {accession}"))
+    }
+    if(nrow(intron_features) > 1) {
+      stop(glue::glue("Multiple introns for {flank_1} gene detected in accession {accession}"))
+    }
+  }
+  # Error if no note detected
+  if(!"note" %in% colnames(other_features)) {
+    stop(glue::glue("No 'note' detected in accession {accession}"))
+  }
+
+  # Find position of spacer
+  spacer_features <-
+    other_features %>%
+    filter(
+      type == "misc_feature", 
+      str_detect(note, regex(as.character(glue::glue("{flank_1}-{flank_2}")), ignore_case = TRUE)),
+      str_detect(note, "spacer"),
+      str_detect(note, "intron", negate = TRUE)
+      )
+   # Error if no spacer detected
+  if(nrow(spacer_features) == 0) {
+    stop(glue::glue("No spacer for {target} gene detected in accession {accession}"))
+  }
+  if(nrow(spacer_features) > 1) {
+    stop(glue::glue("Multiple spacer for {target} gene detected in accession {accession}"))
+  }
+  # Error if start/end don't agree
+  if(isTRUE(req_intron)) {
+    if(intron_features$start >= spacer_features$end) {
+      stop(glue::glue("Start intron after spacer end for {target} gene detected in accession {accession}"))
+    }
+  }
+
+  # If no errors, extract sequence
+  if(isTRUE(req_intron)) {
+    # Extract the intron + spacer sequence, or
+    seq <-
+      Biostrings::getSeq(gb_parsed) %>% 
+      Biostrings::subseq(intron_features$start, spacer_features$end) %>%
+      ape::as.DNAbin()
+    } else {
+    # extract the spacer sequence
+    seq <-
+      Biostrings::getSeq(gb_parsed) %>% 
+      Biostrings::subseq(spacer_features$start, spacer_features$end) %>%
+      ape::as.DNAbin()
+  }
+
+  # Name as the sequence as accession__organism
+  organism <- attributes(gb_parsed)$sources$organism
+
+  # attributes(gb_parsed)$sources$organism
+  names(seq) <- glue::glue("{accession}__{organism}") %>% as.character()
+  
+  seq
+  
+}
+
+extract_spacer <- purrr::safely(extract_spacer_fragile)
+
+#' Extract a DNA sequence for a single gene from a genbank flat file
+#'
+#' Helper function for parse_gb_gene()
+#'
+#' @param gb_entry String (character vector of length 1);
+#' single entry from a genbank flatfile
+#' @param target String; name of gene
+#'
+#' @return DNA sequence
+#' 
+extract_gene_fragile <- function (gb_entry, target) {
+
+  # Parse the GenBank file
+  gb_parsed <- suppressMessages(genbankr::readGenBank(text = gb_entry, partial = TRUE, verbose = FALSE))
+
+  if(is.null(gb_parsed)) {
+    stop("Could not parse GenBank file")
+  }
+  
+  # Extract the accession
+  accession <- attributes(gb_parsed)$accession
+  if(is.null(accession)) {
+    stop(glue::glue("No accession detected"))
+  }
+
+  # Extract genes
+  genes <- genbankr::genes(gb_parsed) %>% as_tibble()
+
+  assertthat::assert_that(
+    nrow(genes) > 0,
+    msg = glue("No genes detected in accession {accession}"))
+
+  target_genes <- filter(genes, gene == target)
+
+  assertthat::assert_that(
+    nrow(target_genes) > 0,
+    msg = glue("Target gene {target} not detected in accession {accession}"))
+
+  assertthat::assert_that(
+    is.numeric(target_genes$start))
+  
+  assertthat::assert_that(
+    is.numeric(target_genes$end))
+  
+  assertthat::assert_that(target_genes$start < target_genes$end)
+
+  # Extract the gene
+  seq <-
+    Biostrings::getSeq(gb_parsed) %>% 
+    Biostrings::subseq(target_genes$start, target_genes$end) %>%
+    ape::as.DNAbin()
+
+  # Name as the sequence as accession__organism
+  organism <- attributes(gb_parsed)$sources$organism
+
+  # attributes(gb_parsed)$sources$organism
+  names(seq) <- glue::glue("{accession}__{organism}") %>% as.character()
+  
+  seq
+  
+}
+
+extract_gene <- safely(extract_gene_fragile)
+
+#' Download fern DNA sequences to use as reference for extracting
+#' target sequences with BLAST
+#'
+#' @param target Name of target locus (e.g, "rbcL", "trnL-trnF")
+#' @param start_date Start date for filtering GenBank accessions
+#' @param end_date End date for filtering GenBank accessions
+#' @param req_intron Logical; should the intronic region be included?
+#' Only applies to trnL-trnF
+#' @param workers Number of CPUs to run in parallel during parsing of GenBank flatfile 
+#'
+#' @return Tibble of DNA sequences
+fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, req_intron = FALSE, workers) {
+  
+   # Check if query target is a spacer region
+  is_spacer <- str_detect(target, "-")
+
+  # Download sequences in GenBank flatfile format (plain text)
+  gb_raw <-  
+  # Format query
+  format_fern_query(
+    target = target,
+    start_date = start_date, 
+    end_date = end_date,
+    strict = FALSE) %>%
+  # Fetch raw GenBank flatfile
+  fetch_gb_raw(query = ., ret_type = "gb")
+
+  # Parse features
+  # Result will be sequences in a tibble
+  if(is_spacer) {
+    parse_gb_spacer(
+        gb_raw = gb_raw, target = target, req_intron = req_intron, 
+        workers = workers
+    )
+  } else {
+    parse_gb_gene(
+        gb_raw = gb_raw, target = target, 
+        workers = workers
+    )
+  }
+
+}
+
+#' Filter a set of sequences
+#'
+#' Selects the sequence with most non-missing bases per genus per target locus
+#'
+#' @param fern_ref_seqs_raw Output of fetch_fern_ref_seqs()
+#' @return Tibble of filtered sequences
+filter_ref_seqs <- function(fern_ref_seqs_raw) {
+  
+# Filter based on non-missing bases
+  fern_ref_seqs_raw %>%
+    select(seq, target) %>%
+    unnest(cols = c(seq, target)) %>%
+    mutate(
+      # Here, seq_len only includes a,c,t,g (no missing or ambiguous bases)
+      seq_len = map_dbl(seq, count_actg),
+      # remove brackets fromm species names
+      species = str_remove_all(species, "\\[|\\]"),
+      # extract genus
+      genus = str_split(species, " ") %>% map_chr(1)) %>%
+    # filter by most non-missing bases per genus per target
+    group_by(genus, target) %>%
+    slice_max(order_by = seq_len, with_ties = FALSE) %>%
+    ungroup()
+}
+
+#' Download a set of fern sequences for a given target region
+#'
+#' @param target Name of target
+#' @param start_date Earliest date to download
+#' @param end_date Most recent date to download
+#' @param accs_exclude_list Data frame with accession numbers to
+#' exclude from results, including columns "gene" (matching target) and "accession"
+#' @param terms_remove GREP string to remove from `target` when querying
+#'
+#' @return Dataframe with one row per sequence and columns
+#' for the sequence and accession
+#' 
+#' fetch_fern_sanger_seqs("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
+fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, accs_exclude_list = NULL) {
+
+  assertthat::assert_that(assertthat::is.string(target))
+  assertthat::assert_that(assertthat::is.string(end_date))
+  assertthat::assert_that(assertthat::is.string(start_date))
+
+  # Set up filter of accessions to exclude
+  accs_exclude <- NULL
+  if(!is.null(accs_exclude_list)) {
+  accs_exclude <- accs_exclude_list %>%
+    filter(gene == target) %>%
+    pull(accession)
+    }
+  if(length(accs_exclude) == 0) accs_exclude <- NULL
+ 
+ seqs <-
+  # Strip out special keywords from target
+  format_fern_query(
+    target = target,
+    start_date = start_date, 
+    end_date = end_date) %>%
+  # Download sequences
+  fetch_gb_raw(ret_type = "fasta")
+
+  # Exclude any accessions in exclusion list
+  if(!is.null(accs_exclude)) seqs <- seqs[!seqs %in% accs_exclude]
+
+  # Convert to tibble
+  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = target)
+
+}
+
+#' Extract sequences by querying against a reference library
+#'
+#' Wrapper for supercrunch Reference_Blast_Extract.py module
+#'
+#' @param query_seqtbl DNA sequences to extract, formatted as sqtbl
+#' @param ref_seqtbl DNA sequences to use as a BLAST reference database, formatted as sqtbl
+#' @param target Name of target locus
+#' @param blast_flavor Name of BLAST algorithm to use
+#' @param other_args Additional arguments formatted as a character vector to send
+#' to superCRUNCH Reference_Blast_Extract.py
+#' @param echo Logical; should the output of Reference_Blast_Extract.py be printed to the screen?
+#' @param blast_res Logical; should the BLAST output be included in the results?
+#'
+#' @return Tibble
+
+extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
+  
+  # To avoid confusion with columns named 'target'
+  target_select <- target
+
+  # Filter sequences, convert to DNAbin:
+  # - query (filter on target only)
+  query_seqs <- query_seqtbl %>%
+    filter(gene == target_select) %>%
+    unique() %>%
+    verify(nrow(.) > 0, error_fun = err_msg("No query sequences matching target")) %>%
+    seqtbl_to_dnabin(name_col = "accession", seq_col = "seq") %>%
+    # remove gaps
+    ape::del.gaps()
+  
+  # - reference (filter on target, and optionally by feature)
+  ref_seqs <- ref_seqtbl %>%
+    filter(target == target_select) %>%
+    verify(nrow(.) > 0, error_fun = err_msg("No reference sequences matching target")) %>%
+    seqtbl_to_dnabin(name_col = "accession", seq_col = "seq") %>%
+    # remove gaps (important for ref database)
+    ape::del.gaps()
+  
+  # Create temporary input and output folders
+  sha <- digest::digest(c(query_seqs, ref_seqs))
+  in_folder <- tempfile(glue("{sha}_in"))
+  out_folder <- tempfile(glue("{sha}_out"))
+  
+  if(fs::dir_exists(in_folder)) fs::dir_delete(in_folder)
+  if(fs::dir_exists(out_folder)) fs::dir_delete(out_folder)
+  
+  fs::dir_create(in_folder)
+  fs::dir_create(out_folder)
+  
+  # Write out sequences
+  query_file <- fs::path_ext_set(target, "fasta")
+  ref_file <- paste0(target, "_ref") %>% fs::path_ext_set("fasta")
+  
+  ape::write.FASTA(query_seqs, fs::path(in_folder, query_file))
+  ape::write.FASTA(ref_seqs, fs::path(in_folder, ref_file))
+  
+  # Set up super-crunch arguments
+  args <- c(
+    "Reference_Blast_Extract.py",
+    "-i", fs::path_abs(in_folder),
+    "-o", fs::path_abs(out_folder),
+    "-e", query_file,
+    "-d", ref_file,
+    "-b", blast_flavor,
+    other_args
+  )
+  
+  # Run supercrunch
+  sc_res <- processx::run("supercrunch", args, echo = echo)
+  
+  # Read in output files, return as list
+  out_files <- list.files(out_folder, full.names = TRUE, recursive = TRUE)
+  
+  blast_file <- out_files[str_detect(out_files, "blast_results.txt")]
+  log_file <- out_files[str_detect(out_files, "Log_File_")]
+  bad_seqs_file <- out_files[str_detect(out_files, "Log_BadSeqs_")]
+  extracted_seqs_file <- out_files[str_detect(out_files, "_extracted.fasta")]
+  
+  blast_res <- NULL
+  log_res <- NULL
+  bad_seqs_res <- NULL
+  extracted_seqs_res <- NULL
+  
+  fmt6_cols <- c("qseqid", "sseqid", "pident", "length", "mismatch",
+                 "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+  
+  
+  if(length(blast_file) > 0 && isTRUE(blast_res)) blast_res <- suppressMessages(
+    {read_tsv(blast_file, col_names = fmt6_cols, col_types = "ccdddddddddd")})
+  if(length(log_file) > 0) log_res <- suppressMessages(read_tsv(log_file))
+  if(length(bad_seqs_file) > 0) bad_seqs_res <- ape::read.FASTA(bad_seqs_file) %>% dnabin_to_seqtbl()
+  if(length(extracted_seqs_file) > 0) extracted_seqs_res <- ape::read.FASTA(extracted_seqs_file) %>% dnabin_to_seqtbl()
+  
+  fs::dir_delete(in_folder)
+  fs::dir_delete(out_folder)
+  
+  tibble::tibble(
+    blast = list(blast_res),
+    log = list(log_res),
+    bad_seqs = list(bad_seqs_res),
+    extracted_seqs = list(extracted_seqs_res),
+    target = target_select,
+    blast_flavor = blast_flavor,
+    stdout = list(sc_res$stdout),
+    stderr = list(sc_res$stderr)
+  )
+  
+}
+
 # Helper function to make tibble including custom error message,
 # accession, and gene. Uses `accession` and `gene` in parent environment.
 error_tbl <- function(accession, gene, msg) {
@@ -241,466 +865,20 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
   ) 
 }
 
-#' Download a set of fern sequences for a given gene
+#' Clean up results from extract_from_ref_blast()
 #'
-#' @param gene Name of gene
-#' @param start_date Earliest date to download
-#' @param end_date Most recent date to download
-#' @param accs_exclude_list Data frame with accession numbers to
-#' exclude from results, including columns "gene" and "accession"
-#' @param return_df Logical; return results as a dataframe? If FALSE, returns results
-#' as a list
+#' @param extract_from_ref_blast_res results from extract_from_ref_blast()
+#' @param blast_flavor_select Type of blast algorithm to use
+#' @results Tibble (seqtbl)
 #'
-#' @return List of class DNAbin or dataframe with one row per sequence and columns
-#' for the sequence and accession
-#' 
-#' fetch_fern_gene("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
-fetch_fern_gene <- function(gene, start_date = "1980/01/01", end_date, accs_exclude_list = NULL, return_df = TRUE) {
-  
-  assertthat::assert_that(assertthat::is.string(gene))
-  assertthat::assert_that(assertthat::is.string(end_date))
-  assertthat::assert_that(assertthat::is.string(start_date))
-
-  # filter accessions to exclude
-  accs_exclude <- NULL
-  if(!is.null(accs_exclude_list)) {
-  accs_exclude <- accs_exclude_list %>%
-    # to avoid gene == gene
-    rename(gene_in_exclude_data = gene) %>%
-    filter(gene_in_exclude_data == gene) %>%
-    pull(accession)
-    }
-  if(length(accs_exclude) == 0) accs_exclude <- NULL
-  
-  # Format GenBank query: all ferns matching the gene name.
-  # Assume that we only want single genes or small sets of genes, not entire plastome.
-  # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-  query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
-  
-  # Get list of GenBank IDs (GIs)
-  uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
-  
-  # Extract number of hits and print
-  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  print(glue("Found {num_hits} sequences (UIDs) for {gene}"))
-  
-  # Download complete GenBank record for each and write it to a temporary file
-  temp_dir <- tempdir()
-  temp_file <- fs::path(temp_dir, "gb_records.txt")
-  
-  # Make sure temp file doesn't already exist
-  if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
-  
-  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
-  # Read-in flat file, extract out target spacer or error
-  results <- readr::read_file(temp_file) %>%
-		# '\\' is delimiter between entries; split up into one string each
-		stringr::str_split("\n\\/\\/\n") %>%
-		unlist %>%
-		# Drop the last item, as it is just an empty line (after the last '\\')
-		magrittr::extract(-length(.)) %>%
-		# Extract spacer sequence and accession, or return error
-		map(~extract_sequence(., gene = gene, accs_exclude = accs_exclude)) %>%
-    # Transpose the list (so it includes two items, "seq" and "error")
-		transpose()
-
-  # convert to tibble
-  results <- tibble(
-      seq = results$seq,
-      error = results$error
-  )
-
-  fs::file_delete(temp_file)
-
-  return(results)
-}
-
-#' Detect a spacer region, non-vectorized version
-#' 
-#' Helper function for extracting spacer regions
-#'
-#' @param x String (chacter vector of length 1)
-#' @param flank_1 String (chacter vector of length 1); Name of one flanking gene
-#' @param flank_2 String (chacter vector of length 1); Name of other flanking gene
-#'
-#' @return TRUE if both flank_1 and flank_2 are present in x
-detect_spacer_single <- function(x, flank_1, flank_2) {
-	flank_1_present <- str_detect(x, regex(flank_1, ignore_case = TRUE))
-	flank_2_present <- str_detect(x, regex(flank_2, ignore_case = TRUE))
-	flank_1_present && flank_2_present
-}
-
-#' Detect a spacer region, vectorized version
-#' 
-#' Helper function for extracting spacer regions
-#'
-#' @param x Chacter vector
-#' @param flank_1 String (chacter vector of length 1); Name of one flanking gene
-#' @param flank_2 String (chacter vector of length 1); Name of other flanking gene
-#'
-#' @return Logical vector; TRUE if both flank_1 and flank_2 are present for each element of x
-detect_spacer <- function(x, flank_1, flank_2) {map_lgl(x, ~detect_spacer_single(., flank_1 = flank_1, flank_2 = flank_2))}
-
-#' Extract a DNA sequence for a single spacer region from a genbank flat file
-#'
-#' The order in the flat file of flank-1 and flank-2 doesn't
-#' matter; they just both have to be present. The two
-#' flanking genes must surround the spacer region.
-#'
-#' @param gb_entry String (character vector of length 1);
-#' single entry from a genbank flatfile
-#' @param flank_1 String (character vector of length 1); 
-#' name of one flanking gene (may be a grep expression)
-#' @param flank_2 String (character vector of length 1); 
-#' name of other flanking gene (may be a grep expression)
-#' @param spacer String; name of spacer
-#' @param accs_exclude Character vector of accession numbers to
-#' exclude from results
-#'
-#' @return List with two items:
-#'   - seq: Named character vector; DNA sequence
-#'   - error: Tibble with error message, gene name, and accession
-#' 
-extract_spacer <- function (gb_entry, flank_1, flank_2, spacer, accs_exclude = NULL) {
-  
-	# Output always consists of list with "seq" or "error";
-  # one is NULL, other contains either sequence or error message
-
-  # Check for accession number
-  accession_detected <- str_detect(gb_entry, "ACCESSION")
-	accession_detected_msg <- assertthat::validate_that(
-		accession_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
-	)
-  if (!accession_detected) {
-		message(accession_detected_msg)
-		return(
-      list(
-        seq = NULL,
-        error = tibble(gene = spacer, msg = accession_detected_msg)
-      )
-    )
-	}
-  
-  # Extract accession number
-	accession <-
-		gb_entry %>%
-		paste(sep = "") %>%
-		str_match('ACCESSION(.+)\n') %>%
-		magrittr::extract(,2) %>%
-		# In very rare cases, may have multiple values for accession,
-		# separated by space. If so, take the first one.
-		str_trim(side = "both") %>%
-		str_split(" ") %>%
-		purrr::pluck(1,1)
-	
-  # If exclusion list is present and it's on the list, skip it
-  if(!is.null(accs_exclude) && accession %in% accs_exclude) return (list(seq = NULL, error = NULL))
-	
-	# Check for FEATURES, ORIGIN, misc_feature fields
-  features_detected <- str_detect(gb_entry, "FEATURES")
-	features_detected_msg <- assertthat::validate_that(
-		features_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
-	)
-  if(!features_detected) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = features_detected_msg))
-  )
-
-  origin_detected <- str_detect(gb_entry, "ORIGIN")
-	origin_detected_msg <- assertthat::validate_that(
-		origin_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
-	)
-  if(!origin_detected) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = origin_detected_msg))
-  )
-
-  # Check if spacer is mentioned in FEATURES
-  # (that is where it will indicate range of spacer)
-  features <- 
-    gb_entry %>% 
-		paste(sep = "") %>%
-		str_remove_all("\n") %>%
-		str_match("FEATURES(.*)ORIGIN") %>%
-		magrittr::extract(,2) %>%
-    str_squish()
-
-  flank_1_detected_in_features <- str_detect(features, regex(flank_1, ignore_case = TRUE))
-  flank_2_detected_in_features <- str_detect(features, regex(flank_2, ignore_case = TRUE))
-
-  spacer_detected_in_features <- flank_1_detected_in_features && flank_2_detected_in_features
-  spacer_detected_in_features_msg <- assertthat::validate_that(
-		spacer_detected_in_features,
-		msg = glue::glue("{spacer} not detected in accession {accession}")
-	)
-  if(!spacer_detected_in_features) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = spacer_detected_in_features_msg))
-  )
-
-  # 99% of time spacer is listed in 'misc_feature'
-  # but very rarely in 'misc_RNA' or 'misc_difference'
-  misc_feature_detected <- str_detect(gb_entry, "misc_feature|misc_RNA|misc_difference")
-	misc_feature_msg <- assertthat::validate_that(
-		misc_feature_detected,
-		msg = glue::glue("'misc_feature', 'misc_RNA', or 'misc_difference' not detected in accession {accession}")
-	)
-  if(!misc_feature_detected) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = misc_feature_msg))
-  )
-
-	# Extract line including start and end of target region
-	gene_range_list <-
-		gb_entry %>% 
-		paste(sep = "") %>%
-		str_remove_all("\n") %>%
-		str_match("FEATURES(.*)ORIGIN") %>%
-		str_remove_all("ORIGIN") %>%
-		# Match strings like 'misc_feature 572..902 /note=\"trnL-trnF intergenic spacer\"' 
-		# (we want the misc_feature, the range it contains, and the note)
-		# the note may stretch over multiple lines, but is contained between two escaped quotation marks
-		str_match_all("misc_feature .*$|misc_RNA .*$|misc_difference .*$") %>%
-		unlist %>%
-		unique() %>%
-		# May be multiple misc_features, so split these
-		str_split("misc_feature|misc_RNA|misc_difference") %>%
-		magrittr::extract2(1) %>%
-		# Exclude any empty strings
-		magrittr::extract(. != "")
-	
-	# Make sure target spacer is detected in at least one of the "misc_feature" groups
-	gene_detected <- any(detect_spacer(gene_range_list, flank_1, flank_2))
-	gene_detected_msg <- assertthat::validate_that(
-		gene_detected,
-		msg = glue::glue("{flank_1}-{flank_2} spacer not detected in accession {accession}")
-	)
-  if(!gene_detected) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_detected_msg))
-  )
-	
-	note_detected <- any(str_detect(gene_range_list, "\\/note|\\/gene|\\/product"))
-	note_detected_msg <- assertthat::validate_that(
-		note_detected,
-		msg = glue::glue("None of '/note', '/gene', or '/product' detected in accession {accession}")
-	)
-  if(!note_detected) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = note_detected_msg))
-  )
-  	
-	# Get range (start and end position) of spacer region.
-	# Comes right before "/note"
-	gene_range <-
-		gene_range_list %>%
-    # restrict to the misc feature with both flanking gene names
-		magrittr::extract(detect_spacer(., flank_1, flank_2)) %>% 
-    # the range is almost always just before '/note', but rarely before '/gene' or '/product'
-		strex::str_before_first(., "\\/note|\\/gene|\\/product") %>%
-		str_split(" +") %>%
-		unlist %>%
-		magrittr::extract(str_detect(., "\\d")) %>%
-		str_match_all("\\d+") %>%
-		unlist() %>%
-		parse_number %>%
-		sort()
-	
-	# Check for duplicated genes
-	gene_not_duplicated <- length(unique(gene_range)) <= 2
-	gene_not_duplicated_msg <- assertthat::validate_that(
-		gene_not_duplicated,
-		msg = glue::glue("Duplicate copies of {flank_1}-{flank_2} spacer detected in accession {accession}")
-	)
-  if(!gene_not_duplicated) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_not_duplicated_msg))
-  )
-	
-	# Check that full range of gene was detected
-	gene_full <- length(gene_range) > 1 && 
-		is.numeric(gene_range) && 
-		!anyNA(gene_range) && 
-		gene_range[1] <= gene_range[2] && 
-		gene_range[2] >= gene_range[1]
-	gene_full_msg <- assertthat::validate_that(
-		gene_full,
-		msg = glue::glue("Full range of {flank_1}-{flank_2} spacer not detected in accession {accession}")
-	)
-	if(!gene_full) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = gene_full_msg))
-  )
-	
-	# Extract sequence, subset to target gene
-	sequence <- 
-		gb_entry %>%
-		paste(sep = "") %>%
-		str_remove_all("\n") %>%
-		str_remove_all('\"') %>%
-    strex::str_after_last("ORIGIN") %>% 
-		str_remove_all(" ") %>%
-		str_remove_all("[0-9]") %>%
-		substr(gene_range[1], gene_range[2])
-
-  # Check for valid DNA sequences
-  # - make a grep query that will hit any non-IUPAC character (in upper case)
-  non_iupac <- "[^A^C^G^T^U^R^Y^S^W^K^M^B^D^H^V^N^\\.^\\-^\\?]"
-
-  iupac_only <- str_detect(str_to_upper(sequence), non_iupac, negate = TRUE)
-
-  iupac_only_msg <- assertthat::validate_that(
-		iupac_only,
-		msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
-	)
-
-	if(!iupac_only) return(
-    list(seq = NULL, error = error_tbl(accession = accession, gene = spacer, msg = iupac_only_msg))
-  )
-	
-  # If pass all checks, return sequence with no error
-  list(
-    # convert sequence to ape DNAseq
-    seq = set_names(sequence, accession),
-    error = NULL
-  ) 	
-}
-
-#' Download a set of fern sequences for a given spacer region
-#'
-#' @param spacer Name of spacer region. MUST BE FORMATTED as "flank_1-flank_2",
-#' where "flank_1" and "flank_2" are the names of flanking genes around the spacer.
-#' e.g., "trnl-trnf" or "rps4-trns". (order doesn't matter).
-#' @param start_date Earliest date to download
-#' @param end_date Most recent date to download
-#' @param accs_exclude_list Data frame with accession numbers to
-#' exclude from results, including columns "gene" and "accession"
-#' @param return_df Logical; return results as a dataframe? If FALSE, returns results
-#' as a list
-#'
-#' @return Tibble with two list-columns:
-#'   - seq: Named character vector; DNA sequence
-#'   - error: Tibble with error message, gene name, and accession
-#' 
-fetch_fern_spacer <- function(spacer, start_date = "1980/01/01", end_date, accs_exclude_list = NULL, return_df = TRUE) {
-	
-  assertthat::assert_that(assertthat::is.string(end_date))
-  assertthat::assert_that(assertthat::is.string(start_date))
-
-  # filter accessions to exclude
-  accs_exclude <- NULL
-  if(!is.null(accs_exclude_list)) {
-  accs_exclude <- accs_exclude_list %>%
-    filter(gene == spacer) %>%
-    pull(accession) 
-    }
-  if(length(accs_exclude) == 0) accs_exclude <- NULL
-
-	# `spacer` should have exactly one hyphen
-	assertthat::assert_that(isTRUE(str_count(spacer, "-") == 1))
-	
-	# split into names of two flanking genes
-	flank_1 <- str_split(spacer, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
-	flank_2 <- str_split(spacer, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
-	
-	# Format GenBank query: all ferns sequences including both flanking regions
-	# Assume that we only want single genes or small sets of genes, not entire plastome.
-	# Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-	query <- glue('{flank_1} AND {flank_2} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
-	
-	# Get list of GenBank IDs (GIs)
-	uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
-	
-	# Extract number of hits and print
-	num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-	print(glue("Found {num_hits} sequences (UIDs) for {spacer}"))
-	
-	# Download complete GenBank record for each and write it to a temporary file
-	temp_dir <- tempdir()
-	temp_file <- fs::path(temp_dir, "gb_records.txt")
-	
-	# Make sure temp file doesn't already exist
-	if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
-	
-	# Download records to file
-	reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-	
-	# Parse flatfile
-	
-	# in the case of trnl-trnf, this is sometimes written as 'trnl-f'
-	# so search based on that (otherwise just on genes as normally written)
-	flank_1_grep <- flank_1
-	flank_2_grep <- flank_2
-	if(str_to_lower(spacer) == "trnl-trnf") {
-		flank_1_grep <- "trnl|l"
-		flank_2_grep <- "trnf|f"
-	}
-  # similarly, in some rare cases rps4-trnS is written as 'rps-trnS'
-  if(str_to_lower(spacer) == "rps4-trns") {
-		flank_1_grep <- "rps"
-		flank_2_grep <- "trns"
-	}
-	
-	# Read-in flat file, extract out target spacer or error
-	results <- readr::read_file(temp_file) %>%
-		# '\\' is delimiter between entries; split up into one string each
-		stringr::str_split("\n\\/\\/\n") %>%
-		unlist %>%
-		# Drop the last item, as it is just an empty line (after the last '\\')
-		magrittr::extract(-length(.)) %>%
-		# Extract spacer sequence and accession, or return error
-		map(~extract_spacer(., flank_1_grep, flank_2_grep, spacer, accs_exclude)) %>%
-    # Transpose the list (so it includes two items, "seq" and "error")
-		transpose()
-
-  # convert to tibble
-  results <- tibble(
-      seq = results$seq,
-      error = results$error
-  )
-
-  fs::file_delete(temp_file)
-
-  return(results)
-	
-}
-
-#' Extract gene sequences from raw output of a fetch_fern_*() function
-#'
-#' @param raw_gb_dat Output of fetch_fern_gene() or fetch_fern_spacer()
-#' @param gene Name of gene
-#' @param return_tbl Logical; should results be returned as a tibble?
-#'
-#' @return Either tibble with gene sequences in row, or list of class DNAseq
-seqs_from_raw_gb_fetch <- function(raw_gb_dat, gene, return_tbl = TRUE) {
-	
-	# Drop any NULL values
-	seqs <-
-		raw_gb_dat[["seq"]] %>%
-		purrr::compact() %>%
-		# Name them as the accession
-		purrr::set_names(map_chr(., names)) %>%
-		# Convert to ape format
-		# - each sequence needs to be a character vector with each letter as an element
-		map(stringr::str_split, "") %>%
-		map(ape::as.DNAbin) %>%
-		do.call(c, .)
-	
-	# Return list 
-	if(return_tbl == FALSE) return(seqs)
-	
-	# Or return dataframe
-	tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = gene)
-	
-}
-
-#' Extract errors from raw output of a fetch_fern_*() function
-#'
-#' @param raw_gb_dat Output of fetch_fern_gene() or fetch_fern_spacer()
-#'
-#' @return Tibble
-error_from_raw_gb_fetch <- function(raw_gb_dat) {
-	
-	raw_gb_dat[["error"]] %>%
-		purrr::compact() %>%
-		bind_rows()
-	
+clean_extract_res <- function(extract_from_ref_blast_res, blast_flavor_select) {
+  extract_from_ref_blast_res %>%
+  filter(blast_flavor == blast_flavor_select) %>%
+  select(extracted_seqs, target) %>%
+  unnest(extracted_seqs) %>%
+  # remove version part of genbank accession number
+  # FIXME: shouldn't need to do this if fix in fetch_gb_raw()
+  mutate(accession = str_remove_all(accession, "\\.[0-9]$"))
 }
 
 # Download metadata for Sanger sequences from GenBank ----
@@ -848,36 +1026,27 @@ fetch_genbank_refs <- function(query) {
   
 }
 
-#' Download a set of fern sequence metadata for a given gene
+#' Download a set of fern sequence metadata for a given target
 #'
-#' @param gene Name of gene
+#' @param target Name of target
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
 #'
 #' @return Datarame
 #' fetch_fern_metadata("rbcL", start_date = "2018/01/01", end_date = "2018/02/01")
-fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_spacer = FALSE) {
+#' fetch_fern_metadata("trnL-trnF_intron", start_date = "2017/01/01", end_date = "2018/02/01")
+fetch_fern_metadata <- function(target, start_date = "1980/01/01", end_date) {
   
-  assertthat::assert_that(assertthat::is.string(gene))
+  assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
-  assertthat::assert_that(assertthat::is.flag(is_spacer))
+  assertthat::assert_that(assertthat::is.string(start_date))
   
-  if(isTRUE(is_spacer)) {
-    # `spacer` should have exactly one hyphen
-	  assertthat::assert_that(isTRUE(str_count(gene, "-") == 1))
-	  
-	  # split into names of two flanking genes
-	  flank_1 <- str_split(gene, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
-	  flank_2 <- str_split(gene, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
-	  
-	  # Format GenBank query: all ferns sequences including both flanking regions
-	  # Assume that we only want single genes or small sets of genes, not entire plastome.
-	  # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
-	  query <- glue('{flank_1} AND {flank_2} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
-  } else {
-    # Format GenBank query: all ferns matching the gene name and date range
-    query <- glue('{gene}[Gene] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
-  }
+  # Format query
+  query <- format_fern_query(
+    target = target,
+    start_date = start_date, 
+    end_date = end_date,
+    strict = FALSE)
 
   # Fetch standard metadata
   metadata <- fetch_metadata(
@@ -903,8 +1072,28 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
   # Combine standard metadata with publication metadata
   left_join(metadata, ref_data, by = "accession") %>%
     assert(is_uniq, accession) %>%
-    mutate(gene = gene)
+    mutate(target = target)
   
+}
+
+#' Align sequences used as reference
+#' @param fern_ref_seqs Reference DNA sequences formatted as seqtbl
+#' @param target String; name of target locus
+#' @return Tibble (seqtbl)
+align_ref_seqs <- function(fern_ref_seqs, target) {
+  target_select <- target
+  fern_ref_seqs %>%
+    filter(target == target_select) %>%
+    mutate(species = str_replace_all(species, " ", "_")) %>%
+    # name sequences as [accession]__[species]
+    unite("seq_name", c(accession, species, target), sep = "__") %>%
+    seqtbl_to_dnabin(name_col = "seq_name") %>%
+    ips::mafft(
+      x = .,
+      options = "--adjustdirection",
+      exec = "/usr/bin/mafft") %>%
+    remove_mafft_r() %>%
+    dnabin_to_seqtbl()
 }
 
 # Combine Sanger sequences data ----
@@ -920,8 +1109,6 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
 #' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to accepted
 #' species name; output of make_ncbi_accepted_names_map()
 #' @param ppgi PPGI taxonomic system
-#' @param target_genes Character vector: target Sanger genes
-#' @param target_spacers Character vector: target Sanger intergenic spacer regions
 #' @param min_gene_len Number: minimum length (bp) required for Sanger genes
 #' @param min_spacer_len Number: minimum length (bp) required for Sanger intergenic spacer regions
 #'
@@ -929,15 +1116,14 @@ fetch_fern_metadata <- function(gene, start_date = "1980/01/01", end_date, is_sp
 #' 
 combine_and_filter_sanger <- function(
   raw_meta, raw_fasta, ncbi_accepted_names_map, 
-  ppgi_taxonomy, target_genes, target_spacers,
-  min_gene_len, min_spacer_len) {
+  ppgi_taxonomy, min_gene_len, min_spacer_len) {
   
   # Check that input names match arguments
   check_args(match.call())
   
   # Join metadata and fasta sequences
   raw_meta %>%
-    left_join(raw_fasta, by = c("accession", "gene")) %>%
+    left_join(raw_fasta, by = c("accession", "target")) %>%
     # Filter out null sequences
     filter(!map_lgl(seq, is.null)) %>%
     # Inner join to name resolution results: will drop un-resolved names
@@ -954,25 +1140,24 @@ combine_and_filter_sanger <- function(
     mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
     # Categorize gene type
     mutate(
-      gene_type = case_when(
-        gene %in% target_genes ~ "gene",
-        gene %in% target_spacers ~ "spacer",
-        TRUE ~ NA_character_
+      target_type = case_when(
+        str_detect(target, "-") ~ "spacer",
+        TRUE ~ "gene"
       )
     ) %>%
-    assert(not_na, gene_type) %>%
+    assert(not_na, target_type) %>%
     # Filter by minimum seq. length
-    filter((seq_len > min_gene_len & gene_type == "gene") | (seq_len > min_spacer_len & gene_type == "spacer")) %>%
+    filter((seq_len > min_gene_len & target_type == "gene") | (seq_len > min_spacer_len & target_type == "spacer")) %>%
     assert(not_na, accession, seq, resolved_name, taxon) %>%
-    # Create OTU column for naming sequences as taxon|accession|gene
-    # - first make sure there are no spaces or `|` in taxon, accession, or gene
+    # Create OTU column for naming sequences as taxon|accession|target
+    # - first make sure there are no spaces or `|` in taxon, accession, or target
     verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
     verify(all(str_detect(accession, " ", negate = TRUE))) %>%
-    verify(all(str_detect(gene, " ", negate = TRUE))) %>%
+    verify(all(str_detect(target, " ", negate = TRUE))) %>%
     verify(all(str_detect(taxon, "\\|", negate = TRUE))) %>%
     verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
-    verify(all(str_detect(gene, "\\|", negate = TRUE))) %>%
-    mutate(otu = glue("{taxon}|{accession}|{gene}"))
+    verify(all(str_detect(target, "\\|", negate = TRUE))) %>%
+    mutate(otu = glue("{taxon}|{accession}|{target}"))
   
 }
 
@@ -1169,15 +1354,13 @@ blast_n <- function (query,
 
 #' Convert a list-column of DNA sequences in a tibble to a list of class DNAbin
 #'
-#' Helper function
-#'
-#' @param seqtbl Tibble containting DNA sequences downloaded
-#' from GenBank and associated metadata (at one column that can
-#' be used to specify the sequence name)
+#' @param seqtbl Tibble containing one DNA sequence per row
+#' in a list-column
 #' @param name_col Name of column with sequence name
 #' @param seq_col Name of column with sequences (list-column)
+#' @return List of class DNAbin
 #' 
-seqtbl_to_dnabin <- function(seqtbl, name_col, seq_col = "seq") {
+seqtbl_to_dnabin <- function(seqtbl, name_col = "accession", seq_col = "seq") {
   require(ape)
   
   # Check input
@@ -1195,6 +1378,27 @@ seqtbl_to_dnabin <- function(seqtbl, name_col, seq_col = "seq") {
   assertthat::assert_that(all(names(seqs_dnabin) == seqtbl[[name_col]]))
 
   seqs_dnabin
+}
+
+#' Convert DNA sequences from list of class DNAbin to tibble
+#'
+#' @param dnabin List or matrix of class DNAbin
+#' @param name_col Name of column to use for sequence name
+#' @param seq_col Name of column to use for sequences (list-column)
+#' @return Tibble with one row per sequence
+#' 
+dnabin_to_seqtbl <- function(dnabin, name_col = "accession", seq_col = "seq") {
+  # Convert to a list in case DNA sequences are aligned (in matrix)
+  dnabin <- as.list(dnabin)
+
+  # Check input
+  assertthat::assert_that(inherits(dnabin, "DNAbin"))
+  assertthat::assert_that(assertthat::is.string(name_col))
+  assertthat::assert_that(assertthat::is.string(seq_col))
+
+  tibble::tibble(
+    "{seq_col}" := split(dnabin, 1:length(dnabin)), 
+    "{name_col}" := names(dnabin))
 }
 
 #' Make a blast database for ferns
@@ -2069,17 +2273,35 @@ extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
 #' trimal removes low-quality (i.e., poorly aligned, gappy sites) from
 #' an alignment.
 #'
-#' @param seqs DNA sequence alignment; matrix of class 'DNAbin'
+#' @param seqs DNA sequence alignment; matrix of class 'DNAbin' or seqtbl
 #' @param echo Optional; should the output of trimal be printed to the
 #' screen?
 #' @param other_args; Character vector of additional arguments to pass
 #' to `trimal`. Must have one element per word that would normally be
 # separated by a space on the command line. E.g., `c("-gt", "0.05")`, etc.
+#' @param echo Logical; should messages from trimal be printed to screen?
+#' @param name_col_in Name of DNA sequence name column if seqs is seqtbl
+#' @param seq_col_in Name of DNA sequence column if seqs is seqtbl
+#' @param name_col_out Name of DNA sequence name column if output type is seqtbl
+#' @param seq_col_out Name of DNA sequence column if output type is seqtbl
+#' @param return_seqtbl Logical; should the results be returned as a DNA-sequence tibble (seqtbl)?
+#' If FALSE, will return as list of class 'DNAbin'. Default to TRUE if `seqs` is seqtbl.
 #'
-#' @return DNA sequence alignment; matrix of class 'DNAbin' with gappy sites
-#' removed by trimal
+#' @return DNA sequence alignment with gappy sites removed by trimal
 #' 
-trimal <- function (seqs, other_args = NULL, echo = FALSE) {
+trimal <- function (
+    seqs, other_args = NULL, echo = FALSE, 
+    name_col_in = "accession", seq_col_in = "seq", 
+    name_col_out = "accession", seq_col_out = "seq", 
+    return_seqtbl = inherits(seqs, "tbl")) {
+
+  # Evaluate return type
+  return_seqtbl <- return_seqtbl
+
+  # Convert to DNAbin if in tibble
+  if(inherits(seqs, "tbl")) {
+    seqs <- seqtbl_to_dnabin(seqs, name_col = name_col_in, seq_col = seq_col_in)
+  }
   
   # Check arguments
   assertthat::assert_that(inherits(seqs, "DNAbin"), msg = "seqs must be of class DNAbin")
@@ -2122,7 +2344,12 @@ trimal <- function (seqs, other_args = NULL, echo = FALSE) {
   fs::file_delete(fs::path(temp_wd, in_file_name))
   
   # All done
+  if(isTRUE(return_seqtbl)) {
+    results <- dnabin_to_seqtbl(results, name_col = name_col_out, seq_col = seq_col_out)
+  }
+
   results
+  
 }
 
 #' Write out a nexus block of gene start and end positions for IQTREE
@@ -4156,4 +4383,61 @@ check_args <- function(call_match) {
   stopifnot(
     "Names of input must match names of arguments" = isTRUE(all.equal(call_names[-1], arg_names[-1]))
   )
+}
+
+# Generate custom error message for assertr
+# https://github.com/ropensci/assertr/issues/70
+err_msg <- function(msg) stop(msg, call. = FALSE)
+
+# Write fasta and return path
+write_fasta_tar <- function(x, file, ...) {
+  ape::write.FASTA(x = x, file = file, ...)
+  file
+  }
+
+# Write phylogeny and return path
+write_tree_tar <- function(phy, file, ...) {
+  ape::write.tree(phy = phy, file = file, ...)
+  file
+  }
+
+#' Calculate base frequences *per sample* in an alignment
+#'
+#' @param seqs DNA list (list of class "DNAbin")
+#'
+#' @return Number of ACTG bases in seqs
+count_actg <- function(seqs) {
+  count_all <- ape::base.freq(seqs, freq = TRUE, all = TRUE)
+  sum(count_all[names(count_all) %in% c("a", "c", "t", "g")])
+}
+
+#' Download sequences from GenBank by accession number
+#'
+#' Wrapper for ape::read.GenBank() that can handle large numbers of accessions
+#'
+#' @param accessions Vector of GenBank accessions (e.g., "AY178864")
+#' @param return_seqtbl Logical; should the results be returned as a DNA-sequence tibble (seqtbl)?
+#' If FALSE, will return as list of class 'DNAbin'.
+#'
+#' @return Tibble (seqtbl) or list of class DNAbin
+read_genbank <- function(accessions, return_seqtbl = TRUE) {
+
+   # Split accessions into chunks
+  chunk_size <- 50
+  n <- length(accessions)
+  r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
+  accessions_list <- split(accessions, r) %>% 
+    magrittr::set_names(NULL)
+
+  # Download sequences in each chunk
+  seqs_list <- purrr::map(accessions_list, ~ape::read.GenBank(., species.names = FALSE))
+
+  # Combine results
+  results <- do.call(c, seqs_list)
+
+  # Optionally convert to seqtbl
+  if(isTRUE(return_seqtbl)) results <- dnabin_to_seqtbl(results)
+
+  results
+
 }
