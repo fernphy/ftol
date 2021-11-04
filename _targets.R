@@ -238,7 +238,7 @@ tar_plan(
     plastid_genes_aligned_trimmed,
     mutate(
       plastid_genes_aligned,
-      seq = purrr::map(seq, trimal_auto)
+      seq = purrr::map(seq, ~trimal(., other_args = "-automated1"))
     ),
     pattern = map(plastid_genes_aligned)
   ),

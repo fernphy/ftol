@@ -2072,13 +2072,14 @@ extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
 #' @param seqs DNA sequence alignment; matrix of class 'DNAbin'
 #' @param echo Optional; should the output of trimal be printed to the
 #' screen?
-#' @param ... Extra arguments not used by this function but meant for
-#' tracking with drake.
+#' @param other_args; Character vector of additional arguments to pass
+#' to `trimal`. Must have one element per word that would normally be
+# separated by a space on the command line. E.g., `c("-gt", "0.05")`, etc.
 #'
 #' @return DNA sequence alignment; matrix of class 'DNAbin' with gappy sites
 #' removed by trimal
 #' 
-trimal_auto <- function (seqs, echo = FALSE, ...) {
+trimal <- function (seqs, other_args = NULL, echo = FALSE) {
   
   # Check arguments
   assertthat::assert_that(inherits(seqs, "DNAbin"), msg = "seqs must be of class DNAbin")
@@ -2107,7 +2108,7 @@ trimal_auto <- function (seqs, echo = FALSE, ...) {
   ape::write.FASTA(seqs, fs::path(temp_wd, in_file_name))
   
   # Set up arguments to trimal
-  args <- c("-in", in_file_name, "-out", out_file_name, "-fasta", "-automated1")
+  args <- c("-in", in_file_name, "-out", out_file_name, "-fasta", other_args)
   
   # Run trimal
   results <- processx::run("trimal", args, wd = temp_wd, 
