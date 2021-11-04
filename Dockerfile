@@ -17,6 +17,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libmagick++-dev for R package magick -> phytools
 
 # curl, python-dev-is-python3 for hybpiper
+# cd-hit for clustering sequences
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     gcc \
@@ -48,6 +49,7 @@ RUN apt-get update \
     curl \
     fasttree \
     gawk \
+    cd-hit \
   && apt-get clean
 
 ########################
@@ -139,8 +141,8 @@ RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 ######################
 
 # install miniconda
-ENV MINICONDA_VERSION py37_4.8.3
-ENV CONDA_DIR $HOME/miniconda3
+ENV MINICONDA_VERSION py37_4.10.3
+ENV CONDA_DIR $HOME/Miniconda3
 
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-Linux-x86_64.sh -O ~/miniconda.sh && \
     chmod +x ~/miniconda.sh && \
@@ -172,8 +174,8 @@ RUN conda update --name base --channel defaults conda && \
 
 RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
-  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
-  echo "$APPNAME \"\$@\"" >> /usr/local/bin/$APPNAME  && \
+  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
+  echo "$APPNAME \"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
 
 # build conda environment: bbmap
@@ -192,8 +194,31 @@ RUN conda update --name base --channel defaults conda && \
 
 RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
-  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME  && \
-  echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME  && \
+  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
+  echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME && \
+  chmod 755 /usr/local/bin/$APPNAME
+
+# Build conda environment: SuperCRUNCH
+ENV APPNAME supercrunch
+ENV VERSION 1.3.1
+ENV ENV_PREFIX /env/$APPNAME
+
+# - Download SuperCRUNCH (python scripts and env.yaml)
+RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$VERSION.tar.gz && \
+  tar -xzf v$VERSION.tar.gz && \
+  rm v$VERSION.tar.gz
+
+# - Create conda environment
+RUN conda update --name base --channel defaults conda && \
+  conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$VERSION/$APPNAME-conda-env.yml --force && \
+  conda clean --all --yes
+
+# - Make shell script to run conda app
+# this makes it so superCRUNCH scripts can be run e.g. `supercrunch Parse_Loci.py`
+RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
+  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
+  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
+  echo "python /apps/SuperCRUNCH-$VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
 
 ####################################
