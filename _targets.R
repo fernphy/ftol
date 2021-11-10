@@ -11,8 +11,6 @@ plan(callr)
 
 # Use targets workspaces for debugging
 tar_option_set(workspace_on_error = TRUE)
-# Return tibble from taxastand functions by default
-options(ts_tbl_out = TRUE)
 
 tar_plan(
   
