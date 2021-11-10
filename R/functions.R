@@ -1529,11 +1529,9 @@ blast_seqtbl <- function (
 #' @param blast_results Output of running blast_rogues()
 #' @param ppgi Tibble; genus-level and higher taxonomic system for pteridophytes,
 #' according to PPGI 2016.
-#' @param ... Additional arguments not used by this function but meant for 
-#' tracking with drake
 #' 
 #' @return Tibble; list of rogue sequences showing which families were matched
-detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
+detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
   
   ### Detect rogues ###
   
@@ -1547,12 +1545,12 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
       select(ppgi, genus, family), 
       by = "genus") %>%
     assert(not_na, genus, family) %>%
-    dplyr::add_count(family, gene) %>%
+    dplyr::add_count(family, target) %>%
     dplyr::filter(n == 1) %>%
     dplyr::mutate(
-      otu = glue("{taxon}|{accession}|{gene}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{taxon}|{accession}|{target}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
-    select(otu, family, gene)
+    select(otu, family, target)
   
   # Group small families by order
   # to avoid false-positives
@@ -1601,7 +1599,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi, ...) {
     verify(all(str_count(qseqid, "\\|") == 2)) %>%
     mutate(
       accession = str_split(qseqid, "\\|") %>% map_chr(2),
-      gene = str_split(qseqid, "\\|") %>% map_chr(3)) 
+      target = str_split(qseqid, "\\|") %>% map_chr(3)) 
 }
 
 # Filter to one seq per species by removing 'rogue' sequences, then
@@ -1688,13 +1686,13 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     select(subtype, subname, specimen_voucher) %>%
     # Join back onto original data (so, adds `specimen_voucher` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
-    select(gene, taxon, specimen_voucher, accession, seq_len, otu) %>%
+    select(target, taxon, specimen_voucher, accession, seq_len, otu) %>%
     # In some cases, there are multiple vouchers including `s.n.` and 
     # a numbered voucher. Use only the numbered voucher.
     # (still have some cases with multiple vouchers per accession though
     #  eg., MH101453, KY711736)
-    assert(not_na, gene, taxon, accession) %>%
-    add_count(gene, taxon, accession) %>%
+    assert(not_na, target, taxon, accession) %>%
+    add_count(target, taxon, accession) %>%
     filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
     select(-n) %>%
     # Check that all OTUs are accounted for
@@ -1703,36 +1701,36 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
 
   ### Convert to wide format ###
   genbank_seqs_tibble_wide <-
-    # Select single longest sequence per voucher per gene
+    # Select single longest sequence per voucher per target
     genbank_seqs_tibble_with_specimen_dat %>%
     assert(not_na, seq_len) %>%
-    group_by(gene, specimen_voucher, taxon) %>%
+    group_by(target, specimen_voucher, taxon) %>%
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
-    assert_rows(col_concat, is_uniq, gene, specimen_voucher, taxon) %>%
+    assert_rows(col_concat, is_uniq, target, specimen_voucher, taxon) %>%
     # Convert to wide format, joining on voucher
-    # - first split into a list of dataframes by gene
-    group_by(gene) %>%
+    # - first split into a list of dataframes by target
+    group_by(target) %>%
     group_split() %>%
     # For each dataframe, convert to wide format and
-    # rename "seq_len" and "accession" columns by gene
+    # rename "seq_len" and "accession" columns by target
     map(
       ~pivot_wider(.,
                    id_cols = c("taxon", "specimen_voucher"),
-                   names_from = gene,
+                   names_from = target,
                    values_from = c("seq_len", "accession")
       )
     ) %>%
-    # Join the gene sequences by taxon + voucher
+    # Join the target sequences by taxon + voucher
     reduce(full_join, by = c("taxon", "specimen_voucher"), na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
-    # Add total length of all genes (need to sum row-wise)
+    # Add total length of all targets (need to sum row-wise)
     # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum))
     
   ### Select final sequences ###
   
-  # Highest priority taxon: those with rbcL and at least one other gene.
+  # Highest priority taxon: those with rbcL and at least one other target.
   # Choose best specimen per taxon by total sequence length
   rbcl_and_at_least_one_other <-
     genbank_seqs_tibble_wide %>% 
@@ -1754,7 +1752,7 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     ungroup()
   
   # Next priority: any other taxon on basis of total seq. seq_len
-  other_genes <-
+  other_targets <-
     genbank_seqs_tibble_wide %>%
     anti_join(rbcl_and_at_least_one_other, by = "taxon") %>%
     anti_join(rbcl_only, by = "taxon") %>% 
@@ -1766,7 +1764,7 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
   bind_rows(
     rbcl_and_at_least_one_other,
     rbcl_only,
-    other_genes
+    other_targets
   ) %>%
     assert(is_uniq, taxon)
 }
@@ -2085,11 +2083,13 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' Filters list to one best accession per taxon, only keeping genes that are missing
 #' < 50% of accessions and accessions missing < 50% of genes'
 #'
-#' @param plastome_seqs_raw Dataframe of plastid genes. Each row is
+#' @param plastome_genes_raw Dataframe of plastid genes. Each row is
 #' a sequence for a gene for a plastome accession.
 #' @param plastome_metadata_raw_renamed Associated plastome metadata (species names)
+#' @param fern_plastome_spacer_extract_res Output of extract_from_ref_blast(); spacer sequences
+#' in plastomes
 #'
-select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renamed) {
+select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_spacer_extract_res) {
   
   # Check that input names match arguments
   check_args(match.call())
@@ -2106,7 +2106,7 @@ select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renam
     
   # Make tibble of gene lengths by accession, including species and voucher
   gene_lengths <- 
-    plastome_seqs_raw %>%
+    plastome_genes_raw %>%
     # Make sure each accession has at least one gene
     add_count(accession, gene) %>%
     verify(all(n > 0)) %>%
@@ -2158,8 +2158,9 @@ select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renam
     slice_max(n = 1, order_by = total_rel_len, with_ties = FALSE) %>%
     ungroup
   
-  # Assemble final output: filtered plastome genes, one accession per taxon
-  gene_lengths %>%
+  gene_selection <-
+    # Assemble final selection for genes: filtered plastome genes, one accession per taxon
+    gene_lengths %>%
     # Make a table of (relative) gene lengths for
     # the best accession per taxon
     inner_join(select(best_accessions_by_taxon, accession), by = "accession") %>%
@@ -2171,8 +2172,23 @@ select_plastome_seqs <- function (plastome_seqs_raw, plastome_metadata_raw_renam
     filter_majority_missing() %>%
     filter(slen > 1) %>%
     select(taxon, accession, gene) %>%
-    left_join(plastome_seqs_raw, by = c("accession", "gene")) %>%
-    assert(not_na, everything())
+    left_join(plastome_genes_raw, by = c("accession", "gene")) %>%
+    assert(not_na, everything()) %>%
+    rename(target = gene)
+
+  # Add spacers
+  spacer_selection <-
+  fern_plastome_spacer_extract_res %>%
+    # Extract sequences from extract_from_ref_blast() results
+    clean_extract_res("dc-megablast") %>%
+    # Add taxon; also filter to only accessions in `gene_selection`
+    inner_join(
+      unique(select(gene_selection, accession, taxon)), by = "accession"
+    ) %>%
+    assert(not_na, taxon)
+
+  # Combine genes and spacers
+  bind_rows(gene_selection, spacer_selection)
   
 }
 
@@ -2200,16 +2216,16 @@ combine_sanger_plastome <- function(
     anti_join(plastome_seqs_combined_filtered, by = "taxon") %>%
     # Convert to long form
     select(taxon, matches("accession")) %>%
-    pivot_longer(names_to = "gene", values_to = "accession", -taxon) %>%
-    mutate(gene = str_remove_all(gene, "accession_")) %>%
+    pivot_longer(names_to = "target", values_to = "accession", -taxon) %>%
+    mutate(target = str_remove_all(target, "accession_")) %>%
     filter(!is.na(accession)) %>%
     # Add DNA sequences
-    left_join(select(sanger_seqs_combined_filtered, accession, seq, gene), by = c("accession", "gene")) %>%
+    left_join(select(sanger_seqs_combined_filtered, accession, seq, target), by = c("accession", "target")) %>%
     # Add plastome sequences
     bind_rows(plastome_seqs_combined_filtered) %>%
     # Make sure it worked
     assert(not_na, everything()) %>%
-    assert_rows(col_concat, is_uniq, taxon, gene, accession)
+    assert_rows(col_concat, is_uniq, taxon, target, accession)
 }
 
 #' Align sequences in a tibble
@@ -2246,7 +2262,7 @@ align_seqs_tbl <- function(seqs_tbl) {
   
   # Return results as tibble
   tibble(
-    gene = unique(seqs_tbl$gene),
+    target = unique(seqs_tbl$target),
     seq = list(alignment)
   )
 }
@@ -4363,7 +4379,11 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
     filter(!is.na(resolved_name)) %>% 
     select(taxid, resolved_name) %>%
     unique() %>% 
+    add_count(taxid) %>%
+    # Drop any taxid with multiple distinct resolved names
+    filter(n == 1) %>%
     assert(is_uniq, taxid) %>%
+    select(-n) %>%
     # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
     mutate(
       rgnparser::gn_parse_tidy(resolved_name) %>% 

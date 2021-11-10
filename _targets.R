@@ -50,6 +50,8 @@ tar_plan(
   date_cutoff = "2021/10/26",
 
   # Assemble reference Sanger sequences ----
+  # These will be used for extracting target regions with BLAST.
+  #
   # Download raw gene sequences for each target locus
   tar_target(
     fern_ref_seqs_raw,
@@ -120,7 +122,7 @@ tar_plan(
     pattern = map(fern_ref_seqs_tree, target_loci)
   ),
 
-  # Download individual plastid sequences from GenBank (Sanger sequences) ----
+  # Download and extract plastid sequences from GenBank (Sanger sequences) ----
   
   # Download raw fasta files
   tar_target(
@@ -153,7 +155,7 @@ tar_plan(
   ),
   raw_meta = unique(raw_meta_all),
   
-  # Taxonomic name resolution ----
+  # Resolve taxonomic names for Sanger sequences ----
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
   # Clean NCBI species names
@@ -193,7 +195,7 @@ tar_plan(
   # Map NCBI names to accepted names
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(match_results_resolved_all),
   
-  # Remove rogue sequences ----
+  # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
   # - set minimum lengths (bp) for filtering genes and spacers
   min_gene_len = 200,
@@ -228,12 +230,11 @@ tar_plan(
   sanger_seqs_rogues = detect_rogues(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,
-    ppgi = ppgi_taxonomy,
-    id = gene),
+    ppgi = ppgi_taxonomy),
   sanger_seqs_rogues_removed = anti_join(
     sanger_seqs_combined_filtered,
     sanger_seqs_rogues,
-    by = c("accession", "gene")
+    by = c("accession", "target")
   ),
 
   # Select final Sanger sequences ----
@@ -255,8 +256,8 @@ tar_plan(
   plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data
   ),
-  # Download plastome sequences
-  # don't run in parallel, or will get HTTP status 429 errors
+  # Download plastome sequences:
+  # - genes
   target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
   tar_target(
     plastome_genes_raw,
@@ -265,9 +266,25 @@ tar_plan(
       accession = target_plastome_accessions),
     pattern = map(target_plastome_accessions),
     deployment = "main"),
+  # - spacers
+  # -- First download FASTA files for each accession (in seqtbl format)
+  plastome_fasta = read_genbank(target_plastome_accessions),
+  target_spacers = target_loci[str_detect(target_loci, "-")],
+  # -- Use superCRUNCH to extract spacer region
+  tar_target(
+    fern_plastome_spacer_extract_res,
+    extract_from_ref_blast(
+      query_seqtbl = mutate(plastome_fasta, gene = target_spacers),
+      ref_seqtbl = fern_ref_seqs_trimmed_clean,
+      target = target_spacers,
+      blast_flavor = "dc-megablast",
+      other_args = c("-m", "span", "--threads", "4")
+    ),
+    pattern = map(target_spacers)
+  ),
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
-    plastome_genes_raw, plastome_metadata_raw_renamed),
+    plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_spacer_extract_res),
 
   # Combine and align Sanger and plastome sequences ----
   # Combine Sanger and plastome sequences into single dataframe, group by gene
@@ -277,7 +294,7 @@ tar_plan(
       sanger_accessions_selection,
       sanger_seqs_combined_filtered,
       plastome_seqs_combined_filtered),
-    gene),
+    target),
   # Align sequences by gene
   tar_target(
     plastid_genes_aligned,
@@ -289,7 +306,7 @@ tar_plan(
     plastid_genes_aligned_trimmed,
     mutate(
       plastid_genes_aligned,
-      seq = purrr::map(seq, ~trimal(., other_args = "-automated1"))
+      seq = purrr::map(seq, ~trimal(., other_args = c("-gt", "0.05")))
     ),
     pattern = map(plastid_genes_aligned)
   ),
