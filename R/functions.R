@@ -2186,7 +2186,73 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
   
 }
 
-#' Combine Sanger and plastome sequences
+# Combine and align Sanger and plastome sequences ----
+
+#' Assign taxonomic clusters to sequences
+#'
+#' Only meant for spacer regions. Will drop sequences
+#' if fewer than four sequences in a cluster
+#'
+#' @param plastid_genes_unaligned_combined Combined Sanger and plastome sequences
+#' @param ppgi_taxonomy PPGI taxonomy
+#' @param plastome_metadata_raw_renamed Plastome metadata with resolved taxonomic names
+#' @param target_select Name of selected target region
+#'
+#' @return seqtbl
+#'
+assign_tax_clusters <- function(
+  sanger_accessions_selection,
+  sanger_seqs_combined_filtered,
+  plastome_seqs_combined_filtered, 
+  ppgi_taxonomy, plastome_metadata_raw_renamed,
+  target_select) {
+
+  # Combine sanger and plastome sequences
+  combine_sanger_plastome(
+      sanger_accessions_selection,
+      sanger_seqs_combined_filtered,
+      plastome_seqs_combined_filtered) %>%
+    # Extract sequences for selected target
+    filter(target == target_select) %>%
+    # Exclude outgroups
+    anti_join(
+      filter(plastome_metadata_raw_renamed, outgroup == TRUE), by = "taxon"
+    ) %>%
+    # Add taxonomy
+    mutate(genus = str_split(taxon, "_") %>% map_chr(1)) %>%
+    left_join(
+      select(ppgi_taxonomy, genus, family, suborder, order), by = "genus"
+    ) %>%
+    assert(not_na, family, order) %>%
+    # Count number of taxa per family
+    add_count(family) %>%
+    # Assign cluster as family if >4 taxa, suborder if less
+    mutate(
+      cluster = case_when(
+        n >= 4 ~ family,
+        n < 4 ~ suborder
+      )
+    ) %>%
+    # (some genera missing suborder) for these, assign cluster as order
+    mutate(
+      cluster = case_when(
+        is.na(cluster) ~ order,
+        TRUE ~ cluster
+      )
+    ) %>%
+    assert(not_na, cluster) %>%
+    select(-n) %>%
+    # Count number of taxa per cluster
+    add_count(cluster) %>%
+    select(-c(genus, family, suborder, order)) %>%
+    # Only keep clusters with >3 taxa
+    filter(n > 3) %>%
+    select(-n) %>%
+    assert(not_na, cluster, seq) %>%
+    assert(not_null, seq)
+}
+
+#' Combine Sanger and plastome sequences, rename sequences by taxon
 #'
 #' @param sanger_accessions_selection Dataframe; selection of Sanger accessions in 
 #' wide format. Output of select_genbank_genes()
@@ -2202,8 +2268,6 @@ combine_sanger_plastome <- function(
   sanger_seqs_combined_filtered,
   plastome_seqs_combined_filtered
 ) {
-  # Check that names of input match arguments
-  check_args(match.call())
   
   sanger_accessions_selection %>%
     # Remove any accessions in plastome data
@@ -2217,34 +2281,29 @@ combine_sanger_plastome <- function(
     left_join(select(sanger_seqs_combined_filtered, accession, seq, target), by = c("accession", "target")) %>%
     # Add plastome sequences
     bind_rows(plastome_seqs_combined_filtered) %>%
-    # Make sure it worked
     assert(not_na, everything()) %>%
     assert_rows(col_concat, is_uniq, taxon, target, accession)
+    
 }
 
 #' Align sequences in a tibble
 #'
 #' @param seqs_tbl Dataframe; DNA sequences to align.
-#' Must have columns `taxon`, `gene`, `accession`, `seq`
 #'
-#' @return Dataframe with columns `gene` and `seq`; `seq`
-#' contains the aligned sequences, named by taxon
+#' @return Dataframe with aligned sequences, named by taxon
 #' 
-align_seqs_tbl <- function(seqs_tbl) {
+align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   # Extract sequences, convert to ape DNAbin list
   seqs <-
     seqs_tbl %>%
-    assert(not_na, everything()) %>%
-    # This function should only be applied to
-    # sequences by gene, so taxon and accession
-    # should each be unique
-    assert(is_uniq, taxon, accession) %>%
-    pull(seq) %>%
-    as.list() %>%
-    do.call(c, .) %>%
-    # Name by taxon
-    set_names(seqs_tbl$taxon)
-  
+    # Name column must be unique values
+    assert(is_uniq, all_of(name_col)) %>%
+    seqtbl_to_dnabin(name_col = name_col, seq_col = seq_col)
+
+  # Set aside metadata
+  seqs_data <-
+    select(seqs_tbl, -all_of(seq_col))
+
   # Align sequences
   alignment <- ips::mafft(
     x = seqs,
@@ -2253,12 +2312,12 @@ align_seqs_tbl <- function(seqs_tbl) {
   
   # Fix names if mafft changed them
   rownames(alignment) <- str_remove_all(rownames(alignment), "_R_")
+
+  # Join metadata back to aligned sequences
+  alignment %>%
+    dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
+    left_join(seqs_data, by = name_col)
   
-  # Return results as tibble
-  tibble(
-    target = unique(seqs_tbl$target),
-    seq = list(alignment)
-  )
 }
 
 #' Reformat a list of plastid genes from 
@@ -2360,6 +2419,62 @@ trimal <- function (
 
   results
   
+}
+
+#' Trim spacer regions
+#'
+#' @param plastid_spacers_aligned seqtbl of aligned platid spacers
+#'
+#' @return Tibble with list-column of trimmed spacers; each row is
+#' one cluster per target region
+#' 
+trim_spacers <- function(plastid_spacers_aligned) {
+
+  # Check that input names match arguments
+  check_args(match.call())
+
+  plastid_spacers_aligned %>% 
+    select(seq, taxon, target, cluster) %>%
+    group_by(target, cluster) %>%
+    nest(data = c(seq, taxon)) %>%
+    # trim spacers lightly to keep most gaps
+    mutate(
+      align_trimmed = map(
+        data, trimal, 
+        other_args = c("-gt", "0.01"), 
+        return_seqtbl = FALSE,
+        name_col_in = "taxon"
+      )) %>%
+    ungroup() %>%
+    select(-data)
+}
+
+#' Trim genes
+#'
+#' @param plastid_genes_aligned seqtbl of aligned platid genes
+#'
+#' @return Tibble with list-column of trimmed genes; each row is
+#' a target gene
+#' 
+trim_genes <- function(plastid_genes_aligned) {
+
+  # Check that input names match arguments
+  check_args(match.call())
+
+  plastid_genes_aligned %>% 
+    select(seq, taxon, target) %>%
+    group_by(target) %>%
+    nest(data = c(seq, taxon)) %>%
+    # trim genes slightly more aggressively than spacers
+    mutate(
+      align_trimmed = map(
+        data, trimal, 
+        other_args = c("-gt", "0.05"), 
+        return_seqtbl = FALSE, 
+        name_col_in = "taxon"
+      )) %>%
+    ungroup() %>%
+    select(-data)
 }
 
 #' Write out a nexus block of gene start and end positions for IQTREE
@@ -4454,4 +4569,10 @@ read_genbank <- function(accessions, return_seqtbl = TRUE) {
 
   results
 
+}
+
+# Vectorized check for NULL in a list
+not_null <- function(x) {
+  assertthat::assert_that(is.list(x))
+  !purrr::map_lgl(x, is.null)
 }

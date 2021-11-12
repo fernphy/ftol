@@ -287,11 +287,42 @@ tar_plan(
     plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_spacer_extract_res),
 
   # Combine and align Sanger and plastome sequences ----
+
+  # Assign taxonomic clusters for spacer regions
+  tar_target(
+    plastid_spacers_unaligned,
+    assign_tax_clusters(
+      sanger_accessions_selection,
+      sanger_seqs_combined_filtered,
+      plastome_seqs_combined_filtered, 
+      ppgi_taxonomy, plastome_metadata_raw_renamed,
+      target_spacers
+    ),
+    pattern = map(target_spacers),
+  ), # - configure groups for aligning in parallel
+  tar_target(
+    plastid_spacers_unaligned_grouped,
+    plastid_spacers_unaligned %>%
+      group_by(target, cluster) %>%
+      tar_group(),
+    iteration = "group"
+  ),
+  # Align each cluster
+  tar_target(
+    plastid_spacers_aligned,
+    align_seqs_tbl(plastid_spacers_unaligned_grouped),
+    pattern = map(plastid_spacers_unaligned_grouped),
+    iteration = "vector"
+  ),
+  # Trim each cluster, rename each sequence by taxon
+  # (Use a very light threshold, to keep most gaps)
+  plastid_spacers_aligned_trimmed = trim_spacers(plastid_spacers_aligned),
   # Combine Sanger and plastome sequences into single dataframe, group by gene
   tar_group_by(
     plastid_genes_unaligned_combined,
     combine_sanger_plastome(
-      sanger_accessions_selection,
+      # Exclude spacer regions (spacer regions have hyphen in name)
+      sanger_accessions_selection %>% select(-contains("-")),
       sanger_seqs_combined_filtered,
       plastome_seqs_combined_filtered),
     target),
@@ -301,19 +332,15 @@ tar_plan(
     align_seqs_tbl(plastid_genes_unaligned_combined),
     pattern = map(plastid_genes_unaligned_combined)
   ),
-  # Trim alignments
-  tar_target(
-    plastid_genes_aligned_trimmed,
-    mutate(
-      plastid_genes_aligned,
-      seq = purrr::map(seq, ~trimal(., other_args = c("-gt", "0.05")))
-    ),
-    pattern = map(plastid_genes_aligned)
-  ),
+  # Trim alignments, rename each sequence by taxon
+  plastid_genes_aligned_trimmed = trim_genes(plastid_genes_aligned),
   # Concatenate alignments
   plastid_alignment = do.call(
     ape::cbind.DNAbin, 
-    c(plastid_genes_aligned_trimmed$seq, fill.with.gaps = TRUE)
+    c(
+      plastid_genes_aligned_trimmed$align_trimmed, 
+      plastid_spacers_aligned_trimmed$align_trimmed, 
+      fill.with.gaps = TRUE)
   ),
 
   # Phylogenetic analysis
