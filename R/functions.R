@@ -116,9 +116,6 @@ format_fern_query <- function(target, start_date = "1980/01/01", end_date, stric
 
 }
 
-
-# FIXME: change names(results) <- str_remove_all(names(results), "\\.1")
-# to names(results) <- str_remove_all(names(results), "\\.[0-9]$")
 #' Fetch raw sequences from GenBank
 #'
 #' Helper function for fetch_fern_ref_seqs()
@@ -162,7 +159,7 @@ fetch_gb_raw <- function(query, ret_type = c("gb", "fasta"), clean_names = TRUE)
     # Clean names: keep only accession number
     if (isTRUE(clean_names)) {
       names(results) <- str_split(names(results), " ") %>% map_chr(1)
-      names(results) <- str_remove_all(names(results), "\\.1")
+      names(results) <- str_remove_all(names(results), "\\.[0-9]$")
     }
   } else if (ret_type == "gb") {
     results <- readr::read_file(temp_file)
@@ -875,10 +872,7 @@ clean_extract_res <- function(extract_from_ref_blast_res, blast_flavor_select) {
   extract_from_ref_blast_res %>%
   filter(blast_flavor == blast_flavor_select) %>%
   select(extracted_seqs, target) %>%
-  unnest(extracted_seqs) %>%
-  # remove version part of genbank accession number
-  # FIXME: shouldn't need to do this if fix in fetch_gb_raw()
-  mutate(accession = str_remove_all(accession, "\\.[0-9]$"))
+  unnest(extracted_seqs)
 }
 
 # Download metadata for Sanger sequences from GenBank ----
