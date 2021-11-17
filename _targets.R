@@ -354,18 +354,19 @@ tar_plan(
   plastid_spacers_aligned_trimmed = trim_spacers(plastid_spacers_aligned),
   # Combine Sanger and plastome sequences into single dataframe, group by gene
   tar_group_by(
-    plastid_genes_unaligned_combined,
+    plastid_genes_unaligned,
     combine_sanger_plastome(
       # Exclude spacer regions (spacer regions have hyphen in name)
       sanger_accessions_selection %>% select(-contains("-")),
-      sanger_seqs_combined_filtered,
-      plastome_seqs_combined_filtered),
+      sanger_seqs_combined_filtered %>% filter(str_detect(target, "-", negate = TRUE)),
+      plastome_seqs_combined_filtered %>% filter(str_detect(target, "-", negate = TRUE))
+      ),
     target),
   # Align sequences by gene
   tar_target(
     plastid_genes_aligned,
-    align_seqs_tbl(plastid_genes_unaligned_combined),
-    pattern = map(plastid_genes_unaligned_combined)
+    align_seqs_tbl(plastid_genes_unaligned),
+    pattern = map(plastid_genes_unaligned)
   ),
   # Trim alignments, rename each sequence by taxon
   plastid_genes_aligned_trimmed = trim_genes(plastid_genes_aligned),

@@ -1096,7 +1096,7 @@ align_ref_seqs <- function(fern_ref_seqs, target) {
 #' and filter by sequence length and if name was resolved or not
 #' 
 #' Drops sequences with scientific names that could not be resolved, nothogenera,
-#' Adds `otu` column ({taxon}|{accession}|{gene})
+#' Adds `otu` column ({species}|{accession}|{gene})
 #'
 #' @param raw_meta Sanger sequence metadata; output of fetch_fern_metadata()
 #' @param raw_fasta Sanger sequences; output of fetch_fern_gene()
@@ -1123,13 +1123,12 @@ combine_and_filter_sanger <- function(
     # Inner join to name resolution results: will drop un-resolved names
     inner_join(ncbi_accepted_names_map, by = "taxid") %>%
     # Drop nothogenera
-    mutate(genus = stringr::str_split(taxon, "_") %>% purrr::map_chr(1)) %>%
     left_join(
       select(ppgi_taxonomy, genus, nothogenus), 
       by = "genus") %>%
     assert(not_na, nothogenus) %>%
     filter(nothogenus == "no") %>%
-    select(-genus, -nothogenus) %>%
+    select(-nothogenus) %>%
     # Calculate actual seq length
     mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
     # Categorize gene type
@@ -1142,16 +1141,16 @@ combine_and_filter_sanger <- function(
     assert(not_na, target_type) %>%
     # Filter by minimum seq. length
     filter((seq_len > min_gene_len & target_type == "gene") | (seq_len > min_spacer_len & target_type == "spacer")) %>%
-    assert(not_na, accession, seq, resolved_name, taxon) %>%
-    # Create OTU column for naming sequences as taxon|accession|target
-    # - first make sure there are no spaces or `|` in taxon, accession, or target
-    verify(all(str_detect(taxon, " ", negate = TRUE))) %>%
+    assert(not_na, accession, seq, resolved_name, species) %>%
+    # Create OTU column for naming sequences as species|accession|target
+    # - first make sure there are no spaces or `|` in species, accession, or target
+    verify(all(str_detect(species, " ", negate = TRUE))) %>%
     verify(all(str_detect(accession, " ", negate = TRUE))) %>%
     verify(all(str_detect(target, " ", negate = TRUE))) %>%
-    verify(all(str_detect(taxon, "\\|", negate = TRUE))) %>%
+    verify(all(str_detect(species, "\\|", negate = TRUE))) %>%
     verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
     verify(all(str_detect(target, "\\|", negate = TRUE))) %>%
-    mutate(otu = glue("{taxon}|{accession}|{target}"))
+    mutate(otu = glue("{species}|{accession}|{target}"))
   
 }
 
@@ -1534,7 +1533,6 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
   # family, so are not valid for checking rogues.
   exclude_from_rogues <-
     metadata_with_seqs %>% 
-    dplyr::mutate(genus = stringr::str_split(taxon, "_") %>% purrr::map_chr(1)) %>%
     dplyr::left_join(
       select(ppgi, genus, family), 
       by = "genus") %>%
@@ -1542,7 +1540,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
     dplyr::add_count(family, target) %>%
     dplyr::filter(n == 1) %>%
     dplyr::mutate(
-      otu = glue("{taxon}|{accession}|{target}") %>% stringr::str_replace_all(" ", "_")
+      otu = glue("{species}|{accession}|{target}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
     select(otu, family, target)
   
@@ -1642,12 +1640,12 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
 #' It would be preferable to join accessions across genes based on specimen voucher, 
 #' but most accessions lack voucher data.
 #' So joining is done in three steps:
-#' - 1. Join across "monophyletic" taxa (confirmed monophyletic within each target locus)
+#' - 1. Join across "monophyletic" species (confirmed monophyletic within each target locus)
 #' - 2. Join by voucher
-#' - 3. Join by publication, if only one publication for that taxon
+#' - 3. Join by publication, if only one publication for that species
 #' - 4. (don't join the remainder)
 #' 
-#' After joining accessions, filters to only one set of sequences per taxon 
+#' After joining accessions, filters to only one set of sequences per species 
 #' (species), prioritizing in order:
 #' - 1. those with rbcL + other genes
 #' - 2. those with rbcL
@@ -1662,13 +1660,13 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
 select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
   
   ### Some pre-processing ### 
-  # Check overall monophyly by taxon: 
+  # Check overall monophyly by species: 
   # must be monophyletic across all genes
   # for each gene with >1 sequence
   mpcheck_monophy_overall <- mpcheck_monophy %>%
     filter(!is.na(is_monophy)) %>%
-    select(taxon, is_monophy) %>%
-    group_by(taxon) %>%
+    select(species, is_monophy) %>%
+    group_by(species) %>%
     summarize(is_monophy = all(is_monophy)) %>%
     ungroup()
 
@@ -1698,36 +1696,36 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     select(subtype, subname, specimen_voucher) %>%
     # Join back onto original data (so, adds `specimen_voucher` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
-    select(target, taxon, specimen_voucher, publication, accession, seq_len, otu) %>%
+    select(target, species, specimen_voucher, publication, accession, seq_len, otu) %>%
     # In some cases, there are multiple vouchers including `s.n.` and 
     # a numbered voucher. Use only the numbered voucher.
     # (still have some cases with multiple vouchers per accession though
     #  eg., MH101453, KY711736)
-    assert(not_na, target, taxon, accession) %>%
-    add_count(target, taxon, accession) %>%
+    assert(not_na, target, species, accession) %>%
+    add_count(target, species, accession) %>%
     filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
     select(-n) %>%
     # Check that all OTUs are accounted for
     verify(all(otu %in% genbank_seqs_tibble$otu)) %>%
     verify(all(genbank_seqs_tibble$otu %in% otu)) %>%
     # Add column with monophyly data
-    left_join(mpcheck_monophy_overall, by = "taxon")
+    left_join(mpcheck_monophy_overall, by = "species")
 
   ### Join across accessions ###
 
-  # First: join monophyletic taxa based on taxon name
+  # First: join monophyletic taxa based on species name
   genbank_seqs_tibble_wide_monophy <-
     # Filter to only monophyletic taxa
     genbank_seqs_tibble_with_specimen_dat %>%
     filter(is_monophy == TRUE) %>%
-    assert(not_na, seq_len, is_monophy, taxon, target) %>%
-    # Select single longest sequence per taxon per target
-    group_by(taxon, target) %>%
+    assert(not_na, seq_len, is_monophy, species, target) %>%
+    # Select single longest sequence per species per target
+    group_by(species, target) %>%
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
-    # Convert to wide format, joining on taxon
+    # Convert to wide format, joining on species
     # - check that joining conditions are unique
-    assert_rows(col_concat, is_uniq, target, taxon) %>%
+    assert_rows(col_concat, is_uniq, target, species) %>%
     # - first split into a list of dataframes by target
     group_by(target) %>%
     group_split() %>%
@@ -1735,13 +1733,13 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     # rename "seq_len" and "accession" columns by target
     map(
       ~pivot_wider(.,
-                   id_cols = c("taxon",),
+                   id_cols = c("species",),
                    names_from = target,
                    values_from = c("seq_len", "accession")
       )
     ) %>%
-    # Join the target sequences by taxon
-    reduce(full_join, by = "taxon", na_matches = "never") %>%
+    # Join the target sequences by species
+    reduce(full_join, by = "species", na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
     # Add total length of all targets (need to sum row-wise)
     # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
@@ -1752,28 +1750,28 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
   genbank_seqs_tibble_wide_voucher <-
     # Select single longest sequence per voucher per target
     genbank_seqs_tibble_with_specimen_dat %>%
-    # Exclude taxa already joined by monophyletic taxon
-    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude taxa already joined by monophyletic species
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "species") %>%
     # Exclude specimens lacking a voucher
     filter(!is.na(specimen_voucher)) %>%
-    assert(not_na, seq_len, target, specimen_voucher, taxon) %>%
-    # Select single longest sequence per taxon per target
-    group_by(target, specimen_voucher, taxon) %>%
+    assert(not_na, seq_len, target, specimen_voucher, species) %>%
+    # Select single longest sequence per species per target
+    group_by(target, specimen_voucher, species) %>%
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
     # Convert to wide format
-    assert_rows(col_concat, is_uniq, target, specimen_voucher, taxon) %>%
+    assert_rows(col_concat, is_uniq, target, specimen_voucher, species) %>%
     group_by(target) %>%
     group_split() %>%
     map(
       ~pivot_wider(.,
-                   id_cols = c("taxon", "specimen_voucher"),
+                   id_cols = c("species", "specimen_voucher"),
                    names_from = target,
                    values_from = c("seq_len", "accession")
       )
     ) %>%
-    # Join the target sequences by taxon + voucher
-    reduce(full_join, by = c("taxon", "specimen_voucher"), na_matches = "never") %>%
+    # Join the target sequences by species + voucher
+    reduce(full_join, by = c("species", "specimen_voucher"), na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
     # Add total length of all targets
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
@@ -1783,65 +1781,65 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
   # conditions: must have only one publication per species across target loci
   genbank_seqs_tibble_wide_publication <-
     genbank_seqs_tibble_with_specimen_dat %>%
-    # Exclude taxa already joined by monophyletic taxon
-    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude taxa already joined by monophyletic species
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "species") %>%
     # Exclude taxa already joined by voucher
-    anti_join(genbank_seqs_tibble_wide_voucher, by = "taxon") %>%
+    anti_join(genbank_seqs_tibble_wide_voucher, by = "species") %>%
     # Filter to only those with publication data
     filter(!is.na(publication)) %>%
-    # Filter to those with one publication per taxon
-    assert(not_na, taxon, target, publication) %>%
-    add_count(taxon, target) %>%
+    # Filter to those with one publication per species
+    assert(not_na, species, target, publication) %>%
+    add_count(species, target) %>%
     filter(n == 1) %>%
     select(-n) %>%
     # Of these, filter to only taxa with multiple target loci
-    add_count(taxon) %>%
+    add_count(species) %>%
     filter(n > 1) %>%
     select(-n) %>%
     # Convert to wide format
-    assert_rows(col_concat, is_uniq, target, taxon, publication) %>%
+    assert_rows(col_concat, is_uniq, target, species, publication) %>%
     group_by(target) %>%
     group_split() %>%
     map(
       ~pivot_wider(.,
-                   id_cols = c("taxon", "publication"),
+                   id_cols = c("species", "publication"),
                    names_from = target,
                    values_from = c("seq_len", "accession")
       )
     ) %>%
-    # Join the target sequences by taxon + publication
-    reduce(full_join, by = c("taxon", "publication"), na_matches = "never") %>%
+    # Join the target sequences by species + publication
+    reduce(full_join, by = c("species", "publication"), na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
     # Add total length of all targets
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
     mutate(join_by = "publication")
 
-  # Fourth: Remaining can't be combined across taxa, so take longest seq per taxon/target
+  # Fourth: Remaining can't be combined across taxa, so take longest seq per species/target
   genbank_seqs_tibble_wide_unjoined <-
   genbank_seqs_tibble_with_specimen_dat %>%
-    # Exclude taxa already joined by monophyletic taxon
-    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude taxa already joined by monophyletic species
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "species") %>%
     # Exclude taxa already joined by voucher
-    anti_join(genbank_seqs_tibble_wide_voucher, by = "taxon") %>%
+    anti_join(genbank_seqs_tibble_wide_voucher, by = "species") %>%
     # Exclude taxa already joined by publication
-    anti_join(genbank_seqs_tibble_wide_publication, by = "taxon") %>%
-    # Filter to longest seq per taxon per target
-    group_by(taxon, target) %>%
+    anti_join(genbank_seqs_tibble_wide_publication, by = "species") %>%
+    # Filter to longest seq per species per target
+    group_by(species, target) %>%
     slice_max(order_by = seq_len, n =1, with_ties = FALSE) %>%
     ungroup() %>%
     # Convert to wide format
-    assert_rows(col_concat, is_uniq, target, taxon) %>%
+    assert_rows(col_concat, is_uniq, target, species) %>%
     group_by(target) %>%
     group_split() %>%
     map(
       ~pivot_wider(.,
-                   id_cols = c("taxon",),
+                   id_cols = c("species",),
                    names_from = target,
                    values_from = c("seq_len", "accession")
       )
     ) %>%
-    # Join the target sequences by taxon
-    reduce(full_join, by = "taxon", na_matches = "never") %>%
+    # Join the target sequences by species
+    reduce(full_join, by = "species", na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
     # Add total length of all targets
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
@@ -1854,52 +1852,52 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     genbank_seqs_tibble_wide_publication,
     genbank_seqs_tibble_wide_unjoined
   ) %>%
-    assert(not_na, taxon, total_seq_len, join_by) %>%
-    verify(all(taxon %in% genbank_seqs_tibble$taxon)) %>%
-    verify(all(genbank_seqs_tibble$taxon %in% taxon))
+    assert(not_na, species, total_seq_len, join_by) %>%
+    verify(all(species %in% genbank_seqs_tibble$species)) %>%
+    verify(all(genbank_seqs_tibble$species %in% species))
   
   ### Select final sequences ###
   
-  # Highest priority taxon: those with rbcL and at least one other target.
-  # Choose best specimen per taxon by total sequence length
+  # Highest priority species: those with rbcL and at least one other target.
+  # Choose best specimen per species by total sequence length
   rbcl_and_at_least_one_other <-
     genbank_seqs_tibble_wide %>% 
     filter(!is.na(accession_rbcL)) %>%
     filter_at(
       vars(matches("accession_[^rbcL]")), 
       any_vars(!is.na(.))) %>%
-    group_by(taxon) %>%
+    group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
     ungroup()
   
   # Next priority: anything with rbcL only
   rbcl_only <-
     genbank_seqs_tibble_wide %>%
-    anti_join(rbcl_and_at_least_one_other, by = "taxon") %>%
+    anti_join(rbcl_and_at_least_one_other, by = "species") %>%
     filter(!is.na(accession_rbcL)) %>%
-    group_by(taxon) %>%
+    group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
     ungroup()
   
-  # Next priority: any other taxon on basis of total seq. seq_len
+  # Next priority: any other species on basis of total seq. seq_len
   other_targets <-
     genbank_seqs_tibble_wide %>%
-    anti_join(rbcl_and_at_least_one_other, by = "taxon") %>%
-    anti_join(rbcl_only, by = "taxon") %>% 
-    group_by(taxon) %>%
+    anti_join(rbcl_and_at_least_one_other, by = "species") %>%
+    anti_join(rbcl_only, by = "species") %>% 
+    group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
     ungroup()
   
-  # Combine into final list: single set of accessions per taxon
+  # Combine into final list: single set of accessions per species
   bind_rows(
     rbcl_and_at_least_one_other,
     rbcl_only,
     other_targets
   ) %>%
-    assert(is_uniq, taxon) %>%
+    assert(is_uniq, species) %>%
     # Make sure all original input taxa are present
-    verify(all(taxon %in% genbank_seqs_tibble$taxon)) %>%
-    verify(all(genbank_seqs_tibble$taxon %in% taxon))
+    verify(all(species %in% genbank_seqs_tibble$species)) %>%
+    verify(all(genbank_seqs_tibble$species %in% species))
 }
 
 #' Filter out species in plastome data from Sanger data
@@ -1941,7 +1939,7 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
 #' Monophyly check done with ape::is.monophyletic(), which is rather
 #' slow. Speed things up by running in parallel.
 #'
-#' @param mpcheck_sliced Tibble (seqtbl) with accession and taxon names
+#' @param mpcheck_sliced Tibble (seqtbl) with accession and species names
 #' @param mpcheck_tree Phylogenetic tree for a single target locus
 #' @param workers Number of workers to run in parallel
 #'
@@ -1957,23 +1955,23 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
 	future::plan(future::multisession, workers = workers)
 	
   # Make dataframe of taxa to check for monophyly (>1 accession)
-	taxa_to_check <-
+	species_to_check <-
 		mpcheck_sliced %>% 
     verify(all(accession %in% mpcheck_tree$tip.label)) %>%
-		add_count(taxon) %>%
+		add_count(species) %>%
 		filter(n > 1) %>%
-		select(taxon, accession) %>%
+		select(species, accession) %>%
 		unique()
 	
   # and dataframe of accessions to skip (1 accession each)
-	taxa_to_skip <- mpcheck_sliced %>% 
-		add_count(taxon, name = "n_accs") %>%
+	species_to_skip <- mpcheck_sliced %>% 
+		add_count(species, name = "n_accs") %>%
 		filter(n_accs == 1) %>%
-		select(taxon, n_accs)
+		select(species, n_accs)
 	
   # check monophyly
-	res <- taxa_to_check %>%
-		group_by(taxon) %>%
+	res <- species_to_check %>%
+		group_by(species) %>%
 		add_count(name = "n_accs") %>%
 		nest(data = accession) %>%
 		ungroup() %>%
@@ -1987,8 +1985,8 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
         .options = furrr::furrr_options(seed = TRUE)
 			)
 		) %>%
-		select(taxon, n_accs, is_monophy) %>%
-		bind_rows(taxa_to_skip) %>%
+		select(species, n_accs, is_monophy) %>%
+		bind_rows(species_to_skip) %>%
     mutate(target = unique(mpcheck_sliced$target))
 	
 	# Close parallel workers
@@ -2276,7 +2274,7 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' Select a list of plastid sequences to use from a list of plastid genes and
 #' plastome metadata
 #'
-#' Filters list to one best accession per taxon, only keeping genes that are missing
+#' Filters list to one best accession per species, only keeping genes that are missing
 #' < 50% of accessions and accessions missing < 50% of genes'
 #'
 #' @param plastome_genes_raw Dataframe of plastid genes. Each row is
@@ -2290,14 +2288,14 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
   # Check that input names match arguments
   check_args(match.call())
 
-  # Issue warning if any plastomes get dropped because of missing taxon
-  missing_taxon <-
+  # Issue warning if any plastomes get dropped because of missing species
+  missing_species <-
     plastome_metadata_raw_renamed %>%
-    filter(is.na(taxon)) %>%
+    filter(is.na(species)) %>%
     pull(accession)
 
-  if(length(missing_taxon) > 0) message(
-    glue::glue("The following plastome accessions lack taxon name and are excluded: {paste(missing_taxon, collapse = ', ')}")
+  if(length(missing_species) > 0) message(
+    glue::glue("The following plastome accessions lack species name and are excluded: {paste(missing_species, collapse = ', ')}")
   )
     
   # Make tibble of gene lengths by accession, including species and voucher
@@ -2309,10 +2307,10 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
     select(-n) %>%
     # Add column for sequence length
     mutate(slen = map_dbl(seq, ~length(.[[1]]))) %>%
-    # Add taxon column
-    left_join(select(plastome_metadata_raw_renamed, accession, taxon), by = "accession") %>%
-    filter(!is.na(taxon)) %>%
-    assert(not_na, taxon, gene, accession, slen)
+    # Add species column
+    left_join(select(plastome_metadata_raw_renamed, accession, species), by = "accession") %>%
+    filter(!is.na(species)) %>%
+    assert(not_na, species, gene, accession, slen)
   
   # Missing genes (length 0) are not in the original sequences list,
   # so add these by crossing all combinations of accession and gene
@@ -2321,9 +2319,9 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
       gene = gene_lengths$gene %>% unique, 
       accession = gene_lengths$accession %>% unique)) %>%
     left_join(select(gene_lengths, gene, accession, slen), by = c("gene", "accession")) %>%
-    left_join(select(gene_lengths, accession, taxon) %>% unique, by = "accession") %>%
+    left_join(select(gene_lengths, accession, species) %>% unique, by = "accession") %>%
     mutate(slen = replace_na(slen, 0)) %>%
-    assert(not_na, gene, accession, slen, taxon)
+    assert(not_na, gene, accession, slen, species)
   
   # Get table of maximum lengths per gene
   # (we will assume these are the actual max. lengths)
@@ -2337,29 +2335,29 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
     )
   
   # Identify the "best" accessions as those having the least
-  # amount of missing data overall per taxon
-  best_accessions_by_taxon <-
+  # amount of missing data overall per species
+  best_accessions_by_species <-
     gene_lengths %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
-    assert(not_na, accession, taxon) %>%
-    # first get total rel length for each accession, keeping taxon column
-    group_by(accession, taxon) %>%
+    assert(not_na, accession, species) %>%
+    # first get total rel length for each accession, keeping species column
+    group_by(accession, species) %>%
     summarize(
       total_rel_len = sum(rel_len),
       .groups = "drop"
     ) %>%
-    # then sort by taxon and keep the one with the greatest length
-    group_by(taxon) %>%
+    # then sort by species and keep the one with the greatest length
+    group_by(species) %>%
     slice_max(n = 1, order_by = total_rel_len, with_ties = FALSE) %>%
     ungroup
   
   gene_selection <-
-    # Assemble final selection for genes: filtered plastome genes, one accession per taxon
+    # Assemble final selection for genes: filtered plastome genes, one accession per species
     gene_lengths %>%
     # Make a table of (relative) gene lengths for
-    # the best accession per taxon
-    inner_join(select(best_accessions_by_taxon, accession), by = "accession") %>%
+    # the best accession per species
+    inner_join(select(best_accessions_by_species, accession), by = "accession") %>%
     left_join(max_lengths, by = "gene") %>%
     mutate(rel_len = slen / max_length) %>%
     assert(not_na, everything()) %>%
@@ -2367,7 +2365,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
     # and genes absent from > 50% of sequences
     filter_majority_missing() %>%
     filter(slen > 1) %>%
-    select(taxon, accession, gene) %>%
+    select(species, accession, gene) %>%
     left_join(plastome_genes_raw, by = c("accession", "gene")) %>%
     assert(not_na, everything()) %>%
     rename(target = gene)
@@ -2377,11 +2375,11 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
   fern_plastome_spacer_extract_res %>%
     # Extract sequences from extract_from_ref_blast() results
     clean_extract_res("dc-megablast") %>%
-    # Add taxon; also filter to only accessions in `gene_selection`
+    # Add species; also filter to only accessions in `gene_selection`
     inner_join(
-      unique(select(gene_selection, accession, taxon)), by = "accession"
+      unique(select(gene_selection, accession, species)), by = "accession"
     ) %>%
-    assert(not_na, taxon)
+    assert(not_na, species)
 
   # Combine genes and spacers
   bind_rows(gene_selection, spacer_selection)
@@ -2418,10 +2416,11 @@ assign_tax_clusters <- function(
     filter(target == target_select) %>%
     # Exclude outgroups
     anti_join(
-      filter(plastome_metadata_raw_renamed, outgroup == TRUE), by = "taxon"
+      filter(plastome_metadata_raw_renamed, outgroup == TRUE), by = "species"
     ) %>%
     # Add taxonomy
-    mutate(genus = str_split(taxon, "_") %>% map_chr(1)) %>%
+    mutate(genus = str_split(species, "_") %>% map_chr(1)) %>%
+    assert(not_na, genus) %>%
     left_join(
       select(ppgi_taxonomy, genus, family, suborder, order), by = "genus"
     ) %>%
@@ -2454,7 +2453,7 @@ assign_tax_clusters <- function(
     assert(not_null, seq)
 }
 
-#' Combine Sanger and plastome sequences, rename sequences by taxon
+#' Combine Sanger and plastome sequences, rename sequences by species
 #'
 #' @param sanger_accessions_selection Dataframe; selection of Sanger accessions in 
 #' wide format. Output of select_genbank_genes()
@@ -2473,10 +2472,10 @@ combine_sanger_plastome <- function(
   
   sanger_accessions_selection %>%
     # Remove any accessions in plastome data
-    anti_join(plastome_seqs_combined_filtered, by = "taxon") %>%
+    anti_join(plastome_seqs_combined_filtered, by = "species") %>%
     # Convert to long form
-    select(taxon, matches("accession")) %>%
-    pivot_longer(names_to = "target", values_to = "accession", -taxon) %>%
+    select(species, matches("accession")) %>%
+    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
     mutate(target = str_remove_all(target, "accession_")) %>%
     filter(!is.na(accession)) %>%
     # Add DNA sequences
@@ -2484,7 +2483,7 @@ combine_sanger_plastome <- function(
     # Add plastome sequences
     bind_rows(plastome_seqs_combined_filtered) %>%
     assert(not_na, everything()) %>%
-    assert_rows(col_concat, is_uniq, taxon, target, accession)
+    assert_rows(col_concat, is_uniq, species, target, accession)
     
 }
 
@@ -2492,7 +2491,7 @@ combine_sanger_plastome <- function(
 #'
 #' @param seqs_tbl Dataframe; DNA sequences to align.
 #'
-#' @return Dataframe with aligned sequences, named by taxon
+#' @return Dataframe with aligned sequences
 #' 
 align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   # Extract sequences, convert to ape DNAbin list
@@ -2636,16 +2635,16 @@ trim_spacers <- function(plastid_spacers_aligned) {
   check_args(match.call())
 
   plastid_spacers_aligned %>% 
-    select(seq, taxon, target, cluster) %>%
+    select(seq, species, target, cluster) %>%
     group_by(target, cluster) %>%
-    nest(data = c(seq, taxon)) %>%
+    nest(data = c(seq, species)) %>%
     # trim spacers lightly to keep most gaps
     mutate(
       align_trimmed = map(
         data, trimal, 
         other_args = c("-gt", "0.01"), 
         return_seqtbl = FALSE,
-        name_col_in = "taxon"
+        name_col_in = "species"
       )) %>%
     ungroup() %>%
     select(-data)
@@ -2664,16 +2663,16 @@ trim_genes <- function(plastid_genes_aligned) {
   check_args(match.call())
 
   plastid_genes_aligned %>% 
-    select(seq, taxon, target) %>%
+    select(seq, species, target) %>%
     group_by(target) %>%
-    nest(data = c(seq, taxon)) %>%
+    nest(data = c(seq, species)) %>%
     # trim genes slightly more aggressively than spacers
     mutate(
       align_trimmed = map(
         data, trimal, 
         other_args = c("-gt", "0.05"), 
         return_seqtbl = FALSE, 
-        name_col_in = "taxon"
+        name_col_in = "species"
       )) %>%
     ungroup() %>%
     select(-data)
@@ -2752,7 +2751,7 @@ concatenate_genes <- function (dna_list) {
 #' @param world_ferns_data Reference data for taxonomic name resolution of fern species
 #' extracted from Catalog of Life data; output of extract_fow_from_col()
 #' 
-#' @return Dataframe; plastome_metadata with new column `accepted_name` and `taxon`
+#' @return Dataframe; plastome_metadata with new column `accepted_name` and `species`
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
 #' 
@@ -2835,18 +2834,22 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
     plastome_metadata_ferns_resolved,
     plastome_metadata_outgroups_resolved
   ) %>% 
+  # Make sure all accessions are included
+  verify(all(accession %in% plastome_metadata_raw$accession)) %>%
+  verify(all(plastome_metadata_raw$accession %in% accession)) %>%
+  # Drop any without resolved species
+  filter(!is.na(resolved_name)) %>%
   # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
   mutate(
     rgnparser::gn_parse_tidy(resolved_name) %>% 
       select(taxon = canonicalsimple)
   ) %>%
   mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
-  # Make sure all accessions are included
-  verify(all(accession %in% plastome_metadata_raw$accession)) %>%
-  verify(all(plastome_metadata_raw$accession %in% accession)) %>%
-  select(taxon, accession, subtype, subname, slen, outgroup) %>%
-  # Drop any without resolved taxon
-  filter(!is.na(taxon))
+  separate(taxon, into = c("genus", "sp_epithet", "infrasp_epithet"), sep = "_", remove = FALSE, fill = "right") %>%
+    assert(not_na, genus, sp_epithet) %>%
+    mutate(species = paste(genus, sp_epithet, sep = "_")) %>%
+  select(species, accession, subtype, subname, slen, outgroup)
+  
 
 }
 
@@ -4700,7 +4703,10 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
       rgnparser::gn_parse_tidy(resolved_name) %>% 
         select(taxon = canonicalsimple)
     ) %>%
-    mutate(taxon = str_replace_all(taxon, " ", "_"))
+    mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
+    separate(taxon, into = c("genus", "sp_epithet", "infrasp_epithet"), sep = "_", remove = FALSE, fill = "right") %>%
+    assert(not_na, genus, sp_epithet) %>%
+    mutate(species = paste(genus, sp_epithet, sep = "_"))
 }
 
 # Etc ----
