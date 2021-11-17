@@ -1637,13 +1637,21 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
   seqs
 }
 
-#' Select a set of GenBank genes by joining on common vouchers
+#' Select a set of GenBank genes by joining on various criteria
+#'
+#' It would be preferable to join accessions across genes based on specimen voucher, 
+#' but most accessions lack voucher data.
+#' So joining is done in three steps:
+#' - 1. Join across "monophyletic" taxa (confirmed monophyletic within each target locus)
+#' - 2. Join by voucher
+#' - 3. Join by publication, if only one publication for that taxon
+#' - 4. (don't join the remainder)
 #' 
-#' This assumes genes comprise: "rbcL", "atpA", "atpB", "rps4". Filters
-#' to only one set of sequences per taxon (species), prioritizing in order:
-#' - those with rbcL + other genes
-#' - those with rbcL
-#' - those with the greatest combined length of other genes
+#' After joining accessions, filters to only one set of sequences per taxon 
+#' (species), prioritizing in order:
+#' - 1. those with rbcL + other genes
+#' - 2. those with rbcL
+#' - 3. those with the greatest combined length of other genes
 #' 
 #' @param genbank_seqs_tibble Tibble; metadata for GenBank sequences
 #' including columns for `gene`, `species`, `specimen_voucher`, 
@@ -1651,14 +1659,24 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
 #'
 #' @return Tibble in wide format joining genes based on species + voucher
 #' 
-select_genbank_genes <- function (genbank_seqs_tibble) {
+select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
   
   ### Some pre-processing ### 
-  # extract voucher specimen, count number of bases in sequence
+  # Check overall monophyly by taxon: 
+  # must be monophyletic across all genes
+  # for each gene with >1 sequence
+  mpcheck_monophy_overall <- mpcheck_monophy %>%
+    filter(!is.na(is_monophy)) %>%
+    select(taxon, is_monophy) %>%
+    group_by(taxon) %>%
+    summarize(is_monophy = all(is_monophy)) %>%
+    ungroup()
+
+  # Extract voucher specimen, count number of bases in sequence
   genbank_seqs_tibble_with_specimen_dat <- 
     genbank_seqs_tibble %>%
     assert(is_uniq, otu) %>%
-    # First, filter to only records with specimen voucher
+    # First, filter to only records with specimen voucher (will add others later)
     select(subtype, subname) %>%
     unique() %>%
     filter(str_detect(subtype, "specimen_voucher")) %>%
@@ -1680,7 +1698,7 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     select(subtype, subname, specimen_voucher) %>%
     # Join back onto original data (so, adds `specimen_voucher` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
-    select(target, taxon, specimen_voucher, accession, seq_len, otu) %>%
+    select(target, taxon, specimen_voucher, publication, accession, seq_len, otu) %>%
     # In some cases, there are multiple vouchers including `s.n.` and 
     # a numbered voucher. Use only the numbered voucher.
     # (still have some cases with multiple vouchers per accession though
@@ -1691,23 +1709,62 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     select(-n) %>%
     # Check that all OTUs are accounted for
     verify(all(otu %in% genbank_seqs_tibble$otu)) %>%
-    verify(all(genbank_seqs_tibble$otu %in% otu))
+    verify(all(genbank_seqs_tibble$otu %in% otu)) %>%
+    # Add column with monophyly data
+    left_join(mpcheck_monophy_overall, by = "taxon")
 
-  ### Convert to wide format ###
-  genbank_seqs_tibble_wide <-
-    # Select single longest sequence per voucher per target
+  ### Join across accessions ###
+
+  # First: join monophyletic taxa based on taxon name
+  genbank_seqs_tibble_wide_monophy <-
+    # Filter to only monophyletic taxa
     genbank_seqs_tibble_with_specimen_dat %>%
-    assert(not_na, seq_len) %>%
-    group_by(target, specimen_voucher, taxon) %>%
+    filter(is_monophy == TRUE) %>%
+    assert(not_na, seq_len, is_monophy, taxon, target) %>%
+    # Select single longest sequence per taxon per target
+    group_by(taxon, target) %>%
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
-    assert_rows(col_concat, is_uniq, target, specimen_voucher, taxon) %>%
-    # Convert to wide format, joining on voucher
+    # Convert to wide format, joining on taxon
+    # - check that joining conditions are unique
+    assert_rows(col_concat, is_uniq, target, taxon) %>%
     # - first split into a list of dataframes by target
     group_by(target) %>%
     group_split() %>%
     # For each dataframe, convert to wide format and
     # rename "seq_len" and "accession" columns by target
+    map(
+      ~pivot_wider(.,
+                   id_cols = c("taxon",),
+                   names_from = target,
+                   values_from = c("seq_len", "accession")
+      )
+    ) %>%
+    # Join the target sequences by taxon
+    reduce(full_join, by = "taxon", na_matches = "never") %>%
+    mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
+    # Add total length of all targets (need to sum row-wise)
+    # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
+    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
+    mutate(join_by = "monophy")
+  
+  # Second: join others based on voucher
+  genbank_seqs_tibble_wide_voucher <-
+    # Select single longest sequence per voucher per target
+    genbank_seqs_tibble_with_specimen_dat %>%
+    # Exclude taxa already joined by monophyletic taxon
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude specimens lacking a voucher
+    filter(!is.na(specimen_voucher)) %>%
+    assert(not_na, seq_len, target, specimen_voucher, taxon) %>%
+    # Select single longest sequence per taxon per target
+    group_by(target, specimen_voucher, taxon) %>%
+    slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    # Convert to wide format
+    assert_rows(col_concat, is_uniq, target, specimen_voucher, taxon) %>%
+    group_by(target) %>%
+    group_split() %>%
     map(
       ~pivot_wider(.,
                    id_cols = c("taxon", "specimen_voucher"),
@@ -1718,10 +1775,89 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     # Join the target sequences by taxon + voucher
     reduce(full_join, by = c("taxon", "specimen_voucher"), na_matches = "never") %>%
     mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
-    # Add total length of all targets (need to sum row-wise)
-    # https://stackoverflow.com/questions/31193101/how-to-do-rowwise-summation-over-selected-columns-using-column-index-with-dplyr
-    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum))
+    # Add total length of all targets
+    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
+    mutate(join_by = "voucher")
+
+  # Third: join others based on publication
+  # conditions: must have only one publication per species across target loci
+  genbank_seqs_tibble_wide_publication <-
+    genbank_seqs_tibble_with_specimen_dat %>%
+    # Exclude taxa already joined by monophyletic taxon
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude taxa already joined by voucher
+    anti_join(genbank_seqs_tibble_wide_voucher, by = "taxon") %>%
+    # Filter to only those with publication data
+    filter(!is.na(publication)) %>%
+    # Filter to those with one publication per taxon
+    assert(not_na, taxon, target, publication) %>%
+    add_count(taxon, target) %>%
+    filter(n == 1) %>%
+    select(-n) %>%
+    # Of these, filter to only taxa with multiple target loci
+    add_count(taxon) %>%
+    filter(n > 1) %>%
+    select(-n) %>%
+    # Convert to wide format
+    assert_rows(col_concat, is_uniq, target, taxon, publication) %>%
+    group_by(target) %>%
+    group_split() %>%
+    map(
+      ~pivot_wider(.,
+                   id_cols = c("taxon", "publication"),
+                   names_from = target,
+                   values_from = c("seq_len", "accession")
+      )
+    ) %>%
+    # Join the target sequences by taxon + publication
+    reduce(full_join, by = c("taxon", "publication"), na_matches = "never") %>%
+    mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
+    # Add total length of all targets
+    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
+    mutate(join_by = "publication")
+
+  # Fourth: Remaining can't be combined across taxa, so take longest seq per taxon/target
+  genbank_seqs_tibble_wide_unjoined <-
+  genbank_seqs_tibble_with_specimen_dat %>%
+    # Exclude taxa already joined by monophyletic taxon
+    anti_join(genbank_seqs_tibble_wide_monophy, by = "taxon") %>%
+    # Exclude taxa already joined by voucher
+    anti_join(genbank_seqs_tibble_wide_voucher, by = "taxon") %>%
+    # Exclude taxa already joined by publication
+    anti_join(genbank_seqs_tibble_wide_publication, by = "taxon") %>%
+    # Filter to longest seq per taxon per target
+    group_by(taxon, target) %>%
+    slice_max(order_by = seq_len, n =1, with_ties = FALSE) %>%
+    ungroup() %>%
+    # Convert to wide format
+    assert_rows(col_concat, is_uniq, target, taxon) %>%
+    group_by(target) %>%
+    group_split() %>%
+    map(
+      ~pivot_wider(.,
+                   id_cols = c("taxon",),
+                   names_from = target,
+                   values_from = c("seq_len", "accession")
+      )
+    ) %>%
+    # Join the target sequences by taxon
+    reduce(full_join, by = "taxon", na_matches = "never") %>%
+    mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
+    # Add total length of all targets
+    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
+    mutate(join_by = "unjoined")
     
+  # Combine
+  genbank_seqs_tibble_wide <- bind_rows(
+    genbank_seqs_tibble_wide_monophy,
+    genbank_seqs_tibble_wide_voucher,
+    genbank_seqs_tibble_wide_publication,
+    genbank_seqs_tibble_wide_unjoined
+  ) %>%
+    assert(not_na, taxon, total_seq_len, join_by) %>%
+    verify(all(taxon %in% genbank_seqs_tibble$taxon)) %>%
+    verify(all(genbank_seqs_tibble$taxon %in% taxon))
+  
   ### Select final sequences ###
   
   # Highest priority taxon: those with rbcL and at least one other target.
@@ -1760,7 +1896,10 @@ select_genbank_genes <- function (genbank_seqs_tibble) {
     rbcl_only,
     other_targets
   ) %>%
-    assert(is_uniq, taxon)
+    assert(is_uniq, taxon) %>%
+    # Make sure all original input taxa are present
+    verify(all(taxon %in% genbank_seqs_tibble$taxon)) %>%
+    verify(all(genbank_seqs_tibble$taxon %in% taxon))
 }
 
 #' Filter out species in plastome data from Sanger data
@@ -1793,6 +1932,69 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
     by = "species"
   )
   
+}
+
+# Check for species monophyly in Sanger loci ----
+
+#' Check monophyly of a species
+#' 
+#' Monophyly check done with ape::is.monophyletic(), which is rather
+#' slow. Speed things up by running in parallel.
+#'
+#' @param mpcheck_sliced Tibble (seqtbl) with accession and taxon names
+#' @param mpcheck_tree Phylogenetic tree for a single target locus
+#' @param workers Number of workers to run in parallel
+#'
+#' @return Tibble, with logical column `is_monophy` indicating monophyly
+#' of species with >1 accession. If species has only 1 accession, `is_monophy` 
+#' is `NA`.
+check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
+	
+	# Change back to sequential when done (including on failure)
+	on.exit(future::plan(future::sequential), add = TRUE)
+	
+	# Set backend for parallelization
+	future::plan(future::multisession, workers = workers)
+	
+  # Make dataframe of taxa to check for monophyly (>1 accession)
+	taxa_to_check <-
+		mpcheck_sliced %>% 
+    verify(all(accession %in% mpcheck_tree$tip.label)) %>%
+		add_count(taxon) %>%
+		filter(n > 1) %>%
+		select(taxon, accession) %>%
+		unique()
+	
+  # and dataframe of accessions to skip (1 accession each)
+	taxa_to_skip <- mpcheck_sliced %>% 
+		add_count(taxon, name = "n_accs") %>%
+		filter(n_accs == 1) %>%
+		select(taxon, n_accs)
+	
+  # check monophyly
+	res <- taxa_to_check %>%
+		group_by(taxon) %>%
+		add_count(name = "n_accs") %>%
+		nest(data = accession) %>%
+		ungroup() %>%
+		mutate(
+      # ape::is.monophyletic is slow, so run in parallel
+			is_monophy = furrr::future_map_lgl(
+				data, 
+				~ape::is.monophyletic(
+					phy = mpcheck_tree, 
+					tips = .x$accession, reroot = TRUE, plot = FALSE),
+        .options = furrr::furrr_options(seed = TRUE)
+			)
+		) %>%
+		select(taxon, n_accs, is_monophy) %>%
+		bind_rows(taxa_to_skip) %>%
+    mutate(target = unique(mpcheck_sliced$target))
+	
+	# Close parallel workers
+	future::plan(future::sequential)
+	
+	res
 }
 
 # Download plastomes from GenBank ----

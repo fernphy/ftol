@@ -237,12 +237,47 @@ tar_plan(
     by = c("accession", "target")
   ),
 
+  # Check for species monophyly in Sanger loci ----
+  # - split sequence tibble up by target loci
+  tar_target(
+    mpcheck_sliced,
+    filter(sanger_seqs_rogues_removed, target == target_loci),
+    pattern = map(target_loci)
+  ),
+  # - align each locus
+  tar_target(
+    mpcheck_aligned,
+    align_seqs_tbl(mpcheck_sliced),
+    pattern = map(mpcheck_sliced)
+  ),
+  # - trim each locus
+  # (1% missing cutoff for spacers, 5% otherwise)
+  mpcheck_trim_setting = if_else(str_detect(target_loci, "-"), "0.01", "0.05"),
+  tar_target(
+    mpcheck_trimmed,
+    trimal(mpcheck_aligned, return_seqtbl = FALSE, other_args = c("-gt", mpcheck_trim_setting)),
+    pattern = map(mpcheck_aligned, mpcheck_trim_setting)
+  ),
+  # - build tree for each locus
+  tar_target(
+    mpcheck_tree,
+    jntools::fasttree(mpcheck_trimmed, mol_type = "dna", model = "gtr", gamma = TRUE),
+    pattern = map(mpcheck_trimmed)
+  ),
+  # - check monophyly
+  tar_target(
+    mpcheck_monophy,
+    check_monophy(mpcheck_sliced, mpcheck_tree, workers = 32),
+    pattern = map(mpcheck_sliced, mpcheck_tree),
+    deployment = "main"
+  ),
+
   # Select final Sanger sequences ----
   # Select one specimen per species, prioritizing in order
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
-  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed),
+  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed, mpcheck_monophy),
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
@@ -341,6 +376,19 @@ tar_plan(
       plastid_genes_aligned_trimmed$align_trimmed, 
       plastid_spacers_aligned_trimmed$align_trimmed, 
       fill.with.gaps = TRUE)
+  ),
+  # Small version wtih only rbcL + spacers
+  plastid_alignment_small = do.call(
+    ape::cbind.DNAbin, 
+    c(
+      plastid_genes_aligned_trimmed %>% filter(target == "rbcL") %>% pull(align_trimmed), 
+      plastid_spacers_aligned_trimmed$align_trimmed, 
+      fill.with.gaps = TRUE)
+  ),
+  plastid_tree_small = jntools::iqtree(
+    plastid_alignment_small,
+    m = "GTR+I+G", bb = 1000, nt = "AUTO",
+    redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
   ),
 
   # Phylogenetic analysis
