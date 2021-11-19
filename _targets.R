@@ -418,21 +418,26 @@ tar_plan(
       plastid_spacers_aligned_trimmed$align_trimmed, 
       fill.with.gaps = TRUE)
   ),
-  # Small version wtih only rbcL + spacers
-  plastid_alignment_small = do.call(
-    ape::cbind.DNAbin, 
-    c(
-      plastid_genes_aligned_trimmed %>% filter(target == "rbcL") %>% pull(align_trimmed), 
-      plastid_spacers_aligned_trimmed$align_trimmed, 
-      fill.with.gaps = TRUE)
+
+  # Check gene trees ----
+  # - filter to just alignments of target loci
+  tar_group_by(
+    gene_tree_alignments,
+    group_alignments(
+      plastid_genes_aligned_trimmed,
+      plastid_spacers_aligned_trimmed,
+      target_loci
   ),
-  plastid_tree_small = jntools::iqtree(
-    plastid_alignment_small,
-    m = "GTR+I+G", bb = 1000, nt = "AUTO",
-    redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
+    align_group
+  ),
+  # - loop over these and build a tree for each
+  tar_target(
+    gene_trees,
+    build_tree_from_alignment_df(gene_tree_alignments),
+    pattern = map(gene_tree_alignments)
   ),
 
-  # Phylogenetic analysis
+  # Phylogenetic analysis ----
   # Generate tree: single concatenated analysis.
   plastid_tree = jntools::iqtree(
     plastid_alignment,

@@ -1644,7 +1644,7 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
 #' @return Tibble including column `specimen_voucher`
 #' 
 parse_voucher <- function(genbank_seqs_tibble) {
-    genbank_seqs_tibble %>%
+  genbank_seqs_tibble %>%
     assert(is_uniq, otu) %>%
     # First, filter to only records with specimen voucher (will add others later)
     select(subtype, subname) %>%
@@ -1722,7 +1722,7 @@ select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy
     summarize(is_monophy = all(is_monophy)) %>%
     ungroup()
 
-    # Add column with monophyly data
+  # Add column with monophyly data
   genbank_seqs_tibble_with_specimen_dat <- 
     sanger_seqs_with_voucher_data %>%
     left_join(mpcheck_monophy_overall, by = "species")
@@ -1858,7 +1858,7 @@ select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy
       seq_len_rbcL = seq_len,
       accession_rbcL = accession) %>%
     select(species, contains("rbcL"), join_by, specimen_voucher, publication)
-    
+
   # for final sequence selection, subset single remaining longest locus
   # put into wide format for binding rows
   unjoined_other <- genbank_seqs_tibble_unjoined %>%
@@ -1867,7 +1867,7 @@ select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
     pivot_wider(names_from = target, values_from = c("seq_len", "accession"))
-  
+
   ### Select final sequences ###
   
   # Highest priority species: those with rbcL and at least one other target.
@@ -3304,6 +3304,64 @@ combine_sanger_with_plastome <- function (
   # Combine the lists
   c(common_genes, genbank_genes_only, plastome_genes_only)
   
+}
+
+# Check gene trees ----
+
+#' Group alignments for making gene trees
+#'
+#' @param plastid_genes_aligned_trimmed Trimmed gene alignments
+#' @param plastid_spacers_aligned_trimmed Trimmed spacer alignments
+#' @param target_loci Target loci to include
+#'
+#' @return Tibble
+#' 
+group_alignments <- function(
+	plastid_genes_aligned_trimmed, 
+	plastid_spacers_aligned_trimmed, 
+	target_loci) {
+	
+	bind_rows(plastid_genes_aligned_trimmed, plastid_spacers_aligned_trimmed) %>%
+		filter(target %in% target_loci) %>%
+		mutate(align_group = jntools::paste3(target, cluster, sep = "_"))
+}
+
+#' Build gene trees
+#'
+#' @param gene_tree_alignment_df 1-row tibble with alignment in list-column
+#' `align_trimmed`
+#'
+#' @return Tibble with tree in list-column `tree`
+#' 
+build_tree_from_alignment_df <- function(gene_tree_alignment_df) {
+	
+	# Extract alignment from df (df should only be one row)
+	alignment <- 
+		gene_tree_alignment_df %>%
+		pull(align_trimmed) %>%
+		magrittr::extract2(1)
+	
+	# Create temp dir for writing the tree 
+	temp_dir <- fs::path(tempdir(), digest::digest(alignment))
+	
+	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
+	
+	fs::dir_create(temp_dir)
+	
+	# Run single iqtree analysis (no bootstrap)
+	tree <- jntools::iqtree(
+		alignment, wd = temp_dir, 
+		m = "GTR+I+G", nt = "AUTO", 
+		echo = FALSE, 
+		tree_path = fs::path(temp_dir, "alignment.phy.treefile")
+	)
+	# Cleanup
+	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
+	
+	# Return tree in data frame
+	gene_tree_alignment_df %>%
+		select(-align_trimmed) %>%
+		mutate(tree = list(tree))
 }
 
 # Dating with treePL ----
