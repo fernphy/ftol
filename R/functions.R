@@ -1635,43 +1635,15 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
   seqs
 }
 
-#' Select a set of GenBank genes by joining on various criteria
-#'
-#' It would be preferable to join accessions across genes based on specimen voucher, 
-#' but most accessions lack voucher data.
-#' So joining is done in three steps:
-#' - 1. Join across "monophyletic" species (confirmed monophyletic within each target locus)
-#' - 2. Join by voucher
-#' - 3. Join by publication, if only one publication for that species
-#' - 4. (don't join the remainder)
-#' 
-#' After joining accessions, filters to only one set of sequences per species 
-#' (species), prioritizing in order:
-#' - 1. those with rbcL + other genes
-#' - 2. those with rbcL
-#' - 3. those with the greatest combined length of other genes
+#' Parse voucher specimen data in data downloaded from GenBank
 #' 
 #' @param genbank_seqs_tibble Tibble; metadata for GenBank sequences
 #' including columns for `gene`, `species`, `specimen_voucher`, 
 #' `accession` (GenBank accession), and `length` (gene length in bp)
 #'
-#' @return Tibble in wide format joining genes based on species + voucher
+#' @return Tibble including column `specimen_voucher`
 #' 
-select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
-  
-  ### Some pre-processing ### 
-  # Check overall monophyly by species: 
-  # must be monophyletic across all genes
-  # for each gene with >1 sequence
-  mpcheck_monophy_overall <- mpcheck_monophy %>%
-    filter(!is.na(is_monophy)) %>%
-    select(species, is_monophy) %>%
-    group_by(species) %>%
-    summarize(is_monophy = all(is_monophy)) %>%
-    ungroup()
-
-  # Extract voucher specimen, count number of bases in sequence
-  genbank_seqs_tibble_with_specimen_dat <- 
+parse_voucher <- function(genbank_seqs_tibble) {
     genbank_seqs_tibble %>%
     assert(is_uniq, otu) %>%
     # First, filter to only records with specimen voucher (will add others later)
@@ -1706,9 +1678,53 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
     select(-n) %>%
     # Check that all OTUs are accounted for
+    # (some are duplicated if there are multiple vouchers)
     verify(all(otu %in% genbank_seqs_tibble$otu)) %>%
-    verify(all(genbank_seqs_tibble$otu %in% otu)) %>%
+    verify(all(genbank_seqs_tibble$otu %in% otu))
+}
+
+#' Select a set of GenBank genes by joining on various criteria
+#'
+#' It would be preferable to join accessions across genes based on specimen voucher, 
+#' but most accessions lack voucher data.
+#' So joining is done in three steps:
+#' - 1. Join across "monophyletic" species (confirmed monophyletic within each target locus)
+#' - 2. Join by voucher
+#' - 3. Join by publication, if only one publication for that species
+#' - 4. (don't join the remainder)
+#' 
+#' After joining accessions, filters to only one set of sequences per species 
+#' (species), prioritizing in order:
+#' - 1. those with rbcL + other genes
+#' - 2. those with rbcL
+#' - 3. those with the greatest combined length of other genes
+#' 
+#' @param sanger_seqs_with_voucher_data Tibble; metadata for GenBank sequences
+#' including columns for `gene`, `species`, `specimen_voucher`, 
+#' `accession` (GenBank accession), and `length` (gene length in bp)
+#' @param mpcheck_monophy Results of species monophyly check
+#
+#' @return Tibble in wide format joining genes based on species + voucher
+#' 
+select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy) {
+
+  # Check that input names match arguments
+  check_args(match.call())
+  
+  ### Some pre-processing ### 
+  # Check overall monophyly by species: 
+  # must be monophyletic across all genes
+  # for each gene with >1 sequence
+  mpcheck_monophy_overall <- mpcheck_monophy %>%
+    filter(!is.na(is_monophy)) %>%
+    select(species, is_monophy) %>%
+    group_by(species) %>%
+    summarize(is_monophy = all(is_monophy)) %>%
+    ungroup()
+
     # Add column with monophyly data
+  genbank_seqs_tibble_with_specimen_dat <- 
+    sanger_seqs_with_voucher_data %>%
     left_join(mpcheck_monophy_overall, by = "species")
 
   ### Join across accessions ###
@@ -1814,47 +1830,43 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
     mutate(join_by = "publication")
 
-  # Fourth: Remaining can't be combined across taxa, so take longest seq per species/target
-  genbank_seqs_tibble_wide_unjoined <-
-  genbank_seqs_tibble_with_specimen_dat %>%
-    # Exclude taxa already joined by monophyletic species
-    anti_join(genbank_seqs_tibble_wide_monophy, by = "species") %>%
-    # Exclude taxa already joined by voucher
-    anti_join(genbank_seqs_tibble_wide_voucher, by = "species") %>%
-    # Exclude taxa already joined by publication
-    anti_join(genbank_seqs_tibble_wide_publication, by = "species") %>%
-    # Filter to longest seq per species per target
-    group_by(species, target) %>%
-    slice_max(order_by = seq_len, n =1, with_ties = FALSE) %>%
-    ungroup() %>%
-    # Convert to wide format
-    assert_rows(col_concat, is_uniq, target, species) %>%
-    group_by(target) %>%
-    group_split() %>%
-    map(
-      ~pivot_wider(.,
-                   id_cols = c("species",),
-                   names_from = target,
-                   values_from = c("seq_len", "accession")
-      )
-    ) %>%
-    # Join the target sequences by species
-    reduce(full_join, by = "species", na_matches = "never") %>%
-    mutate_at(vars(contains("seq_len")), ~replace_na(., 0)) %>%
-    # Add total length of all targets
-    mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
-    mutate(join_by = "unjoined")
-    
-  # Combine
+  # Combine wide tibbles
   genbank_seqs_tibble_wide <- bind_rows(
     genbank_seqs_tibble_wide_monophy,
     genbank_seqs_tibble_wide_voucher,
-    genbank_seqs_tibble_wide_publication,
-    genbank_seqs_tibble_wide_unjoined
-  ) %>%
-    assert(not_na, species, total_seq_len, join_by) %>%
-    verify(all(species %in% genbank_seqs_tibble$species)) %>%
-    verify(all(genbank_seqs_tibble$species %in% species))
+    genbank_seqs_tibble_wide_publication
+  )
+
+  ### Format sequences that can't be joined ###
+
+  # Remaining can't be combined across taxa, so leave in long format
+  # and filter to accession with longest sequence per gene per species
+  genbank_seqs_tibble_unjoined <-
+  genbank_seqs_tibble_with_specimen_dat %>%
+    # Exclude joined taxa
+    anti_join(genbank_seqs_tibble_wide, by = "species") %>%
+    group_by(species, target) %>%
+    # Filter to accession with longest sequence per gene per species
+    slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(join_by = "unjoined", total_seq_len = seq_len)
+
+  # for final sequence selection, subset rbcL
+  unjoined_rbcl <- genbank_seqs_tibble_unjoined %>%
+    filter(target == "rbcL") %>%
+    mutate(
+      seq_len_rbcL = seq_len,
+      accession_rbcL = accession) %>%
+    select(species, contains("rbcL"), join_by, specimen_voucher, publication)
+    
+  # for final sequence selection, subset single remaining longest locus
+  # put into wide format for binding rows
+  unjoined_other <- genbank_seqs_tibble_unjoined %>%
+    anti_join(unjoined_rbcl, by = "species") %>%
+    group_by(species) %>%
+    slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
+    pivot_wider(names_from = target, values_from = c("seq_len", "accession"))
   
   ### Select final sequences ###
   
@@ -1868,7 +1880,9 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
       any_vars(!is.na(.))) %>%
     group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
-    ungroup()
+    ungroup() %>%
+    # Make sure species are unique
+    assert(is_uniq, species)
   
   # Next priority: anything with rbcL only
   rbcl_only <-
@@ -1877,7 +1891,11 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     filter(!is.na(accession_rbcL)) %>%
     group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
-    ungroup()
+    ungroup() %>%
+    # add species that couldn't be joined across loci
+    bind_rows(unjoined_rbcl) %>%
+    # Make sure species are unique
+    assert(is_uniq, species)
   
   # Next priority: any other species on basis of total seq. seq_len
   other_targets <-
@@ -1886,7 +1904,11 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     anti_join(rbcl_only, by = "species") %>% 
     group_by(species) %>%
     slice_max(order_by = total_seq_len, n = 1, with_ties = FALSE) %>%
-    ungroup()
+    ungroup() %>%
+    # add species that couldn't be joined across loci
+    bind_rows(unjoined_other) %>%
+    # Make sure species are unique
+    assert(is_uniq, species)
   
   # Combine into final list: single set of accessions per species
   bind_rows(
@@ -1894,10 +1916,11 @@ select_genbank_genes <- function (genbank_seqs_tibble, mpcheck_monophy) {
     rbcl_only,
     other_targets
   ) %>%
+    # Make species are unique
     assert(is_uniq, species) %>%
     # Make sure all original input taxa are present
-    verify(all(species %in% genbank_seqs_tibble$species)) %>%
-    verify(all(genbank_seqs_tibble$species %in% species))
+    verify(all(species %in% sanger_seqs_with_voucher_data$species)) %>%
+    verify(all(sanger_seqs_with_voucher_data$species %in% species))
 }
 
 #' Filter out species in plastome data from Sanger data

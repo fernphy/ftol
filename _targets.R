@@ -304,12 +304,15 @@ tar_plan(
   ),
 
   # Select final Sanger sequences ----
+  # First parse specimen voucher data
+  sanger_seqs_with_voucher_data = parse_voucher(sanger_seqs_rogues_removed),
+
   # Select one specimen per species, prioritizing in order
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
   sanger_accessions_selection = select_genbank_genes(
-    sanger_seqs_rogues_removed, mpcheck_monophy),
+    sanger_seqs_with_voucher_data, mpcheck_monophy),
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
