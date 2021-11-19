@@ -13,39 +13,56 @@ plan(callr)
 tar_option_set(workspace_on_error = TRUE)
 
 tar_plan(
-  
   # Load data ----
   # Data for resolving taxonomic names:
   # - Catalog of Life database
-  tar_file(col_data_path, path(data_raw, "2021-08-25_dwca/Taxon.tsv")),
+  tar_file(
+    col_data_path,
+    path(data_raw, "2021-08-25_dwca/Taxon.tsv")),
   col_data = load_col(col_data_path),
   # - World Ferns taxonomic data
   world_ferns_data = extract_fow_from_col(col_data),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
-  tar_file(ppgi_taxonomy_path, path(data_raw, "ppgi_taxonomy_mod.csv")),
+  tar_file(
+    ppgi_taxonomy_path,
+    path(data_raw, "ppgi_taxonomy_mod.csv")),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
   # List of coding genes to extract from plastomes
   # (based on genes of Wei et al 2017, then trimmed to non-duplicated genes)
-  tar_file(target_plastome_genes_path, path(data_raw, "target_coding_genes.txt")),
+  tar_file(
+    target_plastome_genes_path,
+    path(data_raw, "target_coding_genes.txt")),
   target_plastome_genes = read_lines(target_plastome_genes_path),
   # Outgroup plastome accessions
-  tar_file(plastome_outgroups_path, path(data_raw, "plastome_outgroups.csv")),
+  tar_file(
+    plastome_outgroups_path,
+    path(data_raw, "plastome_outgroups.csv")),
   plastome_outgroups = read_csv(plastome_outgroups_path),
   # Calibration dates after Testo and Sundue 2016
-  tar_file(plastome_calibration_dates_path, path(data_raw, "testo_sundue_2016_calibrations.csv")),
-  plastid_calibration_dates = load_calibration_dates(plastome_calibration_dates_path),
+  tar_file(
+    plastome_calibration_dates_path,
+    path(data_raw, "testo_sundue_2016_calibrations.csv")),
+  plastid_calibration_dates = load_calibration_dates(
+    plastome_calibration_dates_path),
   # Manually selected synonyms for resolving names of plastid genes
-  tar_file(sanger_names_with_mult_syns_select_path, path(data_raw, "genbank_names_with_mult_syns_select.csv")),
-  sanger_names_with_mult_syns_select = read_csv(sanger_names_with_mult_syns_select_path),
+  tar_file(
+    sanger_names_with_mult_syns_select_path,
+    path(data_raw, "genbank_names_with_mult_syns_select.csv")),
+  sanger_names_with_mult_syns_select = read_csv(
+    sanger_names_with_mult_syns_select_path),
   # Manually curated list of raw fasta accessions to exclude from analysis
-  tar_file(raw_fasta_exclude_list_path, path(data_raw, "raw_fasta_exclude_list.csv")),
+  tar_file(
+    raw_fasta_exclude_list_path,
+    path(data_raw, "raw_fasta_exclude_list.csv")),
   raw_fasta_exclude_list = read_csv(raw_fasta_exclude_list_path),
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
   # - Target plastic loci (coding genes and spacers)
-  target_loci = c("atpA", "atpB", "matK", "rbcL", "rps4", "trnL-trnF", "rps4-trnS"),
+  target_loci = c(
+    "atpA", "atpB", "matK", "rbcL", "rps4",
+    "trnL-trnF", "rps4-trnS"),
   # - Most recent date cutoff for sampling genes
   date_cutoff = "2021/10/26",
 
@@ -123,13 +140,14 @@ tar_plan(
   ),
 
   # Download and extract plastid sequences from GenBank (Sanger sequences) ----
-  
   # Download raw fasta files
   tar_target(
     fern_sanger_seqs_raw,
-    fetch_fern_sanger_seqs(target_loci, end_date = date_cutoff, accs_exclude_list = NULL),
+    fetch_fern_sanger_seqs(
+      target_loci, end_date = date_cutoff, accs_exclude_list = NULL),
     pattern = map(target_loci),
-    deployment = "main" # don't run in parallel, or will get HTTP status 429 errors
+    # don't run in parallel, or will get HTTP status 429 errors
+    deployment = "main"
   ),
   # Extract target regions
   flavors = c("blastn", "dc-megablast"),
@@ -144,7 +162,8 @@ tar_plan(
     ),
     pattern = cross(target_loci, flavors)
   ),
-  # after comparing results between blastn and dc-megablast, dc-megablast seems to work better
+  # after comparing results between blastn and
+  # dc-megablast, dc-megablast seems to work better
   raw_fasta = clean_extract_res(fern_sanger_extract_res, "dc-megablast"),
   # Fetch metadata
   tar_target(
@@ -154,7 +173,6 @@ tar_plan(
     deployment = "main"
   ),
   raw_meta = unique(raw_meta_all),
-  
   # Resolve taxonomic names for Sanger sequences ----
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
@@ -172,29 +190,37 @@ tar_plan(
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   # - resolve synonyms
-  match_results_resolved_round_1 = ts_resolve_names(match_results_raw_round_1, world_ferns_data),
+  match_results_resolved_round_1 = ts_resolve_names(
+    match_results_raw_round_1, world_ferns_data),
   # Resolve names, round 2: NCBI synonym scientific names
-  ncbi_names_query_round_2 = select_ncbi_names_round_2(match_results_resolved_round_1, ncbi_names_query),
+  ncbi_names_query_round_2 = select_ncbi_names_round_2(
+    match_results_resolved_round_1, ncbi_names_query),
   match_results_raw_round_2 = ts_match_names(
     query = ncbi_names_query_round_2$scientific_name, 
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
-  match_results_resolved_round_2 = ts_resolve_names(match_results_raw_round_2, world_ferns_data),
+  match_results_resolved_round_2 = ts_resolve_names(
+    match_results_raw_round_2, world_ferns_data),
   # Resolve names, round 3: NCBI species without author
-  ncbi_names_query_round_3 = select_ncbi_names_round_3(match_results_resolved_round_1, match_results_resolved_round_2, ncbi_names_query),
+  ncbi_names_query_round_3 = select_ncbi_names_round_3(
+    match_results_resolved_round_1,
+    match_results_resolved_round_2, ncbi_names_query),
   match_results_raw_round_3 = ts_match_names(
     query = ncbi_names_query_round_3$species, 
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
-  match_results_resolved_round_3 = ts_resolve_names(match_results_raw_round_3, world_ferns_data),
+  match_results_resolved_round_3 = ts_resolve_names(
+    match_results_raw_round_3, world_ferns_data),
   # Combine name resolution results
   match_results_resolved_all =
     combined_match_results(
       ncbi_names_query = ncbi_names_query, 
-      match_results_resolved_round_1, match_results_resolved_round_2, match_results_resolved_round_3),
+      match_results_resolved_round_1,
+      match_results_resolved_round_2,
+      match_results_resolved_round_3),
   # Map NCBI names to accepted names
-  ncbi_accepted_names_map = make_ncbi_accepted_names_map(match_results_resolved_all),
-  
+  ncbi_accepted_names_map = make_ncbi_accepted_names_map(
+    match_results_resolved_all),
   # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
   # - set minimum lengths (bp) for filtering genes and spacers
@@ -226,7 +252,8 @@ tar_plan(
     pattern = map(sanger_blast_query)
   ),
   # Identify rogues (sequences matching wrong family)
-  # FIXME: many of these are due to bad taxonomy. inspect results and modify WF taxonomy as needed
+  # FIXME: many of these are due to bad taxonomy.
+  # inspect results and modify WF taxonomy as needed
   sanger_seqs_rogues = detect_rogues(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,
@@ -251,17 +278,21 @@ tar_plan(
     pattern = map(mpcheck_sliced)
   ),
   # - trim each locus
-  # (1% missing cutoff for spacers, 5% otherwise)
+  # 1% missing cutoff for spacers, 5% otherwise nolint
   mpcheck_trim_setting = if_else(str_detect(target_loci, "-"), "0.01", "0.05"),
   tar_target(
     mpcheck_trimmed,
-    trimal(mpcheck_aligned, return_seqtbl = FALSE, other_args = c("-gt", mpcheck_trim_setting)),
+    trimal(
+      mpcheck_aligned,
+      return_seqtbl = FALSE,
+      other_args = c("-gt", mpcheck_trim_setting)),
     pattern = map(mpcheck_aligned, mpcheck_trim_setting)
   ),
   # - build tree for each locus
   tar_target(
     mpcheck_tree,
-    jntools::fasttree(mpcheck_trimmed, mol_type = "dna", model = "gtr", gamma = TRUE),
+    jntools::fasttree(
+      mpcheck_trimmed, mol_type = "dna", model = "gtr", gamma = TRUE),
     pattern = map(mpcheck_trimmed)
   ),
   # - check monophyly
@@ -277,7 +308,8 @@ tar_plan(
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
-  sanger_accessions_selection = select_genbank_genes(sanger_seqs_rogues_removed, mpcheck_monophy),
+  sanger_accessions_selection = select_genbank_genes(
+    sanger_seqs_rogues_removed, mpcheck_monophy),
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
@@ -319,7 +351,9 @@ tar_plan(
   ),
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
-    plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_spacer_extract_res),
+    plastome_genes_raw,
+    plastome_metadata_raw_renamed,
+    fern_plastome_spacer_extract_res),
 
   # Combine and align Sanger and plastome sequences ----
 
@@ -357,9 +391,12 @@ tar_plan(
     plastid_genes_unaligned,
     combine_sanger_plastome(
       # Exclude spacer regions (spacer regions have hyphen in name)
-      sanger_accessions_selection %>% select(-contains("-")),
-      sanger_seqs_combined_filtered %>% filter(str_detect(target, "-", negate = TRUE)),
-      plastome_seqs_combined_filtered %>% filter(str_detect(target, "-", negate = TRUE))
+      sanger_accessions_selection %>%
+        select(-contains("-")),
+      sanger_seqs_combined_filtered %>%
+        filter(str_detect(target, "-", negate = TRUE)),
+      plastome_seqs_combined_filtered %>%
+        filter(str_detect(target, "-", negate = TRUE))
       ),
     target),
   # Align sequences by gene
