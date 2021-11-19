@@ -73,9 +73,9 @@ tar_plan(
   tar_target(
     fern_ref_seqs_raw,
     fetch_fern_ref_seqs(
-      target = target_loci, end_date = date_cutoff, 
+      target = target_loci, end_date = date_cutoff,
       # Only include intron for trnL-trnF
-      req_intron = str_detect(target_loci, "trnL-trnF"), 
+      req_intron = str_detect(target_loci, "trnL-trnF"),
       workers = 48),
     pattern = map(target_loci),
     deployment = "main"
@@ -173,6 +173,7 @@ tar_plan(
     deployment = "main"
   ),
   raw_meta = unique(raw_meta_all),
+
   # Resolve taxonomic names for Sanger sequences ----
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
@@ -186,7 +187,7 @@ tar_plan(
   ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
   # - match names to reference
   match_results_raw_round_1 = ts_match_names(
-    query = ncbi_names_query_round_1$scientific_name, 
+    query = ncbi_names_query_round_1$scientific_name,
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   # - resolve synonyms
@@ -196,7 +197,7 @@ tar_plan(
   ncbi_names_query_round_2 = select_ncbi_names_round_2(
     match_results_resolved_round_1, ncbi_names_query),
   match_results_raw_round_2 = ts_match_names(
-    query = ncbi_names_query_round_2$scientific_name, 
+    query = ncbi_names_query_round_2$scientific_name,
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   match_results_resolved_round_2 = ts_resolve_names(
@@ -206,7 +207,7 @@ tar_plan(
     match_results_resolved_round_1,
     match_results_resolved_round_2, ncbi_names_query),
   match_results_raw_round_3 = ts_match_names(
-    query = ncbi_names_query_round_3$species, 
+    query = ncbi_names_query_round_3$species,
     reference = wf_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   match_results_resolved_round_3 = ts_resolve_names(
@@ -214,7 +215,7 @@ tar_plan(
   # Combine name resolution results
   match_results_resolved_all =
     combined_match_results(
-      ncbi_names_query = ncbi_names_query, 
+      ncbi_names_query = ncbi_names_query,
       match_results_resolved_round_1,
       match_results_resolved_round_2,
       match_results_resolved_round_3),
@@ -227,14 +228,14 @@ tar_plan(
   min_gene_len = 200,
   min_spacer_len = 20,
   sanger_seqs_combined_filtered = combine_and_filter_sanger(
-    raw_meta, raw_fasta, ncbi_accepted_names_map, 
+    raw_meta, raw_fasta, ncbi_accepted_names_map,
     ppgi_taxonomy, min_gene_len, min_spacer_len),
   # Make BLAST database including all fern sequences
   tar_file(
     sanger_blast_db,
     make_fern_blast_db(
-      seqtbl = sanger_seqs_combined_filtered, 
-      blast_db_dir = "intermediates/blast_sanger", 
+      seqtbl = sanger_seqs_combined_filtered,
+      blast_db_dir = "intermediates/blast_sanger",
       out_name = "ferns_sanger")
   ),
   # Group query sequences for parallel computing
@@ -332,7 +333,7 @@ tar_plan(
   tar_target(
     plastome_genes_raw,
     fetch_fern_genes_from_plastome(
-      genes = target_plastome_genes, 
+      genes = target_plastome_genes,
       accession = target_plastome_accessions),
     pattern = map(target_plastome_accessions),
     deployment = "main"),
@@ -366,7 +367,7 @@ tar_plan(
     assign_tax_clusters(
       sanger_accessions_selection,
       sanger_seqs_combined_filtered,
-      plastome_seqs_combined_filtered, 
+      plastome_seqs_combined_filtered,
       ppgi_taxonomy, plastome_metadata_raw_renamed,
       target_spacers
     ),
@@ -412,10 +413,10 @@ tar_plan(
   plastid_genes_aligned_trimmed = trim_genes(plastid_genes_aligned),
   # Concatenate alignments
   plastid_alignment = do.call(
-    ape::cbind.DNAbin, 
+    ape::cbind.DNAbin,
     c(
-      plastid_genes_aligned_trimmed$align_trimmed, 
-      plastid_spacers_aligned_trimmed$align_trimmed, 
+      plastid_genes_aligned_trimmed$align_trimmed,
+      plastid_spacers_aligned_trimmed$align_trimmed,
       fill.with.gaps = TRUE)
   ),
 
@@ -427,7 +428,7 @@ tar_plan(
       plastid_genes_aligned_trimmed,
       plastid_spacers_aligned_trimmed,
       target_loci
-  ),
+    ),
     align_group
   ),
   # - loop over these and build a tree for each
