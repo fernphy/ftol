@@ -361,7 +361,7 @@ tar_plan(
 
   # Combine and align Sanger and plastome sequences ----
 
-  # Assign taxonomic clusters for spacer regions
+  # Assign taxonomic clusters for aligning spacer regions
   tar_target(
     plastid_spacers_unaligned,
     assign_tax_clusters(
@@ -390,6 +390,27 @@ tar_plan(
   # Trim each cluster, rename each sequence by taxon
   # (Use a very light threshold, to keep most gaps)
   plastid_spacers_aligned_trimmed = trim_spacers(plastid_spacers_aligned),
+
+  # Merge subalignments
+  tar_group_by(
+    plastid_spacers_aligned_subtrimmed_grouped,
+    plastid_spacers_aligned_trimmed,
+    target
+  ),
+  # "subtrimmed" indicates each subalignment is trimmed,
+  # but not merged alignment
+  tar_target(
+    plastid_spacers_unsep_aligned_subtrimmed,
+    merge_spacer_alignments(
+      plastid_spacers_aligned_subtrimmed_grouped, n_threads = 10),
+    pattern = map(plastid_spacers_aligned_subtrimmed_grouped)
+  ),
+  # trim merged alignment
+  plastid_spacers_unsep_aligned_trimmed = mutate(
+    plastid_spacers_unsep_aligned_subtrimmed,
+    align_trimmed = map(align_trimmed, trimal, other_args = c("-gt", "0.01"))
+    ),
+
   # Combine Sanger and plastome sequences into single dataframe, group by gene
   tar_group_by(
     plastid_genes_unaligned,
@@ -411,12 +432,22 @@ tar_plan(
   ),
   # Trim alignments, rename each sequence by taxon
   plastid_genes_aligned_trimmed = trim_genes(plastid_genes_aligned),
+
   # Concatenate alignments
+  # - separate taxonomic clusters for each spacer
   plastid_alignment = do.call(
     ape::cbind.DNAbin,
     c(
       plastid_genes_aligned_trimmed$align_trimmed,
       plastid_spacers_aligned_trimmed$align_trimmed,
+      fill.with.gaps = TRUE)
+  ),
+  # - spacers as single, unseparated units
+  plastid_unsep_alignment = do.call(
+    ape::cbind.DNAbin,
+    c(
+      plastid_genes_aligned_trimmed$align_trimmed,
+      plastid_spacers_unsep_aligned_trimmed$align_trimmed,
       fill.with.gaps = TRUE)
   ),
 
@@ -427,6 +458,7 @@ tar_plan(
     group_alignments(
       plastid_genes_aligned_trimmed,
       plastid_spacers_aligned_trimmed,
+      plastid_spacers_unsep_aligned_trimmed,
       target_loci
     ),
     align_group
@@ -440,8 +472,15 @@ tar_plan(
 
   # Phylogenetic analysis ----
   # Generate tree: single concatenated analysis.
+  # - separate sub-alignments for spacers
   plastid_tree = jntools::iqtree(
     plastid_alignment,
+    m = "GTR+I+G", bb = 1000, nt = "AUTO",
+    redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
+  ),
+  # - single merged alignment per spacer
+  plastid_unsep_tree = jntools::iqtree(
+    plastid_unsep_alignment,
     m = "GTR+I+G", bb = 1000, nt = "AUTO",
     redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
   )

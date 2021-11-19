@@ -3306,12 +3306,46 @@ combine_sanger_with_plastome <- function (
   
 }
 
+#' Merge spacer sub alignments with mafft
+#'
+#' @param plastid_spacers_aligned_trimmed Tibble with onoe row per subalignment
+#' @param n_threads Number of threads for mafft to use
+#'
+#' @return Tibble with list-column `align_trimmed` including alignment;
+#' column `cluster` will have the value "combined"
+#' 
+merge_spacer_alignments <- function(plastid_spacers_aligned_trimmed, n_threads) {
+	
+	# Merge sub alignments 
+	alignment <-
+		plastid_spacers_aligned_trimmed %>%
+		pull(align_trimmed) %>%
+		ips::mafft.merge(
+			thread = n_threads, 
+			quiet = TRUE, 
+			method = "retree 2",
+			exec = "/usr/bin/mafft")
+	
+	# return as dataframe with alignment in list-column
+	plastid_spacers_aligned_trimmed %>%
+		select(target) %>%
+		unique() %>%
+		mutate(
+			cluster = "combined",
+			align_trimmed = list(alignment)
+		)
+	
+}
+
 # Check gene trees ----
 
 #' Group alignments for making gene trees
 #'
 #' @param plastid_genes_aligned_trimmed Trimmed gene alignments
-#' @param plastid_spacers_aligned_trimmed Trimmed spacer alignments
+#' @param plastid_spacers_aligned_trimmed Trimmed spacer alignments, 
+#'   in sub-alignments by taxonomic cluster
+#' @param plastid_spacers_unsep_aligned_trimmed Trimmed spacer alignments,
+#'   merged into one alignment per spacer
 #' @param target_loci Target loci to include
 #'
 #' @return Tibble
@@ -3319,9 +3353,13 @@ combine_sanger_with_plastome <- function (
 group_alignments <- function(
 	plastid_genes_aligned_trimmed, 
 	plastid_spacers_aligned_trimmed, 
+  plastid_spacers_unsep_aligned_trimmed,
 	target_loci) {
 	
-	bind_rows(plastid_genes_aligned_trimmed, plastid_spacers_aligned_trimmed) %>%
+	bind_rows(
+    plastid_genes_aligned_trimmed, 
+    plastid_spacers_aligned_trimmed, 
+    plastid_spacers_unsep_aligned_trimmed) %>%
 		filter(target %in% target_loci) %>%
 		mutate(align_group = jntools::paste3(target, cluster, sep = "_"))
 }
