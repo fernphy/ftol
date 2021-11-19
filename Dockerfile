@@ -221,6 +221,9 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "python /apps/SuperCRUNCH-$VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
 
+# radian (for interactive R terminal)
+RUN conda install -c conda-forge radian
+
 ####################################
 ### Install R packages with renv ###
 ####################################
