@@ -620,7 +620,9 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
   ref_seqs <- ref_seqtbl %>%
     filter(target == target_select) %>%
     verify(nrow(.) > 0, error_fun = err_msg("No reference sequences matching target")) %>%
-    seqtbl_to_dnabin(name_col = "accession", seq_col = "seq") %>%
+    # Assuming sequences are in list-col "align_trimmed"
+    pull(align_trimmed) %>%
+    magrittr::extract2(1) %>%
     # remove gaps (important for ref database)
     ape::del.gaps()
   
@@ -1072,11 +1074,12 @@ fetch_fern_metadata <- function(target, start_date = "1980/01/01", end_date) {
 
 #' Align sequences used as reference
 #' @param fern_ref_seqs Reference DNA sequences formatted as seqtbl
-#' @param target String; name of target locus
+#' @param target_select String; name of target locus
+#' @param n_threads Number of threads to use when aligning sequences
 #' @return Tibble (seqtbl)
-align_ref_seqs <- function(fern_ref_seqs, target) {
-  target_select <- target
+align_ref_seqs <- function(fern_ref_seqs, target_select, n_threads = 1) {
   fern_ref_seqs %>%
+    assert(not_na, species, accession, target) %>%
     filter(target == target_select) %>%
     mutate(species = str_replace_all(species, " ", "_")) %>%
     # name sequences as [accession]__[species]
@@ -1085,7 +1088,8 @@ align_ref_seqs <- function(fern_ref_seqs, target) {
     ips::mafft(
       x = .,
       options = "--adjustdirection",
-      exec = "/usr/bin/mafft") %>%
+      exec = "/usr/bin/mafft",
+      thread = n_threads) %>%
     remove_mafft_r() %>%
     dnabin_to_seqtbl()
 }
@@ -1109,7 +1113,7 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
     taxize::ncbi_get_taxon_summary(id = .) %>%
     as_tibble()
 
-  # Further format metadata with taxon names
+  # Further format metadata with taxon names (some infrasp, but treat as species)
   meta_with_ncbi_names <-
   raw_meta %>%
     inner_join(ncbi_tax_names, by = c(taxid = "uid")) %>%
@@ -1118,8 +1122,12 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
     # drop square brackets in names
     mutate(name = str_remove_all(name, "\\[|\\]")) %>%
     # split out genus
-    mutate(genus = str_split(name, " ") %>% map_chr(1)) %>%
-    select(accession, taxon = name, genus)
+    mutate(
+      genus = str_split(name, " ") %>% map_chr(1),
+      sp_epithet = str_split(name, " ") %>% map_chr(2)
+      ) %>%
+    unite("species", c(genus, sp_epithet), na.rm = TRUE, remove = FALSE) %>%
+    select(accession, genus, species)
 
   # filter by longest sequence per genus per target locus
   raw_fasta %>%
