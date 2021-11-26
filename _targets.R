@@ -139,7 +139,7 @@ tar_plan(
     pattern = map(fern_ref_seqs_tree, target_loci)
   ),
 
-  # Download and extract plastid sequences from GenBank (Sanger sequences) ----
+  # Download and extract Sanger sequences ----
   # Download raw fasta files
   tar_target(
     fern_sanger_seqs_raw,
@@ -222,6 +222,7 @@ tar_plan(
   # Map NCBI names to accepted names
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(
     match_results_resolved_all),
+
   # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
   # - set minimum lengths (bp) for filtering genes and spacers
@@ -280,20 +281,12 @@ tar_plan(
   ),
   # - trim each locus
   # 1% missing cutoff for spacers, 5% otherwise nolint
-  mpcheck_trim_setting = if_else(str_detect(target_loci, "-"), "0.01", "0.05"),
-  tar_target(
-    mpcheck_trimmed,
-    trimal(
-      mpcheck_aligned,
-      return_seqtbl = FALSE,
-      other_args = c("-gt", mpcheck_trim_setting)),
-    pattern = map(mpcheck_aligned, mpcheck_trim_setting)
-  ),
+  # name by accession since includes multiple sequences per species
+  mpcheck_trimmed = trim_genes(mpcheck_aligned, name_col_in = "accession"),
   # - build tree for each locus
   tar_target(
     mpcheck_tree,
-    jntools::fasttree(
-      mpcheck_trimmed, mol_type = "dna", model = "gtr", gamma = TRUE),
+    build_tree_from_alignment_df(mpcheck_trimmed, program = "fasttree"),
     pattern = map(mpcheck_trimmed)
   ),
   # - check monophyly
@@ -307,8 +300,12 @@ tar_plan(
   # Select final Sanger sequences ----
   # First parse specimen voucher data
   sanger_seqs_with_voucher_data = parse_voucher(sanger_seqs_rogues_removed),
-
-  # Select one specimen per species, prioritizing in order
+  # Join sequences across species, then select one set of sequences per species
+  # Criteria for joining sequences across species:
+  # - species is monophyletic, or
+  # - all sequences for that species are from the same voucher, or
+  # - all sequences for that species are from same publication
+  # Criteria for selecting final set of sequences for each species (in order):
   # - 1: specimens with rbcL + any other gene
   # - 2: specimens with rbcL
   # - 3: specimens with longest combined non-rbcL genes
@@ -359,9 +356,8 @@ tar_plan(
     plastome_metadata_raw_renamed,
     fern_plastome_spacer_extract_res),
 
-  # Combine and align Sanger and plastome sequences ----
-
-  # Assign taxonomic clusters for aligning spacer regions
+  # Align spacers ----
+  # Assign taxonomic clusters (by family) for aligning spacer regions
   tar_target(
     plastid_spacers_unaligned,
     assign_tax_clusters(
@@ -376,6 +372,7 @@ tar_plan(
   tar_target(
     plastid_spacers_unaligned_grouped,
     plastid_spacers_unaligned %>%
+      filter(cluster != "none") %>%
       group_by(target, cluster) %>%
       tar_group(),
     iteration = "group"
@@ -389,29 +386,35 @@ tar_plan(
   ),
   # Trim each cluster, rename each sequence by taxon
   # (Use a very light threshold, to keep most gaps)
-  plastid_spacers_aligned_trimmed = trim_spacers(plastid_spacers_aligned),
-
-  # Merge subalignments
-  tar_group_by(
-    plastid_spacers_aligned_subtrimmed_grouped,
-    plastid_spacers_aligned_trimmed,
-    target
-  ),
-  # "subtrimmed" indicates each subalignment is trimmed,
-  # but not merged alignment
+  plastid_spacers_aligned_trimmed = trim_spacers_by_cluster(
+    plastid_spacers_aligned),
+  # Also make overall alignment with one representative
+  # per cluster to identify sequences needing reverse-complement
   tar_target(
-    plastid_spacers_unsep_aligned_subtrimmed,
-    merge_spacer_alignments(
-      plastid_spacers_aligned_subtrimmed_grouped, n_threads = 10),
-    pattern = map(plastid_spacers_aligned_subtrimmed_grouped)
+    plastid_spacers_rep_align,
+    align_rep_spacers(
+      plastid_spacers_aligned_trimmed, # clusters
+      plastid_spacers_unaligned, # singletons
+      target_select = target_spacers,
+      exclude_terms = "Anemiaceae"), # exclude Anemiaceae, too variable to align
+    pattern = map(target_spacers)
   ),
-  # trim merged alignment
-  plastid_spacers_unsep_aligned_trimmed = mutate(
-    plastid_spacers_unsep_aligned_subtrimmed,
-    align_trimmed = map(align_trimmed, trimal, other_args = c("-gt", "0.01"))
-    ),
+  # Reverse-complement spacers
+  plastid_spacers_reversed = reverse_spacers(
+    plastid_spacers_aligned_trimmed, plastid_spacers_rep_align
+  ),
+  # Merge subalignments
+  tar_target(
+    plastid_genes_aligned_trimmed_merged,
+    merge_spacer_alignments(
+      plastid_spacers_reversed,
+      n_threads = 10,
+      target_select = target_spacers),
+    pattern = map(target_spacers)
+  ),
 
-  # Combine Sanger and plastome sequences into single dataframe, group by gene
+  # Align genes ----
+  # Combine Sanger and plastome genes into single dataframe, group by gene
   tar_group_by(
     plastid_genes_unaligned,
     combine_sanger_plastome(
@@ -433,32 +436,31 @@ tar_plan(
   # Trim alignments, rename each sequence by taxon
   plastid_genes_aligned_trimmed = trim_genes(plastid_genes_aligned),
 
-  # Concatenate alignments
+  # Concatenate alignments ----
   # - separate taxonomic clusters for each spacer
   plastid_alignment = do.call(
     ape::cbind.DNAbin,
-    c(
-      plastid_genes_aligned_trimmed$align_trimmed,
+    c(plastid_genes_aligned_trimmed$align_trimmed,
       plastid_spacers_aligned_trimmed$align_trimmed,
       fill.with.gaps = TRUE)
   ),
   # - spacers as single, unseparated units
-  plastid_unsep_alignment = do.call(
+  plastid_alignment_unsep = do.call(
     ape::cbind.DNAbin,
-    c(
-      plastid_genes_aligned_trimmed$align_trimmed,
-      plastid_spacers_unsep_aligned_trimmed$align_trimmed,
+    c(plastid_genes_aligned_trimmed$align_trimmed,
+      plastid_genes_aligned_trimmed_merged$align_trimmed,
       fill.with.gaps = TRUE)
   ),
 
-  # Check gene trees ----
+  # Phylogenetic analysis ----
+  # Make gene trees
   # - filter to just alignments of target loci
   tar_group_by(
     gene_tree_alignments,
     group_alignments(
       plastid_genes_aligned_trimmed,
       plastid_spacers_aligned_trimmed,
-      plastid_spacers_unsep_aligned_trimmed,
+      plastid_genes_aligned_trimmed_merged,
       target_loci
     ),
     align_group
@@ -466,12 +468,10 @@ tar_plan(
   # - loop over these and build a tree for each
   tar_target(
     gene_trees,
-    build_tree_from_alignment_df(gene_tree_alignments),
+    build_tree_from_alignment_df(gene_tree_alignments, program = "iqtree"),
     pattern = map(gene_tree_alignments)
   ),
-
-  # Phylogenetic analysis ----
-  # Generate tree: single concatenated analysis.
+  # Make combined tree: single concatenated analysis.
   # - separate sub-alignments for spacers
   plastid_tree = jntools::iqtree(
     plastid_alignment,
@@ -479,8 +479,8 @@ tar_plan(
     redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
   ),
   # - single merged alignment per spacer
-  plastid_unsep_tree = jntools::iqtree(
-    plastid_unsep_alignment,
+  plastid_tree_unsep = jntools::iqtree(
+    plastid_alignment_unsep,
     m = "GTR+I+G", bb = 1000, nt = "AUTO",
     redo = TRUE, echo = TRUE, wd = here::here("intermediates/iqtree")
   )

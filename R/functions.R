@@ -485,7 +485,7 @@ extract_gene <- safely(extract_gene_fragile)
 #'
 #' @return Tibble of DNA sequences
 fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, req_intron = FALSE, workers) {
-  
+
    # Check if query target is a spacer region
   is_spacer <- str_detect(target, "-")
 
@@ -504,12 +504,12 @@ fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, req
   # Result will be sequences in a tibble
   if(is_spacer) {
     parse_gb_spacer(
-        gb_raw = gb_raw, target = target, req_intron = req_intron, 
+        gb_raw = gb_raw, target = target, req_intron = req_intron,
         workers = workers
     )
   } else {
     parse_gb_gene(
-        gb_raw = gb_raw, target = target, 
+        gb_raw = gb_raw, target = target,
         workers = workers
     )
   }
@@ -1963,7 +1963,8 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
 #' slow. Speed things up by running in parallel.
 #'
 #' @param mpcheck_sliced Tibble (seqtbl) with accession and species names
-#' @param mpcheck_tree Phylogenetic tree for a single target locus
+#' @param mpcheck_tree Phylogenetic tree for a single target locus (or
+#' dataframe containing this in column 'tree')
 #' @param workers Number of workers to run in parallel
 #'
 #' @return Tibble, with logical column `is_monophy` indicating monophyly
@@ -1976,6 +1977,13 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
 	
 	# Set backend for parallelization
 	future::plan(future::multisession, workers = workers)
+
+  # If mpcheck_tree input is dataframe, extract tree
+  if(inherits(mpcheck_tree, "data.frame")) {
+    assertthat::assert_that(nrow(mpcheck_tree) == 1)
+    assertthat::assert_that("tree" %in% colnames(mpcheck_tree))
+    mpcheck_tree <- mpcheck_tree$tree[[1]]
+  }
 	
   # Make dataframe of taxa to check for monophyly (>1 accession)
 	species_to_check <-
@@ -2450,28 +2458,14 @@ assign_tax_clusters <- function(
     assert(not_na, family, order) %>%
     # Count number of taxa per family
     add_count(family) %>%
-    # Assign cluster as family if >4 taxa, suborder if less
+    # Assign cluster as family if >=2 taxa, none if 1
     mutate(
       cluster = case_when(
-        n >= 4 ~ family,
-        n < 4 ~ suborder
+        n >= 2 ~ family,
+        n < 2 ~ "none"
       )
     ) %>%
-    # (some genera missing suborder) for these, assign cluster as order
-    mutate(
-      cluster = case_when(
-        is.na(cluster) ~ order,
-        TRUE ~ cluster
-      )
-    ) %>%
-    assert(not_na, cluster) %>%
-    select(-n) %>%
-    # Count number of taxa per cluster
-    add_count(cluster) %>%
-    select(-c(genus, family, suborder, order)) %>%
-    # Only keep clusters with >3 taxa
-    filter(n > 3) %>%
-    select(-n) %>%
+    select(-c(n, genus, family, suborder, order)) %>%
     assert(not_na, cluster, seq) %>%
     assert(not_null, seq)
 }
@@ -2512,9 +2506,13 @@ combine_sanger_plastome <- function(
 
 #' Align sequences in a tibble
 #'
-#' @param seqs_tbl Dataframe; DNA sequences to align.
+#' @param seqtbl Tibble containing one DNA sequence per row
+#' in a list-column
+#' @param name_col Name of column with sequence name
+#' @param seq_col Name of column with sequences (list-column)
 #'
-#' @return Dataframe with aligned sequences
+#' @return Dataframe with aligned sequences. New column logical column "reversed" will
+#' be appended indicating if sequence was reversed when aligning or not.
 #' 
 align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   # Extract sequences, convert to ape DNAbin list
@@ -2526,22 +2524,36 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
 
   # Set aside metadata
   seqs_data <-
-    select(seqs_tbl, -all_of(seq_col))
+    select(seqs_tbl, -all_of(seq_col)) %>%
+    # Metadata can't already contain column name "reversed"
+    verify(!"reversed" %in% colnames(.))
 
   # Align sequences
   alignment <- ips::mafft(
     x = seqs,
     options = "--adjustdirection",
     exec = "/usr/bin/mafft")
-  
-  # Fix names if mafft changed them
+
+  # Join metadata back to aligned sequences
+  # - make tibble of which seqs were reversed
+  reversed_seqs_tbl <-
+  alignment %>%
+    dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
+    select(.data[[name_col]]) %>%
+    mutate(
+      reversed = str_detect(.data[[name_col]], "_R_"),
+      !!name_col := str_remove_all(.data[[name_col]], "_R_")
+    )
+
+  # - fix names if mafft changed them
   rownames(alignment) <- str_remove_all(rownames(alignment), "_R_")
 
   # Join metadata back to aligned sequences
   alignment %>%
     dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
+    left_join(reversed_seqs_tbl, by = name_col) %>%
     left_join(seqs_data, by = name_col)
-  
+
 }
 
 #' Reformat a list of plastid genes from 
@@ -2652,7 +2664,7 @@ trimal <- function (
 #' @return Tibble with list-column of trimmed spacers; each row is
 #' one cluster per target region
 #' 
-trim_spacers <- function(plastid_spacers_aligned) {
+trim_spacers_by_cluster <- function(plastid_spacers_aligned) {
 
   # Check that input names match arguments
   check_args(match.call())
@@ -2673,32 +2685,201 @@ trim_spacers <- function(plastid_spacers_aligned) {
     select(-data)
 }
 
-#' Trim genes
+#' Trim genes (or spacers)
 #'
-#' @param plastid_genes_aligned seqtbl of aligned platid genes
+#' @param plastid_aligned seqtbl of aligned platid genes or spacers
+#' @param name_col_in Name of column in plastid_aligned to use as sequence
+#'   names when trimming with trimal.
 #'
-#' @return Tibble with list-column of trimmed genes; each row is
-#' a target gene
+#' @return Tibble with list-column of trimmed genes (or spacers); each row is
+#' a target gene (or spacer)
 #' 
-trim_genes <- function(plastid_genes_aligned) {
+trim_genes <- function(plastid_aligned, name_col_in = "species") {
 
-  # Check that input names match arguments
-  check_args(match.call())
-
-  plastid_genes_aligned %>% 
-    select(seq, species, target) %>%
+  plastid_aligned %>% 
+    select(seq, species, target, accession) %>%
     group_by(target) %>%
-    nest(data = c(seq, species)) %>%
-    # trim genes slightly more aggressively than spacers
+    nest(data = c(seq, species, accession)) %>%
+    # trim genes (0.05) slightly more aggressively than spacers (0.01)
     mutate(
+      trim_strength = if_else(
+        # spacers have hyphen, genes don't
+        str_detect(target, "-"), "0.01", "0.05"),
       align_trimmed = map(
         data, trimal, 
-        other_args = c("-gt", "0.05"), 
+        other_args = c("-gt", trim_strength), 
         return_seqtbl = FALSE, 
-        name_col_in = "species"
+        name_col_in = name_col_in
       )) %>%
     ungroup() %>%
-    select(-data)
+    select(-data, -trim_strength)
+}
+
+#' Align one representative sequence per spacer region
+#'
+#' @param plastid_spacers_aligned_trimmed Trimmed aligned spacer sequences in a tibble,
+#' with alignments in list-column "align_trimmed"
+#' @param plastid_spacers_unaligned seqtbl with taxonomic clusters assigned to spacer regions
+#' @param target_select Name of target (e.g., "trnL-trnF") to align.
+#' @param exclude_terms Grep string. Any clusters with names matching this will be excluded from results.
+#'
+#' @return Tibble with reverse-complemented sequences. Column "align-trimmed" includes
+#' alignments of clusters; column "seq" includes sequences of individual singletons.
+#'
+align_rep_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_unaligned, target_select, exclude_terms = NULL) {
+
+# Start with aligned spacer seqs, one alignment per row
+  plastid_spacers_aligned_trimmed %>%
+  # Unnest alignments to sequences (so each row is now a sequence)
+  assert(not_na, align_trimmed) %>%
+  mutate(align_trimmed = map(align_trimmed, as.list)) %>%
+  mutate(align_trimmed = map(align_trimmed, ~split(., names(.)))) %>%
+  unnest(align_trimmed) %>%
+  rename(seq = align_trimmed) %>%
+  mutate(species = map_chr(seq, names)) %>%
+  # Add singletons
+  bind_rows(filter(plastid_spacers_unaligned, cluster == "none")) %>%
+  # Make sure we have filtered to a single target
+  filter(target == target_select) %>%
+  verify(n_distinct(target) == 1) %>%
+  assert(not_na, target) %>%
+  # If cluster is "none", group at species level
+  assert(not_na, cluster, target, seq, species) %>%
+  mutate(cluster_grp = case_when(
+    cluster == "none" ~ species,
+    TRUE ~ cluster
+  )) %>%
+  # Remove gaps
+  mutate(seq = map(seq, ape::del.gaps)) %>%
+  # Filter to longest sequence per cluster
+  assert(not_null, seq) %>%
+  mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
+  group_by(cluster_grp) %>%
+  slice_max(n = 1, order_by = seq_len, with_ties = FALSE) %>%
+  ungroup() %>%
+  # Optionally filter cluster by exclusion terms
+  when(
+    !is.null(exclude_terms) ~ filter(., str_detect(cluster, exclude_terms, negate = TRUE)),
+    ~ .
+  ) %>%
+  align_seqs_tbl(name_col = "species")
+
+}
+
+
+#' Reverse-complement spacer sequences
+#'
+#' @param plastid_spacers_aligned_trimmed Trimmed aligned spacer sequences in a tibble,
+#' with alignments in list-column "align_trimmed"
+#' @param plastid_spacers_rep_align Status of which spacers need to be reverse-complemented,
+#' with one representative sequence per taxonomic cluster. Cluster called "none" are singletons,
+#' which do not belong to any clustered alignment.
+#'
+#' @return Tibble with reverse-complemented sequences. Column "align-trimmed" includes
+#' alignments of clusters; column "seq" includes sequences of individual singletons.
+#'
+reverse_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_rep_align) {
+  
+  # Check that input names match arguments
+  check_args(match.call())
+  
+  # Make a tibble showing which clusters were reversed
+  clusters_rev_tbl <-
+    plastid_spacers_rep_align %>%
+    select(cluster, target, reversed) %>%
+    filter(cluster != "none") %>%
+    unique()
+  
+  # Reverse-complement clusters
+  # will drop any clusters that were excluded when making `clusters_rev_tbl`
+  plastid_spacers_aligned_trimmed_rev <-
+    plastid_spacers_aligned_trimmed %>%
+    filter(cluster != "none") %>%
+    inner_join(clusters_rev_tbl, by = c("target", "cluster")) %>%
+    assert(not_na, reversed) %>%
+    assert(is.logical, reversed) %>%
+    mutate(
+      align_trimmed = case_when(
+        reversed == TRUE ~ map(align_trimmed, ape::complement),
+        reversed == FALSE ~ align_trimmed
+      )
+    )
+
+  # Extract singletons, but don't rev-complement (MAFFT already did that for us)
+  singletons_rev <-
+    plastid_spacers_rep_align %>%
+    filter(cluster == "none") %>%
+    assert(not_na, reversed) %>%
+    assert(is.logical, reversed)
+  
+  # Combine singletons and clusters
+  bind_rows(plastid_spacers_aligned_trimmed_rev, singletons_rev) %>%
+    assert(not_na, target, cluster, reversed) %>%
+    select(-reversed)
+  
+}
+
+#' Merge subalignments with MAFFT
+#' 
+#' Modified from ips::mafft.merge(), but allows adding 
+# "singleton" seqs that are not part of any subalignment
+#'
+#' @param subMSA List of sub-alignments to merge; each one a matrix of class "DNAbin"
+#' @param other_seqs List of class "DNAbin"; "singleton" sequences that don't belong
+#' to any sub-alignment, but should be merged with the sub-alignments.
+#' @param method Name of method for MAFFT to use
+#' @param gt List of class "phylo"; guide tree
+#' @param thread Number of threads to use
+#' @param exec Path to MAFFT executable
+#' @param quiet Logical; should MAFFT output be printed to screen?
+#' @param adjustdirection Logical; should MAFFT attempt to automatically adjust sequence direction?
+#'
+#' @return Matrix of class "DNAbin"; the merged alignment
+#'
+mafft_merge <- function (subMSA, other_seqs, method = "auto", gt, thread = -1, exec, quiet = TRUE, adjustdirection = FALSE) 
+{
+    quiet <- ifelse(quiet, "--quiet", "")
+    adjustdirection <- ifelse(adjustdirection, "--adjustdirection", "")
+    method <- match.arg(method, c("auto", "localpair", "globalpair", 
+        "genafpair", "parttree", "retree 1", "retree 2"))
+    method <- paste("--", method, sep = "")
+    if (missing(gt)) {
+        gt <- ""
+    }
+    else {
+        phylo2mafft(gt)
+        gt <- "--treein tree.mafft"
+    }
+    n <- sapply(subMSA, nrow)
+    subMSAtable <- vector(length = length(n))
+    init <- 0
+    for (i in seq_along(n)) {
+        nn <- 1:n[i] + init
+        init <- max(nn)
+        subMSAtable[i] <- paste(nn, collapse = " ")
+    }
+    subMSA <- lapply(subMSA, as.list)
+    subMSA <- c(subMSA, list(other_seqs))
+    subMSA <- do.call(c, subMSA)
+    names(subMSA) <- gsub("^.+[.]", "", names(subMSA))
+    fns <- vector(length = 3)
+    for (i in seq_along(fns)) fns[i] <- tempfile(pattern = "mafft",
+        tmpdir = tempdir())
+    write(subMSAtable, fns[1])
+    ips::write.fas(subMSA, fns[2])
+    call.mafft <- paste(exec, method, "--merge", fns[1], quiet,
+      adjustdirection,
+      gt, "--thread", thread, fns[2], ">", fns[3])
+    system(call.mafft, intern = FALSE, ignore.stdout = FALSE)
+    res <- length(scan(fns[3], what = "c", quiet = TRUE))
+    if (res != 0) {
+        res <- ape::read.FASTA(fns[3])
+        if (length(unique(sapply(res, length))) == 1) {
+            res <- as.matrix(res)
+        }
+    }
+    unlink(fns[file.exists(fns)])
+    return(res)
 }
 
 #' Write out a nexus block of gene start and end positions for IQTREE
@@ -3308,33 +3489,47 @@ combine_sanger_with_plastome <- function (
 
 #' Merge spacer sub alignments with mafft
 #'
-#' @param plastid_spacers_aligned_trimmed Tibble with onoe row per subalignment
+#' @param plastid_spacers_aligned_trimmed Tibble with one row per subalignment
+#' for clusters, and one row per sequence for singletons
 #' @param n_threads Number of threads for mafft to use
 #'
 #' @return Tibble with list-column `align_trimmed` including alignment;
 #' column `cluster` will have the value "combined"
 #' 
-merge_spacer_alignments <- function(plastid_spacers_aligned_trimmed, n_threads) {
-	
-	# Merge sub alignments 
-	alignment <-
-		plastid_spacers_aligned_trimmed %>%
-		pull(align_trimmed) %>%
-		ips::mafft.merge(
-			thread = n_threads, 
-			quiet = TRUE, 
-			method = "retree 2",
-			exec = "/usr/bin/mafft")
-	
-	# return as dataframe with alignment in list-column
-	plastid_spacers_aligned_trimmed %>%
-		select(target) %>%
-		unique() %>%
-		mutate(
-			cluster = "combined",
-			align_trimmed = list(alignment)
-		)
-	
+merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_threads) {
+  # Extract sub alignments
+  sub_alns <- plastid_spacers_reversed %>%
+    filter(target == target_select) %>%
+    assert(not_na, cluster) %>%
+    filter(cluster != "none") %>%
+    pull(align_trimmed)
+  
+  # Extract singletons
+  singletons <- plastid_spacers_reversed %>%
+    filter(target == target_select) %>%
+    assert(not_na, cluster) %>%
+    filter(cluster == "none") %>%
+    seqtbl_to_dnabin(name_col = "species")
+  
+  # Merge sub alignments and singletons
+  alignment <-
+    mafft_merge(
+    subMSA = sub_alns,
+    other_seqs = singletons,
+      thread = n_threads,
+      quiet = TRUE,
+      method = "retree 2",
+      adjustdirection = FALSE,
+      exec = "/usr/bin/mafft")
+  
+  plastid_spacers_reversed %>%
+    filter(target == target_select) %>%
+    select(target) %>%
+    unique() %>%
+    mutate(
+      cluster = "combined",
+      align_trimmed = list(alignment)
+    )
 }
 
 # Check gene trees ----
@@ -3368,10 +3563,15 @@ group_alignments <- function(
 #'
 #' @param gene_tree_alignment_df 1-row tibble with alignment in list-column
 #' `align_trimmed`
+#' @param program Name of program used to build tree; "iqtree" or 'fasttree'
 #'
 #' @return Tibble with tree in list-column `tree`
 #' 
-build_tree_from_alignment_df <- function(gene_tree_alignment_df) {
+build_tree_from_alignment_df <- function(gene_tree_alignment_df, program = "fasttree") {
+
+  assertthat::assert_that(
+    program %in% c("fasttree", "iqtree"),
+    msg = "Must choose 'fastree' or 'iqtree' for 'program'")
 	
 	# Extract alignment from df (df should only be one row)
 	alignment <- 
@@ -3379,7 +3579,7 @@ build_tree_from_alignment_df <- function(gene_tree_alignment_df) {
 		pull(align_trimmed) %>%
 		magrittr::extract2(1)
 	
-	# Create temp dir for writing the tree 
+	# Create temp dir for writing the tree (only needed for iqtree)
 	temp_dir <- fs::path(tempdir(), digest::digest(alignment))
 	
 	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
@@ -3387,12 +3587,21 @@ build_tree_from_alignment_df <- function(gene_tree_alignment_df) {
 	fs::dir_create(temp_dir)
 	
 	# Run single iqtree analysis (no bootstrap)
-	tree <- jntools::iqtree(
-		alignment, wd = temp_dir, 
-		m = "GTR+I+G", nt = "AUTO", 
-		echo = FALSE, 
-		tree_path = fs::path(temp_dir, "alignment.phy.treefile")
-	)
+	if (program == "iqtree") { 
+    tree <- jntools::iqtree(
+		  alignment, wd = temp_dir, 
+		  m = "GTR+I+G", nt = "AUTO", 
+		  echo = FALSE, 
+		  tree_path = fs::path(temp_dir, "alignment.phy.treefile")) 
+    } else {
+    tree <- jntools::fasttree(
+		  seqs = alignment,
+      mol_type = "dna",
+      model = "gtr",
+      gamma = FALSE,
+		  echo = FALSE, 
+		  tree_path = fs::path(temp_dir, "alignment.phy.treefile")) 
+  }
 	# Cleanup
 	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
 	
