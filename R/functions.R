@@ -3535,11 +3535,13 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
 # Check gene trees ----
 
 #' Group alignments for making gene trees
+#' 
+#' Filters to alignments with >3 sequences each
 #'
 #' @param plastid_genes_aligned_trimmed Trimmed gene alignments
 #' @param plastid_spacers_aligned_trimmed Trimmed spacer alignments, 
 #'   in sub-alignments by taxonomic cluster
-#' @param plastid_spacers_unsep_aligned_trimmed Trimmed spacer alignments,
+#' @param plastid_genes_aligned_trimmed_merged Trimmed spacer alignments,
 #'   merged into one alignment per spacer
 #' @param target_loci Target loci to include
 #'
@@ -3548,14 +3550,16 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
 group_alignments <- function(
 	plastid_genes_aligned_trimmed, 
 	plastid_spacers_aligned_trimmed, 
-  plastid_spacers_unsep_aligned_trimmed,
+  plastid_genes_aligned_trimmed_merged,
 	target_loci) {
 	
 	bind_rows(
     plastid_genes_aligned_trimmed, 
     plastid_spacers_aligned_trimmed, 
-    plastid_spacers_unsep_aligned_trimmed) %>%
+    plastid_genes_aligned_trimmed_merged) %>%
 		filter(target %in% target_loci) %>%
+    mutate(nseqs = map_dbl(align_trimmed, nrow)) %>%
+    filter(nseqs > 3) %>%
 		mutate(align_group = jntools::paste3(target, cluster, sep = "_"))
 }
 
