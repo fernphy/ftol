@@ -1090,6 +1090,46 @@ align_ref_seqs <- function(fern_ref_seqs, target) {
     dnabin_to_seqtbl()
 }
 
+
+#' Filter raw fasta sequences to one per genus
+#' 
+#' Used in prep_ref_seqs plan
+#' 
+#' @param raw_fasta Raw fasta sequences in tibble
+#' @param raw_meta Raw metadata in tibble
+#' 
+#' @return Tibble with one sequence (longest) per genus per target locus
+filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
+
+  # Obtain NCBI taxon names for accessions
+  ncbi_tax_names <-
+  raw_meta %>%
+    pull(taxid) %>%
+    unique() %>%
+    taxize::ncbi_get_taxon_summary(id = .) %>%
+    as_tibble()
+
+  # Further format metadata with taxon names
+  meta_with_ncbi_names <-
+  raw_meta %>%
+    inner_join(ncbi_tax_names, by = c(taxid = "uid")) %>%
+    # only keep taxa at species level or below
+    filter(rank %in% c("forma", "species", "subspecies", "varietas")) %>%
+    # drop square brackets in names
+    mutate(name = str_remove_all(name, "\\[|\\]")) %>%
+    # split out genus
+    mutate(genus = str_split(name, " ") %>% map_chr(1)) %>%
+    select(accession, taxon = name, genus)
+
+  # filter by longest sequence per genus per target locus
+  raw_fasta %>%
+    inner_join(meta_with_ncbi_names, by = "accession") %>%
+    mutate(seqln = map_dbl(seq, ~length(.[[1]]))) %>%
+    group_by(target, genus) %>%
+    slice_max(order_by = "seqln", n = 1, with_ties = FALSE) %>%
+    ungroup()
+}
+
 # Combine Sanger sequences data ----
 
 #' Combine sanger sequence metadata with sequences, join to resolved names

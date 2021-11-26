@@ -1,2 +1,8 @@
 main:
   reporter_make: verbose_positives
+prep_ref_seqs:
+  script: prep_ref_seqs_plan.R
+  store: prep_ref_seqs_store
+targets:
+  script: _targets.R
+  store: _targets
