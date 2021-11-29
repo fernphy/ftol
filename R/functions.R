@@ -1094,14 +1094,13 @@ align_ref_seqs <- function(fern_ref_seqs, target_select, n_threads = 1) {
     dnabin_to_seqtbl()
 }
 
-
 #' Filter raw fasta sequences to one per genus
-#' 
+#'
 #' Used in prep_ref_seqs plan
-#' 
+#'
 #' @param raw_fasta Raw fasta sequences in tibble
 #' @param raw_meta Raw metadata in tibble
-#' 
+#'
 #' @return Tibble with one sequence (longest) per genus per target locus
 filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
 
@@ -1136,6 +1135,123 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
     group_by(target, genus) %>%
     slice_max(order_by = "seqln", n = 1, with_ties = FALSE) %>%
     ungroup()
+}
+
+
+#' Trim a DNA alignment by removing sequences prior to a motif
+#' 
+#' e.g., trim the portion of rps4-trnS prior to the stop codon of rps4,
+#' so that only the rps4-trnS spacer is retained (not rps4 gene)
+#' 
+#' Used in prep_ref_seqs plan
+#'
+#' @param aln_tbl Tibble including DNA alignment as a list-column
+#' @param aln_col Name of list-column with DNA alignment
+#' @param target_select Name of target locus (should be match one of the
+#' values of the "target" column in aln_tbl)
+#' @param motif DNA motif to match (won't match on indels)
+#' @param expect_start Approximate expected start range
+#' @param expect_end Approximate expected end range
+#'
+#' @return Tibble including DNA alignment as a list-column. The alignment for the
+#' selected gene will be trimmed to remove all bases prior to and including the motif
+#' 
+trim_align_by_motif <- function(
+	aln_tbl, aln_col = "align_trimmed",
+	target_select = "rps4-trnS", motif = "CTTAATGA",
+	expect_start = 500,
+	expect_end = 700) {
+	
+	# Extract alignment, preserving gaps
+	aln <-
+		aln_tbl %>%
+		filter(target == target_select) %>%
+		pull(.data[[aln_col]]) %>%
+		magrittr::extract2(1) %>%
+		DNAbin_to_DNAstringset(remove_gaps = FALSE)
+	
+	# Search for pattern matching end of region
+	# vmatchPattern can't account for indels in DNAStringSet
+	matches <- Biostrings::vmatchPattern(
+    Biostrings::DNAString(motif), aln, with.indels = FALSE)
+	
+  # Convert vmatchPattern output to tibble
+	group_names_tbl <- tibble(
+		group_name = names(matches),
+		group = 1:length(matches))
+	
+	hits_tbl <-
+		as.data.frame(matches) %>%
+		as_tibble() %>%
+		select(-group_name) %>%
+		left_join(group_names_tbl, by = "group") %>%
+		# Run checks: should only be a single unique match location,
+		# within expected range
+		verify(n_distinct(.$end) == 1) %>%
+		verify(all(.$start > expect_start)) %>%
+		verify(all(.$end < expect_end))
+	
+	# Trim alignment
+	# removes all sequences before (and including) the matched motif
+	aln_clean <-
+		Biostrings::DNAStringSet(aln, start = (unique(hits_tbl$end) + 1)) %>%
+		as.DNAbin() %>%
+		as.matrix()
+	
+	# Convert back to tbl
+	aln_tbl %>%
+		filter(target != target_select) %>%
+		bind_rows(
+			tibble(
+				target = target_select,
+				!!aln_col := list(aln_clean)
+			)
+		)
+}
+
+#' Write out DNA alignments from a tibble
+#'
+#' Used in prep_ref_seqs plan
+#'
+#' @param tbl Tibble with aligned DNA sequences. Will only write out first row.
+#' @param aln_col Name of list-column with aligned DNA sequences
+#' @param gene_col Name of column with gene (target locus) names 
+#' @param dir Directory to write output
+#' @param postfix Characters to add to file name following the target locus.
+#'
+#' @return Path to output
+#'
+write_fasta_from_tbl <- function(
+  tbl, aln_col = "align_trimmed",
+  gene_col = "target",
+  dir = "intermediates/ref_seqs",
+  postfix = "_ref_aln.fasta") {
+  write_fasta_tar(
+    tbl[[aln_col]][[1]],
+    fs::path(dir, paste0(tbl[[gene_col]][[1]], postfix))
+  )
+}
+
+#' Write out phylogenetic trees from a tibble
+#'
+#' Used in prep_ref_seqs plan
+#'
+#' @param tbl Tibble with phylogenetic tree. Will only write out first row.
+#' @param tree_col Name of list-column with phylogenetic tree
+#' @param gene_col Name of column with gene (target locus) names 
+#' @param dir Directory to write output
+#' @param postfix Characters to add to file name following the target locus.
+#'
+#' @return Path to output
+#'
+write_tree_from_tbl <- function(
+  tbl, tree_col = "tree",
+  gene_col = "target",
+  dir = "intermediates/ref_seqs", postfix = "_ref_aln.fasta") {
+  write_tree_tar(
+    tbl[[tree_col]][[1]],
+    fs::path(dir, paste0(tbl[[gene_col]][[1]], postfix))
+  )
 }
 
 # Combine Sanger sequences data ----
@@ -5163,4 +5279,19 @@ read_genbank <- function(accessions, return_seqtbl = TRUE) {
 not_null <- function(x) {
   assertthat::assert_that(is.list(x))
   !purrr::map_lgl(x, is.null)
+}
+
+# Convert ape::DNAbin format to Biostrings::DNAStringSet format,
+# optionally removing gaps
+DNAbin_to_DNAstringset <- function (seqs, remove_gaps = TRUE) {
+  if(isTRUE(remove_gaps)) {
+  seqs %>% as.list() %>% as.character %>% 
+      lapply(.,paste0,collapse="") %>% 
+      lapply( function (x) gsub("-", "", x)) %>% 
+      unlist %>% Biostrings::DNAStringSet()
+  } else {
+    seqs %>% as.list() %>% as.character %>% 
+      lapply(.,paste0,collapse="") %>% 
+      unlist %>% Biostrings::DNAStringSet()
+  }
 }
