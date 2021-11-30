@@ -58,7 +58,9 @@ tar_plan(
     fern_ref_seqs_trimmed_out,
     write_fasta_from_tbl(
       fern_ref_seqs_trimmed,
-      postfix = "_ref_aln_1.fasta"),
+      dir = "intermediates/ref_seqs",
+      prefix = "ref_aln_init_",
+      postfix = ".fasta"),
     pattern = map(fern_ref_seqs_trimmed)
   ),
 
@@ -110,12 +112,15 @@ tar_plan(
   ),
   # Trim sequences (lightly)
   fern_ref_seqs_trimmed_2 = trim_genes(fern_ref_seqs_aligned_2),
-  # Write out alignments for inspection
+  # Write out final reference sequence alignments to raw data folder
+  # to will use in main _targets.R plan
   tar_file(
     fern_ref_seqs_trimmed_out_2,
     write_fasta_from_tbl(
       fern_ref_seqs_trimmed_2,
-      postfix = "_ref_aln_2.fasta"),
+      dir = data_raw,
+      prefix = "ref_aln_",
+      postfix = ".fasta"),
     pattern = map(fern_ref_seqs_trimmed_2)
   ),
   # Build trees (to check quality of reference sequences)
@@ -123,16 +128,17 @@ tar_plan(
     fern_ref_seqs_tree_2,
     build_tree_from_alignment_df(
       fern_ref_seqs_trimmed_2,
-      program = "iqtree",
-      postfix = "_ref_phy_2.tree"
+      program = "iqtree"
     ),
     pattern = map(fern_ref_seqs_trimmed_2)
   ),
   # Write out trees for inspection
   tar_file(
     fern_ref_seqs_tree_out_2,
-    write_tree_from_tbl(fern_ref_seqs_tree_2),
+    write_tree_from_tbl(fern_ref_seqs_tree_2,
+      dir = "intermediates/ref_seqs",
+      prefix = "ref_phy_",
+      postfix = ".tree"),
     pattern = map(fern_ref_seqs_tree_2)
-  ),
-
+  )
 )

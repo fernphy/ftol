@@ -1217,6 +1217,7 @@ trim_align_by_motif <- function(
 #' @param aln_col Name of list-column with aligned DNA sequences
 #' @param gene_col Name of column with gene (target locus) names 
 #' @param dir Directory to write output
+#' @param prefix Characters to add to file name preceding the target locus.
 #' @param postfix Characters to add to file name following the target locus.
 #'
 #' @return Path to output
@@ -1225,10 +1226,11 @@ write_fasta_from_tbl <- function(
   tbl, aln_col = "align_trimmed",
   gene_col = "target",
   dir = "intermediates/ref_seqs",
+  prefix = "",
   postfix = "_ref_aln.fasta") {
   write_fasta_tar(
     tbl[[aln_col]][[1]],
-    fs::path(dir, paste0(tbl[[gene_col]][[1]], postfix))
+    fs::path(dir, paste0(prefix, tbl[[gene_col]][[1]], postfix))
   )
 }
 
@@ -1240,6 +1242,7 @@ write_fasta_from_tbl <- function(
 #' @param tree_col Name of list-column with phylogenetic tree
 #' @param gene_col Name of column with gene (target locus) names 
 #' @param dir Directory to write output
+#' @param prefix Characters to add to file name preceding the target locus.
 #' @param postfix Characters to add to file name following the target locus.
 #'
 #' @return Path to output
@@ -1247,10 +1250,12 @@ write_fasta_from_tbl <- function(
 write_tree_from_tbl <- function(
   tbl, tree_col = "tree",
   gene_col = "target",
-  dir = "intermediates/ref_seqs", postfix = "_ref_aln.fasta") {
+  dir = "intermediates/ref_seqs", 
+  prefix = "",
+  postfix = "_ref_phy.tree") {
   write_tree_tar(
     tbl[[tree_col]][[1]],
-    fs::path(dir, paste0(tbl[[gene_col]][[1]], postfix))
+    fs::path(dir, paste0(prefix, tbl[[gene_col]][[1]], postfix))
   )
 }
 
