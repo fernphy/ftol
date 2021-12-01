@@ -72,6 +72,22 @@ extract_fow_from_col <- function(col_data) {
   fow
 }
 
+#' Load reference alignment files
+#'
+#' @param ref_aln_files Path to alignment (fasta) files,
+#' named like 'ref_aln_atpA.fasta', where "atpA" is the target (gene) name
+#' @return Tibble with two columns: "target" with name of gene, 
+#' and "align_trimmed" with DNA sequences in a list
+load_ref_aln <- function(ref_aln_files) {
+  tibble(path = ref_aln_files) %>%
+    mutate(
+      target = str_match(path, "aln_([a-zA-Z0-9\\-]+)\\.fasta") %>% 
+        magrittr::extract(,2),
+      align_trimmed = map(path, ~ape::read.FASTA(.) %>% as.matrix)
+    ) %>%
+    select(target, align_trimmed)
+}
+
 # Download Sanger sequences from GenBank----
 
 #' Format a query string to download fern sequences from GenBank
@@ -591,7 +607,8 @@ fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, 
 #' Wrapper for supercrunch Reference_Blast_Extract.py module
 #'
 #' @param query_seqtbl DNA sequences to extract, formatted as sqtbl
-#' @param ref_seqtbl DNA sequences to use as a BLAST reference database, formatted as sqtbl
+#' @param ref DNA sequences to use as a BLAST reference database, formatted as
+#' tibble with list-column containing reference alignments called "align_trimmed"
 #' @param target Name of target locus
 #' @param blast_flavor Name of BLAST algorithm to use
 #' @param other_args Additional arguments formatted as a character vector to send
@@ -601,7 +618,7 @@ fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, 
 #'
 #' @return Tibble
 
-extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
+extract_from_ref_blast <- function(query_seqtbl, ref, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
   
   # To avoid confusion with columns named 'target'
   target_select <- target
@@ -617,7 +634,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
     ape::del.gaps()
   
   # - reference (filter on target, and optionally by feature)
-  ref_seqs <- ref_seqtbl %>%
+  ref_seqs <- ref %>%
     filter(target == target_select) %>%
     verify(nrow(.) > 0, error_fun = err_msg("No reference sequences matching target")) %>%
     # Assuming sequences are in list-col "align_trimmed"
@@ -5057,7 +5074,17 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     group_by(taxid) %>%
     # Discard ties (may lose some candidate names here, but so be it)
     slice_max(order_by = n_spaces, n = 1, with_ties = FALSE) %>%
-    select(-n_spaces) 
+    select(-n_spaces) %>%
+    # Fix some scientific names
+    mutate(
+      scientific_name = case_when(
+        # wrong ambiguous synonym
+        scientific_name == "Asplenium scandens Houlston & T.Moore" ~ "Asplenium scandens J. Sm.",
+        # missing author
+        species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
+        TRUE ~ scientific_name
+      )
+    )
   
   # Remove problematic names from original data, then add fixed names
   ncbi_names_raw %>%
@@ -5068,7 +5095,8 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
       species = str_remove_all(species, "\\[|\\]"),
       # Remove year after authorship in scientific name
-      scientific_name = str_remove_all(scientific_name, ", [0-9][0-9][0-9][0-9]")
+      # not all years entered with four digits, so match >1 digit
+      scientific_name = str_remove_all(scientific_name, ", [0-9]+")
     )
   
 }
