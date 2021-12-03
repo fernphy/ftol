@@ -3146,9 +3146,6 @@ concatenate_genes <- function (dna_list) {
 #' if the data correspond to outgroup or not
 #' 
 resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data) {
-
-  # Check that input names match arguments
-  check_args(match.call())
   
   ### outgroups ###
   # Fetch full scientific names for plastome outgroups

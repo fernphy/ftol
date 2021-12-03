@@ -9,19 +9,20 @@ data_raw <- "/data_raw"
 # Set parallel back-end
 plan(callr)
 
-# Use targets workspaces for debugging
-tar_option_set(workspace_on_error = TRUE)
+# Set options:
+# - Use targets workspaces for debugging
+# - Track dependencies in some packages
+tar_option_set(
+  workspace_on_error = TRUE #,
+  # imports = c("pteridocat") # FIXME: uncomment when {pteridocat} is live
+  )
 
 tar_plan(
   # Load data ----
-  # Data for resolving taxonomic names:
-  # - Catalog of Life database
-  tar_file(
-    col_data_path,
-    path(data_raw, "2021-08-25_dwca/Taxon.tsv")),
-  col_data = load_col(col_data_path),
-  # - World Ferns taxonomic data
-  world_ferns_data = extract_fow_from_col(col_data),
+  # FIXME: temporary work-around for loading pteridocat data
+  # until {pteridocat} package is live
+  tar_file(pteridocat_file, "working/pteridocat.RDS"),
+  pteridocat = readRDS(pteridocat_file),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(
@@ -113,36 +114,36 @@ tar_plan(
   # Exclude invalid names (hybrids, taxa not identified to species level)
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
   # Parse reference names
-  wf_ref_names = ts_parse_names(unique(world_ferns_data$scientificName)),
+  pc_ref_names = ts_parse_names(unique(pteridocat$scientificName)),
   # Resolve names, round 1: NCBI accepted scientific names
   ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
   # - match names to reference
   match_results_raw_round_1 = ts_match_names(
     query = ncbi_names_query_round_1$scientific_name,
-    reference = wf_ref_names,
+    reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   # - resolve synonyms
   match_results_resolved_round_1 = ts_resolve_names(
-    match_results_raw_round_1, world_ferns_data),
+    match_results_raw_round_1, pteridocat),
   # Resolve names, round 2: NCBI synonym scientific names
   ncbi_names_query_round_2 = select_ncbi_names_round_2(
     match_results_resolved_round_1, ncbi_names_query),
   match_results_raw_round_2 = ts_match_names(
     query = ncbi_names_query_round_2$scientific_name,
-    reference = wf_ref_names,
+    reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   match_results_resolved_round_2 = ts_resolve_names(
-    match_results_raw_round_2, world_ferns_data),
+    match_results_raw_round_2, pteridocat),
   # Resolve names, round 3: NCBI species without author
   ncbi_names_query_round_3 = select_ncbi_names_round_3(
     match_results_resolved_round_1,
     match_results_resolved_round_2, ncbi_names_query),
   match_results_raw_round_3 = ts_match_names(
     query = ncbi_names_query_round_3$species,
-    reference = wf_ref_names,
+    reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
   match_results_resolved_round_3 = ts_resolve_names(
-    match_results_raw_round_3, world_ferns_data),
+    match_results_raw_round_3, pteridocat),
   # Combine name resolution results
   match_results_resolved_all =
     combined_match_results(
@@ -253,7 +254,7 @@ tar_plan(
   # FIXME: add Lepisorus hederaceus (Christ) R.Wei & X.C.Zhang
   # and Elaphoglossum marginatum var. marginatum to World Ferns taxonomy
   plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
-    plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data
+    plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
   ),
   # Download plastome sequences:
   # - genes
