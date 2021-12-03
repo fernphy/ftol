@@ -2845,17 +2845,17 @@ trimal <- function (
 
 #' Trim spacer regions
 #'
-#' @param plastid_spacers_aligned seqtbl of aligned platid spacers
+#' @param plastid_spacers_aligned_clusters seqtbl of aligned platid spacers by cluster
 #'
 #' @return Tibble with list-column of trimmed spacers; each row is
 #' one cluster per target region
 #' 
-trim_spacers_by_cluster <- function(plastid_spacers_aligned) {
+trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 
   # Check that input names match arguments
   check_args(match.call())
 
-  plastid_spacers_aligned %>% 
+  plastid_spacers_aligned_clusters %>% 
     select(seq, species, target, cluster) %>%
     group_by(target, cluster) %>%
     nest(data = c(seq, species)) %>%
@@ -2955,8 +2955,8 @@ align_rep_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_u
 
 #' Reverse-complement spacer sequences
 #'
-#' @param plastid_spacers_aligned_trimmed Trimmed aligned spacer sequences in a tibble,
-#' with alignments in list-column "align_trimmed"
+#' @param plastid_spacers_aligned_trimmed_clusters Trimmed aligned spacer sequences by taxonomic cluster
+#'  in a tibble, with alignments in list-column "align_trimmed"
 #' @param plastid_spacers_rep_align Status of which spacers need to be reverse-complemented,
 #' with one representative sequence per taxonomic cluster. Cluster called "none" are singletons,
 #' which do not belong to any clustered alignment.
@@ -2964,7 +2964,7 @@ align_rep_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_u
 #' @return Tibble with reverse-complemented sequences. Column "align-trimmed" includes
 #' alignments of clusters; column "seq" includes sequences of individual singletons.
 #'
-reverse_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_rep_align) {
+reverse_spacers <- function(plastid_spacers_aligned_trimmed_clusters, plastid_spacers_rep_align) {
   
   # Check that input names match arguments
   check_args(match.call())
@@ -2979,7 +2979,7 @@ reverse_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_rep
   # Reverse-complement clusters
   # will drop any clusters that were excluded when making `clusters_rev_tbl`
   plastid_spacers_aligned_trimmed_rev <-
-    plastid_spacers_aligned_trimmed %>%
+    plastid_spacers_aligned_trimmed_clusters %>%
     filter(cluster != "none") %>%
     inner_join(clusters_rev_tbl, by = c("target", "cluster")) %>%
     assert(not_na, reversed) %>%
@@ -3716,35 +3716,6 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
 }
 
 # Check gene trees ----
-
-#' Group alignments for making gene trees
-#' 
-#' Filters to alignments with >3 sequences each
-#'
-#' @param plastid_genes_aligned_trimmed Trimmed gene alignments
-#' @param plastid_spacers_aligned_trimmed Trimmed spacer alignments, 
-#'   in sub-alignments by taxonomic cluster
-#' @param plastid_genes_aligned_trimmed_merged Trimmed spacer alignments,
-#'   merged into one alignment per spacer
-#' @param target_loci Target loci to include
-#'
-#' @return Tibble
-#' 
-group_alignments <- function(
-	plastid_genes_aligned_trimmed, 
-	plastid_spacers_aligned_trimmed, 
-  plastid_genes_aligned_trimmed_merged,
-	target_loci) {
-	
-	bind_rows(
-    plastid_genes_aligned_trimmed, 
-    plastid_spacers_aligned_trimmed, 
-    plastid_genes_aligned_trimmed_merged) %>%
-		filter(target %in% target_loci) %>%
-    mutate(nseqs = map_dbl(align_trimmed, nrow)) %>%
-    filter(nseqs > 3) %>%
-		mutate(align_group = jntools::paste3(target, cluster, sep = "_"))
-}
 
 #' Build gene trees
 #'
