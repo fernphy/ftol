@@ -154,6 +154,9 @@ tar_plan(
   # Map NCBI names to accepted names
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(
     match_results_resolved_all),
+  # Inspect name resolution results, format
+  # data for updating pteridocat database
+  matched_fuzzy = inspect_fuzzy(match_results_resolved_all),
 
   # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names

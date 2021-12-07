@@ -1276,6 +1276,66 @@ write_tree_from_tbl <- function(
   )
 }
 
+# Taxonomic name resolution ----
+
+#' Inspect fuzzily matched names, prepare for updating database
+#'
+#' @param match_results_resolved_all Dataframe (tibble); taxonomic name matching
+#' results; output of combined_match_results()
+#' @return Dataframe (tibble) of fuzzily matched results, with several columns
+#' pre-populated with default values to be inspected and used for updating the
+#' taxonomic reference database. Includes:
+#' - query: Query string
+#' - matched_name: Matched name
+#' - matched_status: Status of matched name
+#' - dist: String distance from query to match
+#' - query_match_taxon_agree: Logical; do the canonical names
+#'   match between query and matched_name?
+#' - use_query_as_synonym: 1 to use query as synonym of matched name
+#'   in next build of taxonomic reference
+#' - use_query_as_accepted: 1 to use query as accepted name, with matched
+#'   name as a synonym, in next build of taxonomic reference
+#' - use_query_as_new: 1 to use query as new name in next build of
+#'   taxonomic reference
+#' - accepted_name: Scientifc name that is currently accepted to use
+#'   in next build of taxonomic reference
+#' - taxonomicStatus, namePublishedIn, nameAccordingTo, taxonRemarks:
+#'   Darwin Core columns to use in next build of taxonomic reference
+inspect_fuzzy <- function(match_results_resolved_all) {
+  match_results_resolved_all %>%
+    filter(!is.na(resolved_status), match_type == "auto_fuzzy") %>%
+    select(query, matched_name, matched_status) %>%
+    mutate(dist = stringdist::stringdist(query, matched_name)) %>%
+    mutate(
+      rgnparser::gn_parse_tidy(query) %>%
+        select(query_taxon = canonicalsimple),
+      rgnparser::gn_parse_tidy(matched_name) %>%
+        select(matched_taxon = canonicalsimple)
+    ) %>%
+    mutate(
+      query_taxon = str_replace_all(
+        query_taxon, "Vandenboschia radicans type", "Vandenboschia radicans"),
+      query_match_taxon_agree = query_taxon == matched_taxon,
+      # The below values are defaults. Each row needs to be checked manually.
+      use_query_as_synonym = case_when(
+        query_match_taxon_agree == TRUE ~ 1,
+        TRUE ~ 0),
+      use_query_as_accepted = 0,
+      use_query_as_new = 0,
+      accepted_name	= NA,
+      taxonomicStatus	= NA,
+      namePublishedIn	= NA,
+      nameAccordingTo = "NCBI",
+      taxonRemarks = case_when(
+        query_match_taxon_agree == TRUE ~ "author variant",
+        query_match_taxon_agree == FALSE ~ "spelling mistake in species name"
+      ),
+      notes = NA
+      ) %>%
+    select(-query_taxon, -matched_taxon) %>%
+    arrange(query_match_taxon_agree, query)
+}
+
 # Combine Sanger sequences data ----
 
 #' Combine sanger sequence metadata with sequences, join to resolved names
