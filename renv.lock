@@ -990,11 +990,11 @@
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteRepo": "jntools",
       "RemoteUsername": "joelnitta",
+      "RemoteRepo": "jntools",
       "RemoteRef": "master",
-      "RemoteSha": "5a55293dbbbf547ed32cac56481f833939bd88d0",
-      "Hash": "b82bc72e6ac40a2eb3072f2dd277ae05"
+      "RemoteSha": "7494d3ba26e989f76babf13625ebd2fa070e1743",
+      "Hash": "8f98f256264377177aedac3ac826688d"
     },
     "jsonlite": {
       "Package": "jsonlite",
@@ -1657,6 +1657,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "a67873a8b7114c68b17b252bbdd99909"
+    },
+    "stringdist": {
+      "Package": "stringdist",
+      "Version": "0.9.5.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "734fb9c45f9a36bcd1f1aa0c37a8a5b1"
     },
     "stringi": {
       "Package": "stringi",
