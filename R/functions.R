@@ -1288,24 +1288,24 @@ write_tree_from_tbl <- function(
 #' - query: Query string
 #' - matched_name: Matched name
 #' - matched_status: Status of matched name
-#' - dist: String distance from query to match
 #' - query_match_taxon_agree: Logical; do the canonical names
 #'   match between query and matched_name?
+#' - dist: String distance from query to match
 #' - use_query_as_synonym: 1 to use query as synonym of matched name
 #'   in next build of taxonomic reference
 #' - use_query_as_accepted: 1 to use query as accepted name, with matched
 #'   name as a synonym, in next build of taxonomic reference
 #' - use_query_as_new: 1 to use query as new name in next build of
 #'   taxonomic reference
+#' - exclude: 0 to include query when updating reference, 1 to exclude 
 #' - accepted_name: Scientifc name that is currently accepted to use
 #'   in next build of taxonomic reference
 #' - taxonomicStatus, namePublishedIn, nameAccordingTo, taxonRemarks:
 #'   Darwin Core columns to use in next build of taxonomic reference
-inspect_fuzzy <- function(match_results_resolved_all) {
+inspect_fuzzy_matches <- function(match_results_resolved_all) {
   match_results_resolved_all %>%
     filter(!is.na(resolved_status), match_type == "auto_fuzzy") %>%
     select(query, matched_name, matched_status) %>%
-    mutate(dist = stringdist::stringdist(query, matched_name)) %>%
     mutate(
       rgnparser::gn_parse_tidy(query) %>%
         select(query_taxon = canonicalsimple),
@@ -1316,12 +1316,14 @@ inspect_fuzzy <- function(match_results_resolved_all) {
       query_taxon = str_replace_all(
         query_taxon, "Vandenboschia radicans type", "Vandenboschia radicans"),
       query_match_taxon_agree = query_taxon == matched_taxon,
+      dist = stringdist::stringdist(query, matched_name),
       # The below values are defaults. Each row needs to be checked manually.
       use_query_as_synonym = case_when(
         query_match_taxon_agree == TRUE ~ 1,
         TRUE ~ 0),
       use_query_as_accepted = 0,
       use_query_as_new = 0,
+      exclude = 0,
       accepted_name	= NA,
       taxonomicStatus	= NA,
       namePublishedIn	= NA,
@@ -1333,7 +1335,8 @@ inspect_fuzzy <- function(match_results_resolved_all) {
       notes = NA
       ) %>%
     select(-query_taxon, -matched_taxon) %>%
-    arrange(query_match_taxon_agree, query)
+    arrange(query_match_taxon_agree, query) %>%
+    unique()
 }
 
 # Combine Sanger sequences data ----
@@ -5294,6 +5297,12 @@ write_tree_tar <- function(phy, file, ...) {
   ape::write.tree(phy = phy, file = file, ...)
   file
   }
+
+# Write CSV and return path
+write_csv_tar <- function(x, file, ...) {
+  readr::write_csv(x = x, file = file, ...)
+  file
+}
 
 #' Calculate base frequences *per sample* in an alignment
 #'
