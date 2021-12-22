@@ -1316,18 +1316,15 @@ inspect_fuzzy_matches <- function(match_results_resolved_all) {
       query_taxon = str_replace_all(
         query_taxon, "Vandenboschia radicans type", "Vandenboschia radicans"),
       query_match_taxon_agree = query_taxon == matched_taxon,
-      dist = stringdist::stringdist(query, matched_name),
       # The below values are defaults. Each row needs to be checked manually.
       use_query_as_synonym = case_when(
         query_match_taxon_agree == TRUE ~ 1,
         TRUE ~ 0),
       use_query_as_accepted = 0,
       use_query_as_new = 0,
-      exclude = 0,
-      accepted_name	= NA,
       taxonomicStatus	= NA,
       namePublishedIn	= NA,
-      nameAccordingTo = "NCBI",
+      nameAccordingTo = NA,
       taxonRemarks = case_when(
         query_match_taxon_agree == TRUE ~ "author variant",
         query_match_taxon_agree == FALSE ~ "spelling mistake in species name"
