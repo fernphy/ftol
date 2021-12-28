@@ -1322,7 +1322,6 @@ inspect_fuzzy_matches <- function(match_results_resolved_all) {
         TRUE ~ 0),
       use_query_as_accepted = 0,
       use_query_as_new = 0,
-      taxonomicStatus	= NA,
       namePublishedIn	= NA,
       nameAccordingTo = NA,
       taxonRemarks = case_when(
