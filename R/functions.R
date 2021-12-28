@@ -1278,10 +1278,12 @@ write_tree_from_tbl <- function(
 
 # Taxonomic name resolution ----
 
-#' Inspect fuzzily matched names, prepare for updating database
+#' Inspect results of name matching with taxastand
+#' 
+#' Subsets to fuzzily matched names and names without a match, prepares for updating database
 #'
-#' @param match_results_resolved_all Dataframe (tibble); taxonomic name matching
-#' results; output of combined_match_results()
+#' @param match_results_resolved_all Dataframe (tibble); results of taxonomic name matching
+#' with {taxastand}; output of combined_match_results()
 #' @return Dataframe (tibble) of fuzzily matched results, with several columns
 #' pre-populated with default values to be inspected and used for updating the
 #' taxonomic reference database. Includes:
@@ -1290,21 +1292,18 @@ write_tree_from_tbl <- function(
 #' - matched_status: Status of matched name
 #' - query_match_taxon_agree: Logical; do the canonical names
 #'   match between query and matched_name?
-#' - dist: String distance from query to match
 #' - use_query_as_synonym: 1 to use query as synonym of matched name
 #'   in next build of taxonomic reference
 #' - use_query_as_accepted: 1 to use query as accepted name, with matched
 #'   name as a synonym, in next build of taxonomic reference
 #' - use_query_as_new: 1 to use query as new name in next build of
 #'   taxonomic reference
-#' - exclude: 0 to include query when updating reference, 1 to exclude 
-#' - accepted_name: Scientifc name that is currently accepted to use
-#'   in next build of taxonomic reference
 #' - taxonomicStatus, namePublishedIn, nameAccordingTo, taxonRemarks:
 #'   Darwin Core columns to use in next build of taxonomic reference
-inspect_fuzzy_matches <- function(match_results_resolved_all) {
+inspect_ts_results <- function(match_results_resolved_all) {
+  # - Fuzzily-matched names
   match_results_resolved_all %>%
-    filter(!is.na(resolved_status), match_type == "auto_fuzzy") %>%
+    filter(match_type == "auto_fuzzy") %>%
     select(query, matched_name, matched_status) %>%
     mutate(
       rgnparser::gn_parse_tidy(query) %>%
@@ -1332,7 +1331,15 @@ inspect_fuzzy_matches <- function(match_results_resolved_all) {
       ) %>%
     select(-query_taxon, -matched_taxon) %>%
     arrange(query_match_taxon_agree, query) %>%
-    unique()
+    unique() %>%
+    # - Non-matching names
+    bind_rows(
+      filter(match_results_resolved_all, match_type == "no_match") %>%
+        select(query) %>%
+        unique() %>%
+        assert(not_na, query) %>%
+        arrange(query)
+    )
 }
 
 # Combine Sanger sequences data ----

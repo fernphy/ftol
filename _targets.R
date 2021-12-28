@@ -155,12 +155,12 @@ tar_plan(
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(
     match_results_resolved_all),
   # Inspect name resolution results
-  matched_fuzzy_to_inspect = inspect_fuzzy_matches(match_results_resolved_all),
+  pterido_names_to_inspect = inspect_ts_results(match_results_resolved_all),
   tar_file(
-    matched_fuzzy_to_inspect_csv,
+    pterido_names_to_inspect_csv,
     write_csv_tar(
-      matched_fuzzy_to_inspect,
-      "intermediates/taxonomy/matched_fuzzy_to_inspect.csv")
+      pterido_names_to_inspect,
+      "intermediates/taxonomy/pterido_names_to_inspect.csv")
   ),
 
   # Remove rogues from Sanger sequences ----
