@@ -13,16 +13,17 @@ plan(callr)
 # - Use targets workspaces for debugging
 # - Track dependencies in some packages
 tar_option_set(
-  workspace_on_error = TRUE #,
-  # imports = c("pteridocat") # FIXME: uncomment when {pteridocat} is live
+  workspace_on_error = TRUE,
+  # FIXME: add {pteridocat} as import when it is live
+  imports = c("taxastand")
   )
 
 tar_plan(
   # Load data ----
   # FIXME: temporary work-around for loading pteridocat data
   # until {pteridocat} package is live
-  tar_file(pteridocat_file, "working/pteridocat.RDS"),
-  pteridocat = readRDS(pteridocat_file),
+  tar_file(pteridocat_file, "working/2021-12-18-fow.csv"),
+  pteridocat = read_csv(pteridocat_file),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(
@@ -121,7 +122,8 @@ tar_plan(
   match_results_raw_round_1 = ts_match_names(
     query = ncbi_names_query_round_1$scientific_name,
     reference = pc_ref_names,
-    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
+    max_dist = 5, match_no_auth = TRUE,
+    match_canon = TRUE, collapse_infra = TRUE),
   # - resolve synonyms
   match_results_resolved_round_1 = ts_resolve_names(
     match_results_raw_round_1, pteridocat),
@@ -131,7 +133,8 @@ tar_plan(
   match_results_raw_round_2 = ts_match_names(
     query = ncbi_names_query_round_2$scientific_name,
     reference = pc_ref_names,
-    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
+    max_dist = 5, match_no_auth = TRUE,
+    match_canon = TRUE, collapse_infra = TRUE),
   match_results_resolved_round_2 = ts_resolve_names(
     match_results_raw_round_2, pteridocat),
   # Resolve names, round 3: NCBI species without author
@@ -141,7 +144,8 @@ tar_plan(
   match_results_raw_round_3 = ts_match_names(
     query = ncbi_names_query_round_3$species,
     reference = pc_ref_names,
-    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE),
+    max_dist = 5, match_no_auth = TRUE,
+    match_canon = TRUE, collapse_infra = TRUE),
   match_results_resolved_round_3 = ts_resolve_names(
     match_results_raw_round_3, pteridocat),
   # Combine name resolution results

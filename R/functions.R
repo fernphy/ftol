@@ -5108,6 +5108,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     group_by(taxid) %>%
     # Discard ties (may lose some candidate names here, but so be it)
     slice_max(order_by = n_spaces, n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
     select(-n_spaces) %>%
     # Fix some scientific names
     mutate(
@@ -5119,6 +5120,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         TRUE ~ scientific_name
       )
     )
+
   
   # Remove problematic names from original data, then add fixed names
   ncbi_names_raw %>%
@@ -5143,11 +5145,11 @@ clean_ncbi_names <- function(ncbi_names_raw) {
 #' @return Dataframe
 #' 
 exclude_invalid_ncbi_names <- function(ncbi_names) {
-  # Exclude names from consideration that aren't fully identified to species, or are hybrids
+  # Exclude names from consideration that aren't fully identified to species, or are hybrids (including hybrid genera)
   # (assume there should be at least one space between genus and species)
   ncbi_names_exclude <-
     ncbi_names %>%
-    filter(str_detect(species, " sp\\.| aff\\.| cf\\.| x ") | str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| x ") | str_count(species, " ") < 1 | str_count(scientific_name, " ") < 1)
+    filter(str_detect(species, " sp\\.| aff\\.| cf\\.| x |^x ") | str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| x |^x ") | str_count(species, " ") < 1 | str_count(scientific_name, " ") < 1)
   
   ncbi_names %>%
     anti_join(ncbi_names_exclude, by = "species", na_matches = "never") %>%
