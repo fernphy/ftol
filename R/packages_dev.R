@@ -4,3 +4,4 @@ library(clustermq)
 library(visNetwork)
 library(languageserver) # for R in VS-Code
 library(vscDebugger) # for R in VS-Code
+library(docthis) # for documenting functions
