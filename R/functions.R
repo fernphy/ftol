@@ -607,7 +607,7 @@ fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, 
 #' Wrapper for supercrunch Reference_Blast_Extract.py module
 #'
 #' @param query_seqtbl DNA sequences to extract, formatted as sqtbl
-#' @param ref DNA sequences to use as a BLAST reference database, formatted as
+#' @param ref_seqtbl DNA sequences to use as a BLAST reference database, formatted as
 #' tibble with list-column containing reference alignments called "align_trimmed"
 #' @param target Name of target locus
 #' @param blast_flavor Name of BLAST algorithm to use
@@ -618,7 +618,7 @@ fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, 
 #'
 #' @return Tibble
 
-extract_from_ref_blast <- function(query_seqtbl, ref, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
+extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
   
   # To avoid confusion with columns named 'target'
   target_select <- target
@@ -634,7 +634,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref, target, blast_flavor, othe
     ape::del.gaps()
   
   # - reference (filter on target, and optionally by feature)
-  ref_seqs <- ref %>%
+  ref_seqs <- ref_seqtbl %>%
     filter(target == target_select) %>%
     verify(nrow(.) > 0, error_fun = err_msg("No reference sequences matching target")) %>%
     # Assuming sequences are in list-col "align_trimmed"
