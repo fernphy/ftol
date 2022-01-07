@@ -22,7 +22,7 @@ tar_plan(
   # Load data ----
   # FIXME: temporary work-around for loading pteridocat data
   # until {pteridocat} package is live
-  tar_file(pteridocat_file, "working/2021-12-18-fow.csv"),
+  tar_file(pteridocat_file, "working/pteridocat_2022-01-07.csv"),
   pteridocat = read_csv(pteridocat_file),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
@@ -47,12 +47,6 @@ tar_plan(
     path(data_raw, "testo_sundue_2016_calibrations.csv")),
   plastid_calibration_dates = load_calibration_dates(
     plastome_calibration_dates_path),
-  # Manually selected synonyms for resolving names of plastid genes
-  tar_file(
-    sanger_names_with_mult_syns_select_path,
-    path(data_raw, "genbank_names_with_mult_syns_select.csv")),
-  sanger_names_with_mult_syns_select = read_csv(
-    sanger_names_with_mult_syns_select_path),
   # Manually curated list of raw fasta accessions to exclude from analysis
   tar_file(
     raw_fasta_exclude_list_path,
@@ -263,8 +257,6 @@ tar_plan(
     outgroups = plastome_outgroups),
   # Resolve species names in plastome metadata
   # (will drop accession if name could not be resolved)
-  # FIXME: add Lepisorus hederaceus (Christ) R.Wei & X.C.Zhang
-  # and Elaphoglossum marginatum var. marginatum to World Ferns taxonomy
   plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
   ),

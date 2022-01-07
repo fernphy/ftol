@@ -3202,16 +3202,16 @@ concatenate_genes <- function (dna_list) {
 #' @param plastome_metadata Dataframe with column "species" containing
 #' original species names from GenBank
 #' @param plastome_outgroups Dataframe with metadata on outgroups
-#' @param wf_ref_names Dataframe with parsed scientific names for taxonomic name resolution
+#' @param ref_names_parsed Dataframe with parsed scientific names for taxonomic name resolution
 #' of fern species; output of ts_parse_names()
-#' @param world_ferns_data Reference data for taxonomic name resolution of fern species
+#' @param ref_names_data Reference data for taxonomic name resolution of fern species
 #' extracted from Catalog of Life data; output of extract_fow_from_col()
 #' 
 #' @return Dataframe; plastome_metadata with new column `accepted_name` and `species`
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
 #' 
-resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgroups, wf_ref_names, world_ferns_data) {
+resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgroups, ref_names_parsed, ref_names_data) {
   
   ### outgroups ###
   # Fetch full scientific names for plastome outgroups
@@ -3231,9 +3231,7 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
         TRUE ~ scientific_name
       )
     ) %>%
-    assert(not_na, scientific_name)  #%>%
-    # Convert taxid back to numeric
-    # mutate(taxid = parse_number(taxid))
+    assert(not_na, scientific_name)
 
   ### ferns ###
   # Specify names to query against World Ferns for taxonomic name resolution of ferns
@@ -3256,11 +3254,12 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
   # Match names to world ferns
   match_results_plastome <- ts_match_names(
     query = plastome_names_query$query_name, 
-    reference = wf_ref_names,
-    max_dist = 5, match_no_auth = TRUE, match_canon = TRUE)
+    reference = ref_names_parsed,
+    max_dist = 5, match_no_auth = TRUE, 
+    match_canon = TRUE, collapse_infra = TRUE)
 
   # Resolve synonyms
-  match_results_plastome_resolved <- ts_resolve_names(match_results_plastome, world_ferns_data)
+  match_results_plastome_resolved <- ts_resolve_names(match_results_plastome, ref_names_data)
 
   ### Combine results ###
   plastome_metadata_ferns_resolved <-
@@ -3292,7 +3291,7 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
   verify(all(plastome_metadata_raw$accession %in% accession)) %>%
   # Drop any without resolved species
   filter(!is.na(resolved_name)) %>%
-  # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
+  # Parse resolved name to just species (drops infrasp taxon)
   mutate(
     rgnparser::gn_parse_tidy(resolved_name) %>% 
       select(taxon = canonicalsimple)
@@ -3302,8 +3301,6 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
     assert(not_na, genus, sp_epithet) %>%
     mutate(species = paste(genus, sp_epithet, sep = "_")) %>%
   select(species, accession, subtype, subname, slen, outgroup)
-  
-
 }
 
 #' Combine GenBank rbcL and plastome-derived rbcL sequences
@@ -5024,7 +5021,7 @@ parse_tax_list <- function(record) {
   # If other sci names are given, one of them should be the species name
   if(!is.null(sci_names)) 
     acc_sci_names_dat <- tibble(scientific_name = sci_names) %>%
-    mutate(species = str_extract(scientific_name, accepted_species)) %>%
+    mutate(species = str_extract(scientific_name, stringr::fixed(accepted_species))) %>%
     filter(!is.na(species)) %>%
     mutate(accepted = TRUE)
   
