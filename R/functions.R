@@ -2354,7 +2354,9 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
   assertthat::assert_that(assertthat::is.string(end_date))
   
   # Format GenBank query: all ferns plastomes within specified dates
-  ingroup_query = glue('genome AND Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND (partial OR complete) AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])')
+  # There is no formal category for "whole plastome" in genbank, so use size
+  # cutoff: >7000 and < 500000 bp
+  ingroup_query = glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
   
   # Fetch standard metadata
   ingroup_metadata_raw <- fetch_metadata(
@@ -2367,13 +2369,6 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
     # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
     assert(is_uniq, accession) %>%
-    # "genome" hit in some unexpeted places, so filter out short seqs
-    # that are not actually plastomes
-    filter(slen > 7000) %>%
-    # Filter out a strangely formatted accession that causes errors
-    # with biofiles::getFeatures() and biofiles::filter()
-    # (AP004638, Psilotum nudum)
-    filter(accession != "AP004638") %>%
     # Remove GenBank duplicate sequences starting with "NC_"
     # - consider accessions with same species and seq length to be same
     # if they only differ in accession.
