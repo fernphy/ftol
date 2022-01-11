@@ -2337,18 +2337,44 @@ tidy_genbank_metadata <- function(data) {
   
 }
 
-#' Download plastome metadata
+#' Format a query string to download fern plastome sequences from GenBank
 #'
+#' There is no strict definition of plastome, so consider anything >7000 bp
+#' to be "plastome"
+#'
+#' @param start_date String; start date to include sequences
+#' @param end_date String; end date to include sequences
+#'
+#' @return String
+format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, strict = FALSE) {
+  if(isTRUE(strict)) {
+    # require "partial or complete" "genome" if strict
+    # exclude one accession that causes problems for extracting genes AP004638
+    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND (partial OR complete) AND genome NOT AP004638') # no lint
+  } else {
+    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
+  }
+  query
+}
+
+#' Download plastome metadata for ferns
+#' 
+#' Using `strict = TRUE` will (most likely) restrict search to properly
+#' annotated plastomes, but fewer sequences. `strict = FALSE` will result in
+#' more hits, but some may not be annotated (at all)
+#' 
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
+#' @param strict Logical; use strict version of search string or not?
 #' @param outgroups Dataframe of genbank accession numbers
-#' and species names to use for outgroups (taxa that wouldn't
+#' and species names to use for outgroups (non-fern taxa that wouldn't
 #' be captured by the query)
 #'
 #' @return Tibble of GenBank metadata combining the results of
 #' the query and the outgroups.
 #' 
-download_plastome_metadata <- function (start_date = "1980/01/01", end_date, outgroups) {
+download_plastome_metadata <- function (start_date = "1980/01/01", end_date, 
+  strict, outgroups) {
   
   assertthat::assert_that(assertthat::is.string(start_date))
   assertthat::assert_that(assertthat::is.string(end_date))
@@ -2356,8 +2382,9 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date, out
   # Format GenBank query: all ferns plastomes within specified dates
   # There is no formal category for "whole plastome" in genbank, so use size
   # cutoff: >7000 and < 500000 bp
-  ingroup_query = glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
-  
+  ingroup_query = format_fern_plastome_query(start_date = start_date,
+    end_date = end_date, strict = strict)
+
   # Fetch standard metadata
   ingroup_metadata_raw <- fetch_metadata(
     query = ingroup_query,
@@ -2477,7 +2504,34 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     gene = names(extracted_genes_filtered),
     seq = extracted_genes_filtered
     )
-  
+}
+
+#' Rename plastome sequences
+#'
+#' Renames plastome sequences downloaded from GenBank by their resolved names
+#' from pteridocat
+#'
+#' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from 
+#' GenBank
+#' @param plastome_metadata_raw_renamed Tibble; metadata of sequences
+#' including resolved names.
+#'
+#' @return Tibble (seqtbl); gene sequences downloaded from 
+#' GenBank with column "accession" including species_accession
+#'
+rename_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_raw_renamed) {
+  plastome_genes_raw %>%
+    left_join(
+      select(plastome_metadata_raw_renamed, species, accession),
+      by = "accession"
+    ) %>%
+    verify(nrow(.) == nrow(plastome_genes_raw)) %>%
+    assert(not_na, everything()) %>%
+    transmute(
+      accession = glue::glue("{species}_{accession}") %>% as.character(),
+      seq,
+      target = gene
+    )
 }
 
 #' Helper function to filter accessions missing > 50% of genes
@@ -2662,6 +2716,29 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
   # Combine genes and spacers
   bind_rows(gene_selection, spacer_selection)
   
+}
+
+#' Trim aligned plastome genes
+#'
+#'
+#' @param plastome_genes_aligned Tibble (seqtbl); aligned plastome genes.
+#'
+#' @return Trimmed, aligned plastome genes
+#' 
+trim_plastome_genes <- function(plastome_genes_aligned) {
+  plastome_genes_aligned %>% 
+     select(seq, target, accession) %>%
+     group_by(target) %>%
+     nest(data = c(seq, accession)) %>%
+     mutate(
+       align_trimmed = map(
+         data, trimal, 
+         other_args = c("-gt", "0.05"), 
+         return_seqtbl = FALSE, 
+         name_col_in = "accession"
+       )) %>%
+     ungroup() %>%
+     select(-data)
 }
 
 # Combine and align Sanger and plastome sequences ----
@@ -3295,7 +3372,7 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
   separate(taxon, into = c("genus", "sp_epithet", "infrasp_epithet"), sep = "_", remove = FALSE, fill = "right") %>%
     assert(not_na, genus, sp_epithet) %>%
     mutate(species = paste(genus, sp_epithet, sep = "_")) %>%
-  select(species, accession, subtype, subname, slen, outgroup)
+  select(sci_name = resolved_name, species, accession, subtype, subname, slen, outgroup)
 }
 
 #' Combine GenBank rbcL and plastome-derived rbcL sequences
