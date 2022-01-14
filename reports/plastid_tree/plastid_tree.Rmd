@@ -59,7 +59,7 @@ clade_data <-
   filter(taxonomicStatus == "accepted name") %>%
   # Join with tips of tree
   select(scientificName, genus, specificEpithet, infraspecificEpithet) %>%
-  mutate(taxon = jntools::paste3(genus, specificEpithet, infraspecificEpithet, sep = "_")) %>%
+  mutate(taxon = paste3(genus, specificEpithet, infraspecificEpithet, sep = "_")) %>%
   mutate(in_tree = taxon %in% phy$tip.label) %>%
   # Make sure at least most of the tips match
   verify(sum(in_tree) > .9*length(phy$tip.label)) %>%

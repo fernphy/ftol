@@ -365,13 +365,6 @@
       "Repository": "CRAN",
       "Hash": "543776ae6848fde2f48ff3816d0628bc"
     },
-    "bib2df": {
-      "Package": "bib2df",
-      "Version": "1.1.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "f2cf33875b859a757ad919a4471cdc0f"
-    },
     "biomaRt": {
       "Package": "biomaRt",
       "Version": "2.50.0",
@@ -637,6 +630,18 @@
       "Repository": "CRAN",
       "Hash": "f697db7d92b7028c4b3436e9603fb636"
     },
+    "docthis": {
+      "Package": "docthis",
+      "Version": "0.1.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "mdlincoln",
+      "RemoteRepo": "docthis",
+      "RemoteRef": "master",
+      "RemoteSha": "0f2463491d9d79d724a3c87a464abd6586572ebe",
+      "Hash": "d2699afd2fb86a5fb981d086b18f909b"
+    },
     "dplyr": {
       "Package": "dplyr",
       "Version": "1.0.7",
@@ -657,13 +662,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "bb0eec2fe32e88d9e2836c2f73ea2077"
-    },
-    "english": {
-      "Package": "english",
-      "Version": "1.2-5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "0034125bf70da4d2927259af7fe108c5"
     },
     "evaluate": {
       "Package": "evaluate",
@@ -935,13 +933,6 @@
       "Repository": "CRAN",
       "Hash": "7146fea4685b4252ebf478978c75f597"
     },
-    "humaniformat": {
-      "Package": "humaniformat",
-      "Version": "0.6.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "d521cf9db39ca79250a00029661fb7cd"
-    },
     "igraph": {
       "Package": "igraph",
       "Version": "1.2.5",
@@ -983,18 +974,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "7eb42c3bb09e2019b97de69d2ea9dfff"
-    },
-    "jntools": {
-      "Package": "jntools",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "joelnitta",
-      "RemoteRepo": "jntools",
-      "RemoteRef": "master",
-      "RemoteSha": "7494d3ba26e989f76babf13625ebd2fa070e1743",
-      "Hash": "8f98f256264377177aedac3ac826688d"
     },
     "jsonlite": {
       "Package": "jsonlite",
@@ -1198,18 +1177,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "e367efa1f0d52cb753bdb9163b63f528"
-    },
-    "pferns": {
-      "Package": "pferns",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "pferns",
-      "RemoteUsername": "joelnitta",
-      "RemoteRef": "master",
-      "RemoteSha": "b2bd3462286c4d36fd5b8fb7b0878581589fb349",
-      "Hash": "81c43e6aeee94cfd5f89ba13a3749fd0"
     },
     "phangorn": {
       "Package": "phangorn",
