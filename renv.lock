@@ -835,6 +835,13 @@
       "Repository": "CRAN",
       "Hash": "f3aefccc1cc50de6338146b62f115de8"
     },
+    "gittargets": {
+      "Package": "gittargets",
+      "Version": "0.0.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "5839d442af78fa6a0b9437a9840c1c0f"
+    },
     "globals": {
       "Package": "globals",
       "Version": "0.14.0",
