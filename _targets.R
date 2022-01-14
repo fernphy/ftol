@@ -37,6 +37,8 @@ tar_plan(
     path(data_raw, "target_coding_genes.txt")),
   target_plastome_genes = read_lines(target_plastome_genes_path),
   # Outgroup plastome accessions
+  # (Some species names later get updated in plastome_metadata_renamed due to
+  # pulling most recent taxonomy from NCBI)
   tar_file(
     plastome_outgroups_path,
     path(data_raw, "plastome_outgroups.csv")),
@@ -265,12 +267,12 @@ tar_plan(
     strict = FALSE),
   # Resolve species names in plastome metadata
   # (drops accession if name could not be resolved)
-  plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
+  plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
   ),
   # Download plastome sequences
   # FASTA files for each accession in seqtbl format
-  target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
+  target_plastome_accessions = unique(plastome_metadata_renamed$accession),
   plastome_fasta = read_genbank(target_plastome_accessions),
   # Extract target genes and spacers with superCRUNCH
   tar_target(
@@ -287,7 +289,7 @@ tar_plan(
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
     plastome_genes_raw,
-    plastome_metadata_raw_renamed,
+    plastome_metadata_renamed,
     fern_plastome_loci_extract_res),
 
   # Align spacers ----
@@ -298,7 +300,7 @@ tar_plan(
       sanger_accessions_selection,
       sanger_seqs_combined_filtered,
       plastome_seqs_combined_filtered,
-      ppgi_taxonomy, plastome_metadata_raw_renamed,
+      ppgi_taxonomy, plastome_metadata_renamed,
       target_spacers
     ),
     pattern = map(target_spacers),

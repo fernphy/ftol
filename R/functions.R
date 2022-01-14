@@ -2513,16 +2513,16 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 #'
 #' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from 
 #' GenBank
-#' @param plastome_metadata_raw_renamed Tibble; metadata of sequences
+#' @param plastome_metadata_renamed Tibble; metadata of sequences
 #' including resolved names.
 #'
 #' @return Tibble (seqtbl); gene sequences downloaded from 
 #' GenBank with column "accession" including species_accession
 #'
-rename_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_raw_renamed) {
+rename_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
   plastome_genes_raw %>%
     left_join(
-      select(plastome_metadata_raw_renamed, species, accession),
+      select(plastome_metadata_renamed, species, accession),
       by = "accession"
     ) %>%
     verify(nrow(.) == nrow(plastome_genes_raw)) %>%
@@ -2633,18 +2633,18 @@ filter_majority_missing <- function (
 #'
 #' @param plastome_genes_raw Dataframe of plastid genes. Each row is
 #' a sequence for a gene for a plastome accession.
-#' @param plastome_metadata_raw_renamed Associated plastome metadata (species names)
+#' @param plastome_metadata_renamed Associated plastome metadata (species names)
 #' @param fern_plastome_loci_extract_res Output of extract_from_ref_blast(); spacer sequences
 #' in plastomes
 #'
-select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_loci_extract_res) {
+select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed, fern_plastome_loci_extract_res) {
   
   # Check that input names match arguments
   check_args(match.call())
 
   # Extract list of outgroup accessions to keep in gene selection
   outgroup_accs <-
-    plastome_metadata_raw_renamed %>%
+    plastome_metadata_renamed %>%
     filter(outgroup == TRUE) %>%
     assert(not_na, accession) %>%
     pull(accession)
@@ -2654,7 +2654,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
   fern_plastome_loci_extract_res %>%
     clean_extract_res("dc-megablast") %>%
     left_join(
-      select(plastome_metadata_raw_renamed, accession, species),
+      select(plastome_metadata_renamed, accession, species),
       by = "accession"
     ) %>%
     # Check no rows are duplicated, all accs have species
@@ -2769,7 +2769,7 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 #'
 #' @param plastid_genes_unaligned_combined Combined Sanger and plastome sequences
 #' @param ppgi_taxonomy PPGI taxonomy
-#' @param plastome_metadata_raw_renamed Plastome metadata with resolved taxonomic names
+#' @param plastome_metadata_renamed Plastome metadata with resolved taxonomic names
 #' @param target_select Name of selected target region
 #'
 #' @return seqtbl
@@ -2778,7 +2778,7 @@ assign_tax_clusters <- function(
   sanger_accessions_selection,
   sanger_seqs_combined_filtered,
   plastome_seqs_combined_filtered, 
-  ppgi_taxonomy, plastome_metadata_raw_renamed,
+  ppgi_taxonomy, plastome_metadata_renamed,
   target_select) {
 
   # Combine sanger and plastome sequences
@@ -2790,7 +2790,7 @@ assign_tax_clusters <- function(
     filter(target == target_select) %>%
     # Exclude outgroups
     anti_join(
-      filter(plastome_metadata_raw_renamed, outgroup == TRUE), by = "species"
+      filter(plastome_metadata_renamed, outgroup == TRUE), by = "species"
     ) %>%
     # Add taxonomy
     mutate(genus = str_split(species, "_") %>% map_chr(1)) %>%
