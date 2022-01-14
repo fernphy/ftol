@@ -2551,20 +2551,34 @@ get_gene_lengths <- function (seq_list) {
 #'
 #' @param gene_lengths_best Dataframe of 'best' (ie, least missing data)
 #' plastid genes
+#' @param genes_keep Names of genes (loci) to retain regardless of number
+#' of accessions recovered
+#' @param accs_keep Names of accessions to retain regardless of number of
+#' genes recovered
 #'
 #' @return Dataframe
 #'
-filter_majority_missing <- function (gene_lengths_best) {
+filter_majority_missing <- function (
+  gene_lengths_best,
+  genes_keep = c("rps4-trnS", "trnL-trnF"),
+  accs_keep) {
   
-  # Helper function to to filter accessions missing > 50% of genes
-  # and genes absent from > 50% of sequences.
+  # Make sure genes_keep and accs_keep are valid
+  assertthat::assert_that(
+    all(genes_keep %in% gene_lengths_best$gene),
+    msg = "genes_keep not in gene_lengths_best$gene"
+  )
+  assertthat::assert_that(
+    all(accs_keep %in% gene_lengths_best$accession),
+    msg = "accs_keep not in gene_lengths_best$accession"
+  )
   
-  # Assume gene is missing if number of base pairs is 2 or less
-  # (not sure why but there are few of these, then most genes have at least ~40 bp)
+  # Count number of accessions recovered per gene and flag accessions to remove
   missing_acc_summ <-
     gene_lengths_best %>%
+    # Assume gene is missing if < 10 bp
     mutate(missing = case_when(
-      slen < 2 ~ TRUE,
+      slen < 10 ~ TRUE,
       TRUE ~ FALSE
     )) %>%
     group_by(gene) %>%
@@ -2572,17 +2586,21 @@ filter_majority_missing <- function (gene_lengths_best) {
       n_missing_accs = sum(missing),
       .groups = "drop"
     ) %>%
+    # Set gene to keep if present in >50% of accessions
+    # (or in keep list)
     mutate(
       keep_gene = case_when(
         n_missing_accs < 0.5 * n_distinct(gene_lengths_best$accession) ~ TRUE,
+        gene %in% genes_keep ~ TRUE,
         TRUE ~ FALSE
       )
     )
   
+  # Count number of genes recovered per accession and flag genes to remove
   missing_gene_summ <-
     gene_lengths_best %>%
     mutate(missing = case_when(
-      slen < 2 ~ TRUE,
+      slen < 10 ~ TRUE,
       TRUE ~ FALSE
     )) %>%
     group_by(accession) %>%
@@ -2593,14 +2611,18 @@ filter_majority_missing <- function (gene_lengths_best) {
     mutate(
       keep_acc = case_when(
         n_missing_genes < 0.5 * n_distinct(gene_lengths_best$gene) ~ TRUE,
+        accession %in% accs_keep ~ TRUE,
         TRUE ~ FALSE
       )
     )
   
+  # Filter genes
   gene_lengths_best %>%
     left_join(missing_acc_summ, by = "gene") %>%
     left_join(missing_gene_summ, by = "accession") %>%
-    filter(keep_gene, keep_acc)
+    filter(keep_gene == TRUE, keep_acc == TRUE) %>%
+    select(-keep_gene, -keep_acc) %>%
+    assert_rows(col_concat, is_uniq, accession, gene, species)
 }
 
 #' Select a list of plastid sequences to use from a list of plastid genes and
@@ -2612,23 +2634,33 @@ filter_majority_missing <- function (gene_lengths_best) {
 #' @param plastome_genes_raw Dataframe of plastid genes. Each row is
 #' a sequence for a gene for a plastome accession.
 #' @param plastome_metadata_raw_renamed Associated plastome metadata (species names)
-#' @param fern_plastome_spacer_extract_res Output of extract_from_ref_blast(); spacer sequences
+#' @param fern_plastome_loci_extract_res Output of extract_from_ref_blast(); spacer sequences
 #' in plastomes
 #'
-select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_spacer_extract_res) {
+select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_renamed, fern_plastome_loci_extract_res) {
   
   # Check that input names match arguments
   check_args(match.call())
 
-  # Issue warning if any plastomes get dropped because of missing species
-  missing_species <-
+  # Extract list of outgroup accessions to keep in gene selection
+  outgroup_accs <-
     plastome_metadata_raw_renamed %>%
-    filter(is.na(species)) %>%
+    filter(outgroup == TRUE) %>%
+    assert(not_na, accession) %>%
     pull(accession)
 
-  if(length(missing_species) > 0) message(
-    glue::glue("The following plastome accessions lack species name and are excluded: {paste(missing_species, collapse = ', ')}")
-  )
+  # Extract sequences from superCRUNCH results
+  plastome_genes_raw <-
+  fern_plastome_loci_extract_res %>%
+    clean_extract_res("dc-megablast") %>%
+    left_join(
+      select(plastome_metadata_raw_renamed, accession, species),
+      by = "accession"
+    ) %>%
+    # Check no rows are duplicated, all accs have species
+    assert(not_na, everything()) %>%
+    assert_rows(col_concat, is_uniq, accession, target, species) %>%
+    rename(gene = target)
     
   # Make tibble of gene lengths by accession, including species and voucher
   gene_lengths <- 
@@ -2639,10 +2671,8 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
     select(-n) %>%
     # Add column for sequence length
     mutate(slen = map_dbl(seq, ~length(.[[1]]))) %>%
-    # Add species column
-    left_join(select(plastome_metadata_raw_renamed, accession, species), by = "accession") %>%
-    filter(!is.na(species)) %>%
-    assert(not_na, species, gene, accession, slen)
+    select(-seq) %>%
+    assert(not_na, everything())
   
   # Missing genes (length 0) are not in the original sequences list,
   # so add these by crossing all combinations of accession and gene
@@ -2684,38 +2714,27 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_raw_rena
     slice_max(n = 1, order_by = total_rel_len, with_ties = FALSE) %>%
     ungroup
   
-  gene_selection <-
-    # Assemble final selection for genes: filtered plastome genes, one accession per species
+  # Assemble final selection: filtered plastome loci, one accession per species
     gene_lengths %>%
-    # Make a table of (relative) gene lengths for
-    # the best accession per species
-    inner_join(select(best_accessions_by_species, accession), by = "accession") %>%
-    left_join(max_lengths, by = "gene") %>%
-    mutate(rel_len = slen / max_length) %>%
-    assert(not_na, everything()) %>%
-    # Filter out accessions missing > 50% of genes
-    # and genes absent from > 50% of sequences
-    filter_majority_missing() %>%
-    filter(slen > 1) %>%
-    select(species, accession, gene) %>%
-    left_join(plastome_genes_raw, by = c("accession", "gene")) %>%
-    assert(not_na, everything()) %>%
-    rename(target = gene)
+      # Make a table of (relative) gene lengths for
+      # the best accession per species
+      inner_join(select(best_accessions_by_species, accession), by = "accession") %>%
+      left_join(max_lengths, by = "gene") %>%
+      mutate(rel_len = slen / max_length) %>%
+      assert(not_na, everything()) %>%
+      assert_rows(col_concat, is_uniq, accession, gene, species) %>%
+      # Filter out accessions missing > 50% of genes
+      # and genes absent from > 50% of sequences
+      filter_majority_missing(accs_keep = outgroup_accs) %>%
+      filter(slen > 1) %>%
+      # Add sequence
+      select(species, accession, gene) %>%
+      left_join(
+        select(plastome_genes_raw, accession, gene, seq),
+        by = c("accession", "gene")) %>%
+      assert(not_na, everything()) %>%
+      rename(target = gene)
 
-  # Add spacers
-  spacer_selection <-
-  fern_plastome_spacer_extract_res %>%
-    # Extract sequences from extract_from_ref_blast() results
-    clean_extract_res("dc-megablast") %>%
-    # Add species; also filter to only accessions in `gene_selection`
-    inner_join(
-      unique(select(gene_selection, accession, species)), by = "accession"
-    ) %>%
-    assert(not_na, species)
-
-  # Combine genes and spacers
-  bind_rows(gene_selection, spacer_selection)
-  
 }
 
 #' Trim aligned plastome genes
@@ -3848,6 +3867,76 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
       cluster = "combined",
       align_trimmed = list(alignment)
     )
+}
+
+#' Concatenate plastid and sanger genes
+#'
+#' For plastome dataset, will include only species with whole plastome data
+#' 
+#' For Sanger dataset, will include on the genes in `target_loci`
+#'
+#' @param plastid_genes_aligned_trimmed Tibble with list-column of trimmed
+#' DNA alignments; each row is a target gene.
+#' @param plastid_spacers_aligned_trimmed Tibble with list-column of trimmed
+#' DNA alignments; each row is a target spacer.
+#' @param target_loci Character vector of target Sanger loci.
+#' @param type_select Type of dataset to filter to: "sanger" or "plastome".
+#'
+#' @return Tibble with list-column of trimmed DNA alignments (either Sanger
+#' or plastome data)
+#'
+concatenate_plastid_sanger <- function(
+  plastid_genes_aligned_trimmed,
+  plastid_spacers_aligned_trimmed, target_loci,
+  type_select) {
+  
+  # Make list of plastome species:
+  # those in genes that are not target Sanger loci
+  plastome_species <-
+    plastid_genes_aligned_trimmed %>%
+    filter(!target %in% target_loci) %>%
+    mutate(species = map(align_trimmed, rownames)) %>%
+    select(species) %>%
+    unnest(species) %>%
+    unique() %>%
+    pull(species)
+  
+  # Filter to plastome alignments by species
+  if (type_select == "plastome") {
+    res <- bind_rows(
+      plastid_genes_aligned_trimmed,
+      plastid_spacers_aligned_trimmed) %>%
+      select(-cluster) %>%
+      mutate(
+        align_trimmed = map(
+          align_trimmed,
+          ~magrittr::extract(., rownames(.) %in% plastome_species, ))
+      )
+    # Filter to Sanger alignments by gene name
+  } else if (type_select == "sanger") {
+    res <- bind_rows(
+      plastid_genes_aligned_trimmed,
+      plastid_spacers_aligned_trimmed) %>%
+      select(-cluster) %>%
+      filter(target %in% target_loci)
+  } else (stop("Must choose 'plastome' or 'sanger' for 'type_select'"))
+  
+  res
+}
+
+#' Concatenate sequences into ape format
+#'
+#' @param aln_tbl Tibble with list-column of DNA alignments.
+#' @param aln_col Name of column with DNA alignments.
+#'
+#' @return List of class "DNAbin"
+#'
+concatenate_to_ape <- function(aln_tbl, aln_col = "align_trimmed") {
+  do.call(
+    ape::cbind.DNAbin,
+    c(aln_tbl[[aln_col]],
+    fill.with.gaps = TRUE)
+  )
 }
 
 # Check gene trees ----
