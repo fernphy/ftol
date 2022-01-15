@@ -20,18 +20,26 @@ tar_plan(
     "atpA", "atpB", "matK", "rbcL", "rps4",
     "trnL-trnF", "rps4-trnS"),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2021/10/26",
+  date_cutoff = "2021/12/31",
+  # - Manually curated list of GenBank accessions to exclude from analysis
+  tar_file(
+    accs_exclude_path,
+    path(data_raw, "accs_exclude.csv")),
+  accs_exclude = read_csv(accs_exclude_path),
 
-  # Sanger: Assemble initial reference sequences ----
-  # These will be used for extracting target regions with BLAST.
-  #
-  # Download raw gene sequences for each target locus
+  # Sanger: Assemble initial reference sequences by parsing flatfiles ----
+  # These will be used for extracting target regions with superCRUNCH
+
+  # Download raw gene sequences for each target locus from GenBank
   tar_target(
     fern_ref_seqs_raw,
     fetch_fern_ref_seqs(
-      target = target_loci, end_date = date_cutoff,
-      # Only include intron for trnL-trnF
+      target = target_loci,
+      end_date = date_cutoff,
+      # Only require intron for trnL-trnF
       req_intron = str_detect(target_loci, "trnL-trnF"),
+      strict = FALSE,
+      accs_exclude = accs_exclude$accession,
       workers = 48),
     pattern = map(target_loci),
     deployment = "main"
@@ -64,12 +72,16 @@ tar_plan(
     pattern = map(fern_ref_seqs_trimmed)
   ),
 
-  # Sanger: Download and extract sequences ----
+  # Sanger: Download and extract sequences with superCRUNCH ----
+
   # Download raw fasta files
   tar_target(
     fern_sanger_seqs_raw,
     fetch_fern_sanger_seqs(
-      target_loci, end_date = date_cutoff, accs_exclude_list = NULL),
+      target_loci,
+      end_date = date_cutoff,
+      accs_exclude = accs_exclude$accession,
+      strict = FALSE),
     pattern = map(target_loci),
     # don't run in parallel, or will get HTTP status 429 errors
     deployment = "main"
@@ -90,13 +102,18 @@ tar_plan(
   # Fetch metadata
   tar_target(
     raw_meta_all,
-    fetch_fern_metadata(target_loci, end_date = date_cutoff),
+    fetch_fern_metadata(
+      target_loci,
+      end_date = date_cutoff,
+      accs_exclude = accs_exclude$accession,
+      strict = FALSE),
     pattern = map(target_loci),
     deployment = "main"
   ),
   raw_meta = unique(raw_meta_all),
 
-  # Sanger: Align sequences, second round ----
+  # Sanger: Clean final set of reference sequences ----
+
   # Filter to one best (longest) sequence per genus per target locus
   fern_ref_seqs_2 = filter_raw_fasta_by_genus(raw_fasta, raw_meta),
   # Align each target locus
@@ -110,8 +127,10 @@ tar_plan(
     align_seqs_tbl(fern_ref_seqs_grouped_2),
     pattern = map(fern_ref_seqs_grouped_2)
   ),
-  # Trim sequences (lightly)
-  fern_ref_seqs_trimmed_2 = trim_genes(fern_ref_seqs_aligned_2),
+  # Rename sequences in alignment and trim genes
+  fern_ref_seqs_trimmed_2 = fern_ref_seqs_aligned_2 %>%
+    mutate(species = glue("{species}_{accession}")) %>%
+    trim_genes(),
   # Write out final reference sequence alignments to raw data folder
   # to will use in main _targets.R plan
   tar_file(
@@ -119,7 +138,7 @@ tar_plan(
     write_fasta_from_tbl(
       fern_ref_seqs_trimmed_2,
       dir = fs::path(data_raw, "ref_aln"),
-      prefix = "ref_aln_",
+      prefix = "",
       postfix = ".fasta"),
     pattern = map(fern_ref_seqs_trimmed_2)
   ),
@@ -141,7 +160,9 @@ tar_plan(
       postfix = ".tree"),
     pattern = map(fern_ref_seqs_tree_2)
   ),
-  # Plastome: extract genes to use as reference ----
+
+  # Plastome: Prep for assembling plastome genes ----
+
   # Load outgroup plastome accessions
   tar_file(
     plastome_outgroups_path,
@@ -153,29 +174,34 @@ tar_plan(
     target_plastome_genes_path,
     path(data_raw, "target_coding_genes.txt")),
   target_plastome_genes_all = read_lines(target_plastome_genes_path),
-  # exclude target Sanger genes
+  # Exclude target Sanger genes
+  # (since already made above in Sanger workflow)
   target_plastome_genes = target_plastome_genes_all[
     !target_plastome_genes_all %in% target_loci
   ],
-  # Load pteridocat
+  # Load pteridocat taxonomic reference
   # FIXME: temporary work-around for loading pteridocat data
   # until {pteridocat} package is live
   tar_file(pteridocat_file, "working/pteridocat_2022-01-07.csv"),
   pteridocat = read_csv(pteridocat_file),
   # Parse reference names
   pc_ref_names = ts_parse_names(unique(pteridocat$scientificName)),
-  # Download plastome metadata (accessions and species)
+
+  # Plastome: extract genes to use as reference ----
+
+  # Download metadata (accession numbers and species names) from GenBank
   plastome_metadata_raw = download_plastome_metadata(
     end_date = date_cutoff,
     outgroups = plastome_outgroups,
-    strict = TRUE),
-  # Resolve species names in plastome metadata
+    strict = TRUE,
+    accs_exclude = accs_exclude$accession),
+  # Resolve species names in metadata
   # (will drop accession if name could not be resolved)
-  plastome_metadata_raw_renamed = resolve_pterido_plastome_names(
+  plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
   ),
-  # Download plastome genes
-  target_plastome_accessions = unique(plastome_metadata_raw_renamed$accession),
+  # Download plastome gene sequences from GenBank
+  target_plastome_accessions = unique(plastome_metadata_renamed$accession),
   tar_target(
     plastome_genes_raw,
     fetch_fern_genes_from_plastome(
@@ -183,12 +209,14 @@ tar_plan(
       accession = target_plastome_accessions),
     pattern = map(target_plastome_accessions),
     deployment = "main"),
-  # Rename accessions ('species_accession'), group by gene
+  # Rename accessions (to 'species_accession'),
+  # filter to one representative sequence per genus,
+  # group by gene
   tar_group_by(
     plastome_genes_unaligned,
-    rename_raw_plastome_seqs(
+    rename_and_filter_raw_plastome_seqs(
       plastome_genes_raw,
-      plastome_metadata_raw_renamed
+      plastome_metadata_renamed
       ),
     target # here, 'target' refers to the gene
   ),
@@ -199,17 +227,17 @@ tar_plan(
     pattern = map(plastome_genes_unaligned)
   ),
   # Trim alignments
-  plastome_genes_unaligned_trimmed = trim_plastome_genes(
+  plastome_genes_aligned_trimmed = trim_plastome_genes(
     plastome_genes_aligned),
   # Write out final reference sequence alignments to raw data folder
   # to will use in main _targets.R plan
   tar_file(
     plastome_genes_ref_out,
     write_fasta_from_tbl(
-      plastome_genes_unaligned_trimmed,
+      plastome_genes_aligned_trimmed,
       dir = fs::path(data_raw, "ref_aln"),
-      prefix = "ref_aln_",
+      prefix = "",
       postfix = ".fasta"),
-    pattern = map(plastome_genes_unaligned_trimmed)
+    pattern = map(plastome_genes_aligned_trimmed)
   )
 )

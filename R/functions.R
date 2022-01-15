@@ -97,6 +97,7 @@ load_ref_aln <- function(ref_aln_files) {
 #' @param target String; name of spacer region
 #' @param start_date String; start date to include sequences
 #' @param end_date String; end date to include sequences
+#' @param strict Logical; should the search be strict with regards to gene name?
 #'
 #' @return String
 format_fern_query <- function(target, start_date = "1980/01/01", end_date, strict = FALSE) {
@@ -2537,7 +2538,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 #' Rename plastome sequences
 #'
 #' Renames plastome sequences downloaded from GenBank by their resolved names
-#' from pteridocat
+#' from pteridocat, filters to one best (longest) sequence per genus
 #'
 #' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from 
 #' GenBank
@@ -2547,14 +2548,25 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 #' @return Tibble (seqtbl); gene sequences downloaded from 
 #' GenBank with column "accession" including species_accession
 #'
-rename_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
+rename_and_filter_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
   plastome_genes_raw %>%
+    # Add resolved names  
     left_join(
       select(plastome_metadata_renamed, species, accession),
       by = "accession"
     ) %>%
     verify(nrow(.) == nrow(plastome_genes_raw)) %>%
     assert(not_na, everything()) %>%
+    # Add sequence length
+    mutate(
+      seqln = map_dbl(seq, ~length(.[[1]])),
+      genus = str_split(species, "_") %>% map_chr(1)) %>%
+    verify(all(str_detect(genus, " ", negate = TRUE))) %>%
+    assert(not_na, everything()) %>%
+    group_by(gene, genus) %>%
+    # Filter to longest sequence per genus
+    slice_max(order_by = "seqln", n = 1, with_ties = FALSE) %>%
+    ungroup() %>%
     transmute(
       accession = glue::glue("{species}_{accession}") %>% as.character(),
       seq,
