@@ -497,38 +497,49 @@ extract_gene <- safely(extract_gene_fragile)
 #' @param end_date End date for filtering GenBank accessions
 #' @param req_intron Logical; should the intronic region be included?
 #' Only applies to trnL-trnF
-#' @param workers Number of CPUs to run in parallel during parsing of GenBank flatfile 
+#' @param workers Number of CPUs to run in parallel during parsing of GenBank flatfile
+#' @param strict Logical; use strict version of search string or not?
+#' @param accs_exclude Character vector of GenBank accessions to exclude
+#' from results
 #'
 #' @return Tibble of DNA sequences
-fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, req_intron = FALSE, workers) {
+fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, 
+  req_intron = FALSE, workers, strict = FALSE, accs_exclude = NULL) {
 
    # Check if query target is a spacer region
   is_spacer <- str_detect(target, "-")
 
   # Download sequences in GenBank flatfile format (plain text)
-  gb_raw <-  
+  gb_raw <-
   # Format query
   format_fern_query(
     target = target,
-    start_date = start_date, 
+    start_date = start_date,
     end_date = end_date,
-    strict = FALSE) %>%
+    strict = strict) %>%
   # Fetch raw GenBank flatfile
   fetch_gb_raw(query = ., ret_type = "gb")
 
   # Parse features
   # Result will be sequences in a tibble
   if(is_spacer) {
-    parse_gb_spacer(
+    res <- parse_gb_spacer(
         gb_raw = gb_raw, target = target, req_intron = req_intron,
         workers = workers
     )
   } else {
-    parse_gb_gene(
+    res <- parse_gb_gene(
         gb_raw = gb_raw, target = target,
         workers = workers
     )
   }
+
+  # Remove accessions in exclude list
+  if (!is.null(accs_exclude)) {
+    res$seq[[1]] <- filter(res$seq[[1]], !accession %in% accs_exclude)
+  }
+
+  res
 
 }
 
@@ -562,43 +573,38 @@ filter_ref_seqs <- function(fern_ref_seqs_raw) {
 #' @param target Name of target
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
-#' @param accs_exclude_list Data frame with accession numbers to
-#' exclude from results, including columns "gene" (matching target) and "accession"
+#' @param accs_exclude Character vector of accessions to exclude
 #' @param terms_remove GREP string to remove from `target` when querying
+#' @param strict Logical; should the search be strict with regards to gene name?
 #'
 #' @return Dataframe with one row per sequence and columns
 #' for the sequence and accession
-#' 
+#'
 #' fetch_fern_sanger_seqs("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
-fetch_fern_sanger_seqs <- function(target, start_date = "1980/01/01", end_date, accs_exclude_list = NULL) {
+fetch_fern_sanger_seqs <- function(
+  target, start_date = "1980/01/01", end_date, accs_exclude = NULL,
+  strict = FALSE) {
 
   assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
   assertthat::assert_that(assertthat::is.string(start_date))
 
-  # Set up filter of accessions to exclude
-  accs_exclude <- NULL
-  if(!is.null(accs_exclude_list)) {
-  accs_exclude <- accs_exclude_list %>%
-    filter(gene == target) %>%
-    pull(accession)
-    }
-  if(length(accs_exclude) == 0) accs_exclude <- NULL
- 
  seqs <-
-  # Strip out special keywords from target
+  # Format query
   format_fern_query(
     target = target,
-    start_date = start_date, 
-    end_date = end_date) %>%
+    start_date = start_date,
+    end_date = end_date,
+    strict = strict) %>%
   # Download sequences
   fetch_gb_raw(ret_type = "fasta")
 
   # Exclude any accessions in exclusion list
-  if(!is.null(accs_exclude)) seqs <- seqs[!seqs %in% accs_exclude]
+  if (!is.null(accs_exclude)) seqs <- seqs[!seqs %in% accs_exclude]
 
   # Convert to tibble
-  tibble::tibble(seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = target)
+  tibble::tibble(
+    seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = target)
 
 }
 
@@ -1044,11 +1050,14 @@ fetch_genbank_refs <- function(query) {
 #' @param target Name of target
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
+#' @param accs_exclude Character vector of accessions to exclude
+#' @param strict Logical; use strict version of search string or not?
 #'
 #' @return Datarame
 #' fetch_fern_metadata("rbcL", start_date = "2018/01/01", end_date = "2018/02/01")
 #' fetch_fern_metadata("trnL-trnF_intron", start_date = "2017/01/01", end_date = "2018/02/01")
-fetch_fern_metadata <- function(target, start_date = "1980/01/01", end_date) {
+fetch_fern_metadata <- function(
+  target, start_date = "1980/01/01", end_date, accs_exclude = NULL, strict = FALSE) {
   
   assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
@@ -1059,7 +1068,7 @@ fetch_fern_metadata <- function(target, start_date = "1980/01/01", end_date) {
     target = target,
     start_date = start_date, 
     end_date = end_date,
-    strict = FALSE)
+    strict = strict)
 
   # Fetch standard metadata
   metadata <- fetch_metadata(
@@ -1070,7 +1079,14 @@ fetch_fern_metadata <- function(target, start_date = "1980/01/01", end_date) {
     # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
     assert(is_uniq, accession)
-  
+
+  # Exclude accessions in accs_exclude
+  if (!is.null(accs_exclude)) {
+    metadata <-
+      metadata %>%
+      filter(!accession %in% accs_exclude)
+  }
+
   # Also fetch reference data (publication to cite for the sequence).
   # If the title is only "Direct Submission" consider this to be NA
   # (no real pub associated with the sequence, can't match on this)
@@ -1129,7 +1145,8 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
     taxize::ncbi_get_taxon_summary(id = .) %>%
     as_tibble()
 
-  # Further format metadata with taxon names (some infrasp, but treat as species)
+  # Further format metadata with taxon names
+  # (some infrasp, but treat as species)
   meta_with_ncbi_names <-
   raw_meta %>%
     inner_join(ncbi_tax_names, by = c(taxid = "uid")) %>%
@@ -2369,12 +2386,13 @@ format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, stri
 #' @param outgroups Dataframe of genbank accession numbers
 #' and species names to use for outgroups (non-fern taxa that wouldn't
 #' be captured by the query)
+#' @param accs_exclude Character vector of GenBank accessions to exclude
 #'
 #' @return Tibble of GenBank metadata combining the results of
 #' the query and the outgroups.
 #' 
 download_plastome_metadata <- function (start_date = "1980/01/01", end_date, 
-  strict, outgroups) {
+  strict = FALSE, outgroups, accs_exclude = NULL) {
   
   assertthat::assert_that(assertthat::is.string(start_date))
   assertthat::assert_that(assertthat::is.string(end_date))
@@ -2420,14 +2438,24 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date,
     # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
     col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
   
+  # Combine ingroup and outgroup data
   outgroup_metadata <-
     outgroup_metadata_raw %>%
     rename(accession = caption) %>%
     verify(all(accession %in% outgroups$accession)) %>%
     verify(all(outgroups$accession %in% accession))
   
-  bind_rows(ingroup_metadata, outgroup_metadata)
-  
+  combined_metadata <- bind_rows(ingroup_metadata, outgroup_metadata)
+
+  # Exclude accessions in accs_exclude
+  if (!is.null(accs_exclude)) {
+    combined_metadata <-
+      combined_metadata %>%
+      filter(!accession %in% accs_exclude)
+  }
+
+  combined_metadata
+
 }
 
 #' Fetch a set of genes from a plastome
