@@ -4,7 +4,7 @@ source("R/packages.R")
 source("R/functions.R")
 
 # Specify path to folder with raw data
-data_raw <- "data_raw"
+data_raw <- "_targets/user/data_raw"
 
 # Set parallel back-end
 plan(callr)

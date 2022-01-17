@@ -81,11 +81,13 @@ extract_fow_from_col <- function(col_data) {
 load_ref_aln <- function(ref_aln_files) {
   tibble(path = ref_aln_files) %>%
     mutate(
-      target = str_match(path, "aln_([a-zA-Z0-9\\-]+)\\.fasta") %>% 
+      target = str_match(path, "([a-zA-Z0-9\\-]+)\\.fasta") %>% 
         magrittr::extract(,2),
       align_trimmed = map(path, ~ape::read.FASTA(.) %>% as.matrix)
     ) %>%
-    select(target, align_trimmed)
+    select(target, align_trimmed) %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, target)
 }
 
 # Download Sanger sequences from GenBank----
@@ -2034,14 +2036,13 @@ select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy
   
   # Second: join others based on voucher
   genbank_seqs_tibble_wide_voucher <-
-    # Select single longest sequence per voucher per target
     genbank_seqs_tibble_with_specimen_dat %>%
     # Exclude taxa already joined by monophyletic species
     anti_join(genbank_seqs_tibble_wide_monophy, by = "species") %>%
     # Exclude specimens lacking a voucher
     filter(!is.na(specimen_voucher)) %>%
     assert(not_na, seq_len, target, specimen_voucher, species) %>%
-    # Select single longest sequence per species per target
+    # Select single longest sequence per voucher per species per target
     group_by(target, specimen_voucher, species) %>%
     slice_max(order_by = seq_len, n = 1, with_ties = FALSE) %>%
     ungroup() %>%
@@ -2073,6 +2074,9 @@ select_genbank_genes <- function (sanger_seqs_with_voucher_data, mpcheck_monophy
     anti_join(genbank_seqs_tibble_wide_voucher, by = "species") %>%
     # Filter to only those with publication data
     filter(!is.na(publication)) %>%
+    # Convert publication to lower case to account for
+    # mistakes in capitalization
+    mutate(publication = str_to_lower(publication)) %>%
     # Filter to those with one publication per species
     assert(not_na, species, target, publication) %>%
     add_count(species, target) %>%
