@@ -6,6 +6,9 @@ source("R/functions.R")
 # Specify path to folder with raw data
 data_raw <- "_targets/user/data_raw"
 
+# Specify location of intermediate results file
+int_dir <- "_targets/user/intermediates"
+
 # Set parallel back-end
 plan(callr)
 
@@ -22,7 +25,7 @@ tar_plan(
   # Load data ----
   # FIXME: temporary work-around for loading pteridocat data
   # until {pteridocat} package is live
-  tar_file(pteridocat_file, "working/pteridocat_2022-01-07.csv"),
+  tar_file(pteridocat_file, path(data_raw, "pteridocat_2022-01-07.csv")),
   pteridocat = read_csv(pteridocat_file),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
@@ -172,7 +175,7 @@ tar_plan(
     pterido_names_to_inspect_csv,
     write_csv_tar(
       pterido_names_to_inspect,
-      "intermediates/taxonomy/pterido_names_to_inspect.csv")
+      path(int_dir, "taxonomy/pterido_names_to_inspect.csv"))
   ),
 
   # Remove rogues from Sanger sequences ----
@@ -188,7 +191,7 @@ tar_plan(
     sanger_blast_db,
     make_fern_blast_db(
       seqtbl = sanger_seqs_combined_filtered,
-      blast_db_dir = "intermediates/blast_sanger",
+      blast_db_dir = path(int_dir, "blast_sanger"),
       out_name = "ferns_sanger")
   ),
   # Group query sequences for parallel computing
@@ -399,8 +402,8 @@ tar_plan(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      m = "GTR+I+G", bb = 1000, nt = "AUTO",
-      redo = TRUE, echo = TRUE, wd = "intermediates/iqtree/plastome",
+      m = "GTR+I+G", bb = 1000, nt = 12, seed = 20220123,
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
       other_args = c("-t", "PARS")
     ),
     deployment = "main"

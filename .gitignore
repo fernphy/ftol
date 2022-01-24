@@ -20,3 +20,4 @@ dockerd.log
 dockerd.pid
 make.o*
 _targets
+trash
