@@ -25,8 +25,8 @@ tar_plan(
   # Load data ----
   # FIXME: temporary work-around for loading pteridocat data
   # until {pteridocat} package is live
-  tar_file(pteridocat_file, path(data_raw, "pteridocat_2022-01-07.csv")),
-  pteridocat = read_csv(pteridocat_file),
+  tar_file(pteridocat_file, path(data_raw, "pteridocat.RDS")),
+  pteridocat = readRDS(pteridocat_file),
   # - Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(
@@ -126,7 +126,8 @@ tar_plan(
   # Exclude invalid names (hybrids, taxa not identified to species level)
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
   # Parse reference names
-  pc_ref_names = ts_parse_names(unique(pteridocat$scientificName)),
+  pc_ref_names = ts_parse_names(
+    unique(pteridocat$scientificName), tbl_out = TRUE),
   # Resolve names, round 1: NCBI accepted scientific names
   ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
   # - match names to reference
