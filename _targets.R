@@ -172,12 +172,6 @@ tar_plan(
     match_results_resolved_all),
   # Inspect name resolution results
   pterido_names_to_inspect = inspect_ts_results(match_results_resolved_all),
-  tar_file(
-    pterido_names_to_inspect_csv,
-    write_csv_tar(
-      pterido_names_to_inspect,
-      path(int_dir, "taxonomy/pterido_names_to_inspect.csv"))
-  ),
 
   # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names
