@@ -1688,9 +1688,9 @@
       "RemoteUsername": "joelnitta",
       "RemoteRepo": "taxastand",
       "RemoteRef": "main",
-      "RemoteSha": "2b9265bc776c7566226448dfbeda7cc32ebc53cf",
+      "RemoteSha": "237ee59ed32d64afa7abee1043f595ecaa00f481",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "e350245f71236a9a0b0dece8f73a6480"
+      "Hash": "0d4b3ece86666d35134369c0c9f35611"
     },
     "taxize": {
       "Package": "taxize",
