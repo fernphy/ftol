@@ -119,6 +119,9 @@ tar_plan(
   raw_meta = unique(raw_meta_all),
 
   # Resolve taxonomic names for Sanger sequences ----
+  # Specify varieties to exclude from collapsing
+  # during taxonomic name resolution
+  varieties_to_keep = define_varieties_to_keep(),
   # Download species names from NCBI
   ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
   # Clean NCBI species names
@@ -127,7 +130,7 @@ tar_plan(
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
   # Parse reference names
   pc_ref_names = ts_parse_names(
-    unique(pteridocat$scientificName), tbl_out = TRUE),
+    unique(pteridocat$scientificName), tbl_out = TRUE, quiet = TRUE),
   # Resolve names, round 1: NCBI accepted scientific names
   ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
   # - match names to reference
@@ -135,7 +138,8 @@ tar_plan(
     query = ncbi_names_query_round_1$scientific_name,
     reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE,
-    match_canon = TRUE, collapse_infra = TRUE),
+    match_canon = TRUE, collapse_infra = TRUE,
+    collapse_infra_exclude = varieties_to_keep),
   # - resolve synonyms
   match_results_resolved_round_1 = ts_resolve_names(
     match_results_raw_round_1, pteridocat),
@@ -146,7 +150,8 @@ tar_plan(
     query = ncbi_names_query_round_2$scientific_name,
     reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE,
-    match_canon = TRUE, collapse_infra = TRUE),
+    match_canon = TRUE, collapse_infra = TRUE,
+    collapse_infra_exclude = varieties_to_keep),
   match_results_resolved_round_2 = ts_resolve_names(
     match_results_raw_round_2, pteridocat),
   # Resolve names, round 3: NCBI species without author
@@ -157,7 +162,8 @@ tar_plan(
     query = ncbi_names_query_round_3$species,
     reference = pc_ref_names,
     max_dist = 5, match_no_auth = TRUE,
-    match_canon = TRUE, collapse_infra = TRUE),
+    match_canon = TRUE, collapse_infra = TRUE,
+    collapse_infra_exclude = varieties_to_keep),
   match_results_resolved_round_3 = ts_resolve_names(
     match_results_raw_round_3, pteridocat),
   # Combine name resolution results

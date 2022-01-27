@@ -1298,6 +1298,25 @@ write_tree_from_tbl <- function(
 
 # Taxonomic name resolution ----
 
+# Specify varieties to exclude from collapsing during taxonomic name resolution
+define_varieties_to_keep = function() {
+  c(
+	  "Arachniodes simplicior var. simplicior",
+	  "Asplenium attenuatum var. attenuatum",
+	  "Asplenium bulbiferum subsp. bulbiferum",
+	  "Asplenium obovatum subsp. obovatum",
+	  "Asplenium trichomanes subsp. trichomanes",
+	  "Botrychium lanceolatum subsp. lanceolatum",
+	  "Equisetum ramosissimum subsp. ramosissimum",
+	  "Pellaea mucronata subsp. mucronata",
+	  "Pleopeltis polypodioides var. polypodioides",
+	  "Polystichum polyblepharum var. polyblepharum",
+    "Dicksonia lanata subsp. lanata",
+    "Dryopteris simasakii var. simasakii",
+    "Elaphoglossum peltatum f. peltatum"
+  )
+}
+
 #' Inspect results of name matching with taxastand
 #' 
 #' Subsets to fuzzily matched names and names without a match, prepares for updating database
@@ -1357,7 +1376,6 @@ inspect_ts_results <- function(match_results_resolved_all) {
       filter(match_results_resolved_all, match_type == "no_match") %>%
         select(query) %>%
         unique() %>%
-        assert(not_na, query) %>%
         arrange(query)
     )
 }
@@ -3382,6 +3400,16 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
     filter(accepted) %>%
     # Remove any names not identified to species
     filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
+    # Fix some names NCBI got wrong
+    mutate(
+      scientific_name = case_when(
+        # NCBI mistakenly used Drynaria parishii (Bedd.) C.Chr. & Tardieu with basionym as "Pleopeltis parishii Bedd."
+        # but the real basionym for Drynaria parishii (Bedd.) C.Chr. & Tardieu is Meniscium parishii Bedd. -> Grypothrix parishii #nolint
+        # Pleopeltis parishii Bedd. should point to Drynaria parishii (Bedd.) Bedd. #nolint
+        taxid == "2836282" ~ "Drynaria parishii (Bedd.) Bedd.", 
+        TRUE ~ scientific_name
+      )
+    ) %>%
     # Specify query name: scientific name if available, species if not
     mutate(query_name = coalesce(scientific_name, species)) %>%
     assert(not_na, query_name)
@@ -5349,11 +5377,21 @@ clean_ncbi_names <- function(ncbi_names_raw) {
 #' @return Dataframe
 #' 
 exclude_invalid_ncbi_names <- function(ncbi_names) {
-  # Exclude names from consideration that aren't fully identified to species, or are hybrids (including hybrid genera)
-  # (assume there should be at least one space between genus and species)
+  # Exclude names from consideration that aren't fully identified to species, 
+  # environmental samples, or hybrid formulas.
+  # Hybrid names *can* be parsed:
+  # - "Equisetum x ferrissii" (x before specific epithet)
+  # - "x Cystocarpium roskamianum" (x before nothogenus)
+  # Hybrid formulas *can't* be parsed:
+  # - "Cystopteris alpina x Cystopteris fragilis" (x before another species)
   ncbi_names_exclude <-
     ncbi_names %>%
-    filter(str_detect(species, " sp\\.| aff\\.| cf\\.| x |^x ") | str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| x |^x ") | str_count(species, " ") < 1 | str_count(scientific_name, " ") < 1)
+    filter(
+      str_detect(species, " sp\\.| aff\\.| cf\\.| × [A-Z]| x [A-Z]|environmental sample") | #nolint
+        str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| × [A-Z]| x [A-Z]|environmental sample") | #nolint
+        str_count(species, " ") < 1 | 
+        str_count(scientific_name, " ") < 1
+      )
   
   ncbi_names %>%
     anti_join(ncbi_names_exclude, by = "species", na_matches = "never") %>%
