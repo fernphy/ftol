@@ -216,6 +216,11 @@ tar_plan(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,
     ppgi = ppgi_taxonomy),
+  sanger_seqs_rogues_inspected = inspect_rogues(
+    sanger_seqs_rogues,
+    raw_meta_all,
+    ncbi_names_query,
+    ppgi_taxonomy),
   sanger_seqs_rogues_removed = anti_join(
     sanger_seqs_combined_filtered,
     sanger_seqs_rogues,

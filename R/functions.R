@@ -2247,6 +2247,73 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
   
 }
 
+#' Inspect rogue sequences
+#' 
+#' Sanger rogue sequences were assessed by checking the top BLAST hit from
+#' an all-by-all BLAST. Those whose families don't match were flagged as
+#' rogues. However, some of this may be due to incorrect taxonomic treatment.
+#' This checks the family of the original GenBank accession to see if the
+#' taxonomic treatment may need to change.
+#'
+#' @param sanger_seqs_rogues Tibble; Potential rogue sequences identified
+#' by query family not matching hit family.
+#' @param raw_meta_all Tibble; metadata of Sanger sequences including NCBI
+#' taxonomic ID (taxid) and GenBank accession number.
+#' @param ncbi_names_query Tibble; Names downloaded from NCBI taxonomy database
+#' @param ppgi_taxonomy Tibble; PPGI taxonomy.
+#'
+#' @return Tibble with potential "real rogue" sequences flagged as 1
+#'
+inspect_rogues <- function(
+	sanger_seqs_rogues,
+	raw_meta_all,
+	ncbi_names_query,
+	ppgi_taxonomy) {
+
+  # Check that input names match arguments
+  check_args(match.call())
+	
+	# Filter original GenBank names to accepted name
+	gb_names <-
+		ncbi_names_query %>%
+		filter(accepted == TRUE) %>%
+		# Combine `scientific_name`, `species` filling in NAs as needed
+		mutate(gb_name = dplyr::coalesce(scientific_name, species)) %>%
+		select(taxid, gb_name) %>%
+		unique()
+	
+	sanger_seqs_rogues %>%
+		# Split query text into component parts
+		separate(qseqid, c("species", "accession", "gene"), sep = "\\|") %>%
+		verify(all(gene == target)) %>%
+		select(-target) %>%
+		# Add taxid
+		left_join(
+			unique(select(raw_meta_all, accession, taxid)), by = "accession"
+		) %>%
+		# Join original GenBank names by taxid
+		assert(not_na, taxid) %>%
+		left_join(gb_names, by = "taxid") %>%
+		assert(not_na, gb_name) %>%
+		# Join original GenBank family
+		mutate(gb_genus = str_split(gb_name, " ") %>%
+					 	map_chr(1)) %>%
+		left_join(
+			select(ppgi_taxonomy, gb_genus = genus, gb_family = family), 
+        by = "gb_genus"
+		) %>%
+		select(-gb_genus) %>%
+		# Consider a potential "real rogue" if
+		# the query family and genbank family agree
+		mutate(
+			real_rogue = case_when(
+				q_family == gb_family ~ 1,
+				TRUE ~ 0
+			)
+		)
+	
+}
+
 # Check for species monophyly in Sanger loci ----
 
 #' Check monophyly of a species
