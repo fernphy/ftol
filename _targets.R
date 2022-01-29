@@ -413,5 +413,25 @@ tar_plan(
       other_args = c("-t", "PARS")
     ),
     deployment = "main"
+  ),
+  # - collapse nodes with BS < 95, write out as constraint tree
+  constraint_tree = di2multi4node(plastome_tree, 95),
+  tar_file(
+    constraint_tree_file,
+    write_tree_tar(
+      constraint_tree,
+      path(int_dir, "iqtree/constraint.tre")
+    )
+  ),
+  # - Sanger tree
+  tar_target(
+    sanger_tree,
+    iqtree(
+      sanger_alignment,
+      m = "GTR+I+G", bb = 1000, nt = "AUTO", seed = 20220129,
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
+      other_args = c("-t", "PARS", "-g", path_abs(constraint_tree_file))
+    ),
+    deployment = "main"
   )
 )
