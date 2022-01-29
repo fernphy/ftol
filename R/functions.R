@@ -5412,15 +5412,12 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     # Fix some scientific names
     mutate(
       scientific_name = case_when(
-        # wrong ambiguous synonym
-        scientific_name == "Asplenium scandens Houlston & T.Moore" ~ "Asplenium scandens J. Sm.",
         # missing author
         species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
         TRUE ~ scientific_name
       )
     )
 
-  
   # Remove problematic names from original data, then add fixed names
   ncbi_names_raw %>%
     anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
