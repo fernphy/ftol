@@ -5488,44 +5488,30 @@ parse_ncbi_tax_record <- function(record) {
 #' and `scientific_name`. Names downloaded from NCBI taxonomy database
 #' with fetch_taxonomy()
 #'
-#' @return Tibble; names with duplicates removed
+#' @return Tibble
 #' 
 clean_ncbi_names <- function(ncbi_names_raw) {
-  # Clean up ncbi_names: some species have multiple accepted names.
-  # These seem to include the species name w/o author and with author
-  ncbi_accepted_mult_fixed <- ncbi_names_raw %>%
-    filter(accepted == TRUE) %>%
-    filter(!is.na(scientific_name)) %>%
-    # Assume the sci. name. with most spaces has the author, and we want it
-    add_count(taxid) %>%
-    filter(n > 1) %>%
-    select(-n) %>%
-    mutate(n_spaces = str_count(scientific_name, " ")) %>%
-    group_by(taxid) %>%
-    # Discard ties (may lose some candidate names here, but so be it)
-    slice_max(order_by = n_spaces, n = 1, with_ties = FALSE) %>%
-    ungroup() %>%
-    select(-n_spaces) %>%
-    # Fix some scientific names
-    mutate(
-      scientific_name = case_when(
-        # missing author
-        species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
-        TRUE ~ scientific_name
-      )
-    )
-
-  # Remove problematic names from original data, then add fixed names
+  
   ncbi_names_raw %>%
-    anti_join(ncbi_accepted_mult_fixed, by = "taxid") %>%
-    bind_rows(ncbi_accepted_mult_fixed) %>%
+  # Make sure all names have only one accepted name
+  group_by(taxid) %>%
+  mutate(n_accepted = sum(accepted)) %>%
+  ungroup() %>%
+  verify(all((n_accepted) == 1)) %>%
+  select(-n_accepted) %>%
     mutate(
       # Remove brackets around species name
       # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
       species = str_remove_all(species, "\\[|\\]"),
       # Remove year after authorship in scientific name
       # not all years entered with four digits, so match >1 digit
-      scientific_name = str_remove_all(scientific_name, ", [0-9]+")
+      scientific_name = str_remove_all(scientific_name, ", [0-9]+"),
+      # Fix some scientific names
+      scientific_name = case_when(
+        # missing author
+        species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
+        TRUE ~ scientific_name
+      )
     )
   
 }
