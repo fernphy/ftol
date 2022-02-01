@@ -5622,8 +5622,9 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
 #' plot(tree)
 #' # Check the optimum number of cores to use for GTR+I+G model
 #' iqtree(
+#'   woodmouse,
 #'   tempdir(),
-#'   woodmouse, m = "GTR+I+G", nt = "AUTO", echo = TRUE, redo = TRUE)
+#'   m = "GTR+I+G", nt = "AUTO", echo = TRUE, redo = TRUE)
 #' }
 iqtree <- function(alignment = NULL, wd = getwd(),
                    aln_path = NULL,
@@ -5671,7 +5672,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
   
   # check that iqtree is installed and on the PATH
   tryCatch({
-    processx::run("iqtree", "-h", echo = FALSE)
+    processx::run("iqtree2", "-h", echo = FALSE)
   }, warning = function(w) {
     stop("iqtree not installed and on path")
   }, error = function(e) {
@@ -5718,7 +5719,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
   
   # Run iqtree command
   processx::run(
-    "iqtree",
+    "iqtree2",
     iqtree_arguments, wd = wd, echo = echo,
     # Include env variable as workaround for initial parsimony analysis
     # using all cores
