@@ -5263,6 +5263,225 @@ archive_raw_data <- function (version, metadata, out_path) {
 
 # Taxonomic name resolution ----
 
+#' Extract taxonomic names from an NCBI taxonomy database dump file
+#'
+#' Taxonomy dump files can be downloaded from the NCBI FTP server
+#' https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/
+#' The original data format should be used (not "new")
+#'
+#' There is only one accepted name per taxid
+#'
+#' @param taxdump_zip_file Path to zip file with NCBI taxonomy database; must
+#' contain a file called "names.dmp".
+#' @param raw_meta Dataframe (tibble) with a column 'taxid' including the NCBI
+#' taxids of the names to be extracted.
+#' @param names_exclude Character vector; names to exclude from results
+#' (optinal).
+#' @param workers Number of cores to use in parallel during processing.
+#'
+#' @return Tibble with columns with columns "taxid" (NCBI taxonomy database ID),
+#' "species" (species name without author), "accepted" (logical indicated if
+#' name is accepted name or not), "scientific_name" (species name with author)
+#'
+extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL, workers = 20) {
+   # Unzip names.dmp to a temporary directory
+   temp_dir <- tempdir(check = TRUE)
+
+   utils::unzip(
+      taxdump_zip_file, files = "names.dmp",
+      overwrite = TRUE, junkpaths = TRUE, exdir = temp_dir)
+
+   # Load raw NCBI data
+   ncbi_raw <-
+      fs::path(temp_dir, "names.dmp") %>%
+      readr::read_delim(,
+                                delim = "\t|\t", col_names = FALSE,
+                                 col_types = cols(.default = col_character()))
+
+   # Delete temporary unzipped file
+   fs::file_delete(fs::path(temp_dir, "names.dmp"))
+
+   # Prune raw NBCI names to names in metadata
+   ncbi_names <-
+      ncbi_raw %>%
+      # Select only needed columns
+      transmute(
+         taxid = as.character(X1),
+         name = X2,
+         class = X4) %>%
+      # Make sure all taxids from metadata are in NCBI data
+      verify(all(taxid_keep %in% raw_meta$taxid)) %>%
+      # Filter to only taxids in metadata
+      inner_join(
+         unique(select(raw_meta, taxid)),
+         by = "taxid"
+      ) %>%
+      # Make sure there are no hidden fields in `class`
+      verify(all(str_count(class, "\\|") == 1)) %>%
+      # Drop field separators in `class`
+      mutate(class = str_remove_all(class, "\\\t\\|")) %>%
+      # Only keep useful names: exclude common names,
+      # alternative spellings (`equivalent name`), type material,
+      # temporary names with 'sp.' (`includes`)
+      filter(class %in% c("authority", "scientific name", "synonym"))
+
+   # Optionally exclude some names
+   if(!is.null(names_exclude)) {
+      ncbi_names <-
+         ncbi_names %>%
+         # Make sure all taxids from metadata are in NCBI data
+         verify(all(names_exclude %in% .$name))
+      # Exclude some superfluous sci names: these cause multiple accepted names 
+      # for a given taxid
+      filter(!name %in% names_exclude)
+   }
+
+   # Parse names
+   # A little slow, so do in parallel.
+   # Set backend for parallelization
+   future::plan(future::multisession, workers = workers)
+
+   ncbi_names_parsed <-
+      ncbi_names %>%
+      group_by(taxid) %>%
+      nest() %>%
+      ungroup() %>%
+      mutate(
+         data = map(data, parse_ncbi_tax_record)
+      ) %>%
+      unnest(data)
+
+   # Close parallel workers
+   future::plan(future::sequential)
+
+   ncbi_names_parsed
+}
+
+#' Extract the first target word from a string
+#'
+#' The first occurrence of one of the target words
+#' will be extracted from the string, if there is a match.
+#' Only exact matching is used (no grep expressions)
+#'
+#' @param string Character vector of length 1.
+#' @param target Character vector.
+#'
+#' @return Character vector of length 1, or NA if no hits.
+#' @examples
+#' str_extract_first_target_single("My [name] is", c("[name]", "is"))
+str_extract_first_target_single <- function(string, target) { #nolint
+   hits <- purrr::map_chr(
+      target,
+      ~stringr::str_extract(string, stringr::fixed(.)))
+   if (all(is.na(hits))) return(NA)
+   hits[!is.na(hits)][[1]]
+}
+
+#' Extract the first target substring from a string
+#'
+#' Vectorized version of str_extract_first_target_single()
+#'
+#' @param string Character vector. String to extract substrings from.
+#' @param target Character vector. Target substrings to extract.
+#'
+#' @return Character vector of length 1, or NA if no hits.
+#' @examples
+#' str_extract_first_target(
+#'   c("My [name] is", "[bar] foo", "a"),
+#'   c("[bar]", "is")
+#' )
+str_extract_first_target <- function(string, target) {
+   purrr::map_chr(string, ~str_extract_first_target_single(., target = target))
+}
+
+#' Parse a single record from the NCBI taxonomy database
+#'
+#' The NCBI taxonomy database contains names in the `names.dmp` file.
+#' A single record (corresponding to one `taxid`) looks like this:
+#'
+#' # A tibble: 4 × 3
+#'   taxid  name                                               class
+#'   <chr>  <chr>                                              <chr>
+#' 1 857989 Alansmia glandulifera (A.Rojas) Moguel & M.Kessler authority
+#' 2 857989 Alansmia glandulifera                              scientific name
+#' 3 857989 Terpsichore glandulifera A.Rojas                   authority
+#' 4 857989 Terpsichore glandulifera                           synonym
+#'
+#' @param record Tibble (dataframe); a single record of NCBI taxonomy data
+#'
+#' @return Tibble; parsed data with columns "species", "accepted", and
+#'   "scientific_name"
+#' @examples
+#' record <- tribble(
+#'   ~taxid, ~name, ~class,
+#'   "857989", "Alansmia glandulifera (A.Rojas) Moguel & M.Kessler", "authority", #nolint
+#'   "857989", "Alansmia glandulifera", "scientific name",
+#'   "857989", "Terpsichore glandulifera A.Rojas", "authority",
+#'   "857989", "Terpsichore glandulifera", "synonym"
+#' )
+#' parse_ncbi_tax_record(record)
+parse_ncbi_tax_record <- function(record) {
+
+   # Each record should have exactly 1 accepted species name
+   accepted_species <- record %>%
+      filter(class == "scientific name") %>%
+      pull(name)
+   assertthat::assert_that(
+      length(accepted_species) == 1,
+      msg = "Not exactly 1 accepted scientific name detected")
+   # Confusingly, "synonyms" may sometimes contain the accepted name :/
+   synonyms <- record %>%
+      filter(class == "synonym") %>%
+      pull(name)
+   # Scientific names (with author) have the class "authority"
+   sci_names <- record %>%
+      filter(class == "authority") %>%
+      pull(name)
+
+   # The results should always have at least taxon ID and species
+   species_dat <- tibble(species = accepted_species, accepted = TRUE)
+
+   # Create empty tibbles to hold other name data
+   acc_sci_names_dat <- tibble()
+   syn_sci_names_dat <- tibble()
+
+   # If other sci names are given, one of them should be the species name
+   if (length(sci_names) > 0)
+      acc_sci_names_dat <- tibble(scientific_name = sci_names) %>%
+      mutate(species = str_extract(
+         scientific_name, stringr::fixed(accepted_species))) %>%
+      filter(!is.na(species)) %>%
+      mutate(accepted = TRUE)
+
+   # If "synonym" and other sci names are given, one (or more) of them are
+   # the synonym
+   if (length(synonyms) > 0 && length(sci_names) > 0)
+      syn_sci_names_dat <- tibble(scientific_name = sci_names) %>%
+      # Each sci name should only correspond to max. one synonym
+      mutate(species = str_extract_first_target(scientific_name, synonyms)) %>%
+      filter(!is.na(species)) %>%
+      mutate(accepted = FALSE)
+
+   # If "synonym" is present but no other sci names are given, "synonym" is
+   # actually the scientific name of the species
+   if (length(synonyms) > 0 && length(sci_names) == 0)
+      acc_sci_names_dat <- tibble(scientific_name = synonyms) %>%
+      mutate(species = str_extract(
+         scientific_name, stringr::fixed(accepted_species))) %>%
+      filter(!is.na(species)) %>%
+      mutate(accepted = TRUE)
+
+   # Combine scientific names of synonyms and accepted names
+   combined_sci_names_dat <- bind_rows(syn_sci_names_dat, acc_sci_names_dat)
+
+   # Join to accepted species with taxon ID
+   if (nrow(combined_sci_names_dat) > 0)
+      species_dat <- full_join(
+         species_dat, combined_sci_names_dat, by = c("species", "accepted"))
+
+   species_dat
+}
+
 #' Clean up species names downloaded from NCBI taxonomy database
 #'
 #' @param ncbi_names_raw Tibble with columns `taxid` `species` `accepted` 
