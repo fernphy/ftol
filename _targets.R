@@ -67,6 +67,10 @@ tar_plan(
       full.names = TRUE)
   ),
   fern_ref_seqs = load_ref_aln(ref_aln_files),
+  # NCBI taxonomic database
+  # downloaded from 
+  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip #nolint
+  tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-02-01.zip")),
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
@@ -122,8 +126,8 @@ tar_plan(
   # Specify varieties to exclude from collapsing
   # during taxonomic name resolution
   varieties_to_keep = define_varieties_to_keep(),
-  # Download species names from NCBI
-  ncbi_names_raw = raw_meta %>% pull(taxid) %>% unique %>% fetch_taxonomy,
+  # Extract species names from NCBI taxonomic database
+  ncbi_names_raw = extract_ncbi_names(taxdump_zip_file, raw_meta),
   # Clean NCBI species names
   ncbi_names_full = clean_ncbi_names(ncbi_names_raw),
   # Exclude invalid names (hybrids, taxa not identified to species level)
