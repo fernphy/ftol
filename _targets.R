@@ -68,7 +68,7 @@ tar_plan(
   ),
   fern_ref_seqs = load_ref_aln(ref_aln_files),
   # NCBI taxonomic database
-  # downloaded from 
+  # downloaded from
   # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip #nolint
   tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-02-01.zip")),
 
@@ -127,7 +127,13 @@ tar_plan(
   # during taxonomic name resolution
   varieties_to_keep = define_varieties_to_keep(),
   # Extract species names from NCBI taxonomic database
-  ncbi_names_raw = extract_ncbi_names(taxdump_zip_file, raw_meta),
+  tar_target(
+    ncbi_names_raw,
+    extract_ncbi_names(
+      taxdump_zip_file, taxid_keep = raw_meta,
+      names_exclude = ncbi_db_names_to_exclude(),
+      workers = 20),
+    deployment = "main"),
   # Clean NCBI species names
   ncbi_names_full = clean_ncbi_names(ncbi_names_raw),
   # Exclude invalid names (hybrids, taxa not identified to species level)
@@ -283,10 +289,16 @@ tar_plan(
     end_date = date_cutoff,
     outgroups = plastome_outgroups,
     accs_exclude = accs_exclude$accession),
+  # Extract species names in plastome data from NCBI taxonomy
+   plastome_ncbi_names_raw = extract_ncbi_names(
+     taxdump_zip_file, taxid_keep = plastome_metadata_raw,
+     names_exclude = plastome_ncbi_db_names_to_exclude(),
+     workers = 2),
   # Resolve species names in plastome metadata
   # (drops accession if name could not be resolved)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
-    plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
+    plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
+    pc_ref_names, pteridocat
   ),
   # Download plastome sequences
   # FASTA files for each accession in seqtbl format

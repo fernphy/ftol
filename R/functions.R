@@ -3419,6 +3419,8 @@ concatenate_genes <- function (dna_list) {
 #' Resolve species names in plastome metadata using Catalog of Life
 #' as the taxonomic standard
 #'
+#' @param plastome_ncbi_names_raw Species names in plastome data extracted from
+#' NCBI taxonomic database
 #' @param plastome_metadata Dataframe with column "species" containing
 #' original species names from GenBank
 #' @param plastome_outgroups Dataframe with metadata on outgroups
@@ -3431,19 +3433,17 @@ concatenate_genes <- function (dna_list) {
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
 #' 
-resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgroups, ref_names_parsed, ref_names_data) {
+resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw, 
+  plastome_metadata_raw, plastome_outgroups, ref_names_parsed, ref_names_data) {
   
   ### outgroups ###
   # Fetch full scientific names for plastome outgroups
   plastome_outgroup_sci_names <-
-  plastome_metadata_raw %>%
-    inner_join(plastome_outgroups, by = "accession") %>%
-    # Look up NCBI name from taxid
-    pull(taxid) %>% 
-    unique %>% 
-    fetch_taxonomy() %>%
-    clean_ncbi_names() %>%
-    filter(accepted) %>%
+    plastome_metadata_raw %>%
+    inner_join(select(plastome_outgroups, accession), by = "accession") %>%
+    left_join(plastome_ncbi_names_raw, by = "taxid") %>%
+    filter(accepted == TRUE) %>%
+    select(-accepted) %>%
     # Add one scientific name currently missing
     mutate(
       scientific_name = case_when(
@@ -3454,17 +3454,18 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
     assert(not_na, scientific_name)
 
   ### ferns ###
-  # Specify names to query against World Ferns for taxonomic name resolution of ferns
   plastome_names_query <- 
-    plastome_metadata_raw %>%
     # Exclude outgroups
-    anti_join(plastome_outgroups, by = "accession") %>%
-    # Look up NCBI name from taxid
-    pull(taxid) %>% 
-    unique %>% 
-    fetch_taxonomy() %>%
-    clean_ncbi_names() %>% 
-    filter(accepted) %>%
+    plastome_metadata_raw %>%
+    anti_join(
+      unique(select(plastome_outgroups, accession)),
+      by = "accession") %>%
+    left_join(plastome_ncbi_names_raw, by = "taxid") %>%
+    # Use only accepted name
+    filter(accepted == TRUE) %>%
+    select(-accepted) %>%
+    # Clean names: removes brackets and years
+    clean_ncbi_names() %>%
     # Remove any names not identified to species
     filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
     # Fix some names NCBI got wrong
@@ -3479,36 +3480,57 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
     ) %>%
     # Specify query name: scientific name if available, species if not
     mutate(query_name = coalesce(scientific_name, species)) %>%
-    assert(not_na, query_name)
-   
+    assert(not_na, query_name) %>%
+    assert(is_uniq, accession)
+
   # Match names to world ferns
   match_results_plastome <- ts_match_names(
-    query = plastome_names_query$query_name, 
+    query = unique(plastome_names_query$query_name),
     reference = ref_names_parsed,
     max_dist = 5, match_no_auth = TRUE, 
     match_canon = TRUE, collapse_infra = TRUE)
 
   # Resolve synonyms
-  match_results_plastome_resolved <- ts_resolve_names(match_results_plastome, ref_names_data)
+  match_results_plastome_resolved <- ts_resolve_names(
+    match_results_plastome, ref_names_data) %>%
+    assert(not_na, everything()) %>%
+    # Make sure no names detected by fuzzy match
+    # (all names should have already been inspected)
+    verify(
+      !any(str_detect(match_type, "fuzzy|no_match")),
+      error_fun = err_msg(
+        "Fuzzy or no match names detected during plastome name resolution")
+    )
 
   ### Combine results ###
   plastome_metadata_ferns_resolved <-
     plastome_metadata_raw %>%
     # filter to only ingroup
-    anti_join(plastome_outgroups, by = "accession") %>%
+    anti_join(
+      unique(select(plastome_outgroups, accession)), by = "accession") %>%
     # add queried taxonomic name
-    left_join(select(plastome_names_query, taxid, query_name), by = "taxid") %>%
-    assert(is_uniq, accession) %>%
+    left_join(
+      unique(select(plastome_names_query, taxid, query_name)), by = "taxid") %>%
     # add resolved name
-    left_join(select(match_results_plastome_resolved, query_name = query, resolved_name), by = "query_name") %>%
+    left_join(
+      unique(select(
+        match_results_plastome_resolved, 
+        query_name = query, resolved_name)),
+      by = "query_name") %>%
     select(-query_name) %>%
-    mutate(outgroup = FALSE)
+    mutate(outgroup = FALSE) %>%
+    assert(is_uniq, accession)
 
   plastome_metadata_outgroups_resolved <-
     plastome_metadata_raw %>%
-    inner_join(plastome_outgroups, by = "accession") %>% 
+    inner_join(
+      unique(select(plastome_outgroups, accession)), by = "accession") %>% 
     select(-matches("species|variety")) %>%
-    left_join(select(plastome_outgroup_sci_names, taxid, resolved_name = scientific_name), by = "taxid") %>%
+    left_join(
+      select(
+        plastome_outgroup_sci_names, taxid,
+        resolved_name = scientific_name),
+      by = "taxid") %>%
     mutate(outgroup = TRUE)
 
   # Combine results
@@ -3519,18 +3541,22 @@ resolve_pterido_plastome_names <- function(plastome_metadata_raw, plastome_outgr
   # Make sure all accessions are included
   verify(all(accession %in% plastome_metadata_raw$accession)) %>%
   verify(all(plastome_metadata_raw$accession %in% accession)) %>%
-  # Drop any without resolved species
+  # Drop any without resolved species (only identified to sp., etc)
   filter(!is.na(resolved_name)) %>%
   # Parse resolved name to just species (drops infrasp taxon)
   mutate(
-    rgnparser::gn_parse_tidy(resolved_name) %>% 
+    gn_parse_tidy_quiet(resolved_name) %>% 
       select(taxon = canonicalsimple)
   ) %>%
   mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
-  separate(taxon, into = c("genus", "sp_epithet", "infrasp_epithet"), sep = "_", remove = FALSE, fill = "right") %>%
+  separate(taxon,
+    into = c("genus", "sp_epithet", "infrasp_epithet"),
+    sep = "_", remove = FALSE, fill = "right") %>%
     assert(not_na, genus, sp_epithet) %>%
     mutate(species = paste(genus, sp_epithet, sep = "_")) %>%
-  select(sci_name = resolved_name, species, accession, subtype, subname, slen, outgroup)
+  select(
+    sci_name = resolved_name, species, accession,
+    subtype, subname, slen, outgroup)
 }
 
 #' Combine GenBank rbcL and plastome-derived rbcL sequences
@@ -5263,6 +5289,18 @@ archive_raw_data <- function (version, metadata, out_path) {
 
 # Taxonomic name resolution ----
 
+# Names to exclude when reading in NCBI taxonomic database
+ncbi_db_names_to_exclude <- function() {
+  c(
+    "Archangiopteris hokouensis Ching, 1958, non Angiopteris hokouensis Ching, 1959", #nolint
+    "Polystichum imbricans subsp. curtum (Ewan) D.H.Wagner, 1979")
+}
+
+plastome_ncbi_db_names_to_exclude <- function() {
+  # Superfluous with Danaea sellowiana C.Presl, 1845
+  "Danaea sellowiana Pr.in Corda., 1845"
+}
+
 #' Extract taxonomic names from an NCBI taxonomy database dump file
 #'
 #' Taxonomy dump files can be downloaded from the NCBI FTP server
@@ -5273,7 +5311,7 @@ archive_raw_data <- function (version, metadata, out_path) {
 #'
 #' @param taxdump_zip_file Path to zip file with NCBI taxonomy database; must
 #' contain a file called "names.dmp".
-#' @param raw_meta Dataframe (tibble) with a column 'taxid' including the NCBI
+#' @param taxid_keep Dataframe (tibble) with a column 'taxid' including the NCBI
 #' taxids of the names to be extracted.
 #' @param names_exclude Character vector; names to exclude from results
 #' (optinal).
@@ -5283,7 +5321,7 @@ archive_raw_data <- function (version, metadata, out_path) {
 #' "species" (species name without author), "accepted" (logical indicated if
 #' name is accepted name or not), "scientific_name" (species name with author)
 #'
-extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL, workers = 20) {
+extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NULL, workers = 1) {
    # Unzip names.dmp to a temporary directory
    temp_dir <- tempdir(check = TRUE)
 
@@ -5294,9 +5332,10 @@ extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL,
    # Load raw NCBI data
    ncbi_raw <-
       fs::path(temp_dir, "names.dmp") %>%
-      readr::read_delim(,
-                                delim = "\t|\t", col_names = FALSE,
-                                 col_types = cols(.default = col_character()))
+      readr::read_delim(
+        delim = "\t|\t", col_names = FALSE,
+        col_types = cols(.default = col_character())
+      )
 
    # Delete temporary unzipped file
    fs::file_delete(fs::path(temp_dir, "names.dmp"))
@@ -5310,10 +5349,10 @@ extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL,
          name = X2,
          class = X4) %>%
       # Make sure all taxids from metadata are in NCBI data
-      verify(all(taxid_keep %in% raw_meta$taxid)) %>%
+      verify(all(taxid_keep$taxid %in% taxid)) %>%
       # Filter to only taxids in metadata
       inner_join(
-         unique(select(raw_meta, taxid)),
+         unique(select(taxid_keep, taxid)),
          by = "taxid"
       ) %>%
       # Make sure there are no hidden fields in `class`
@@ -5330,16 +5369,16 @@ extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL,
       ncbi_names <-
          ncbi_names %>%
          # Make sure all taxids from metadata are in NCBI data
-         verify(all(names_exclude %in% .$name))
-      # Exclude some superfluous sci names: these cause multiple accepted names 
-      # for a given taxid
+         verify(all(names_exclude %in% .$name)) %>%
+         # Exclude some superfluous sci names: these cause multiple accepted names 
+         # for a given taxid
       filter(!name %in% names_exclude)
    }
 
    # Parse names
    # A little slow, so do in parallel.
    # Set backend for parallelization
-   future::plan(future::multisession, workers = workers)
+   if (workers > 1) future::plan(future::multisession, workers = workers)
 
    ncbi_names_parsed <-
       ncbi_names %>%
@@ -5354,7 +5393,13 @@ extract_ncbi_names <- function(taxdump_zip_file, raw_meta, names_exclude = NULL,
    # Close parallel workers
    future::plan(future::sequential)
 
-   ncbi_names_parsed
+   ncbi_names_parsed %>%
+     # Make sure all parsed names have only one accepted name
+     group_by(taxid) %>%
+     mutate(n_accepted = sum(accepted)) %>%
+     ungroup() %>%
+     verify(all((n_accepted) == 1)) %>%
+     select(-n_accepted)
 }
 
 #' Extract the first target word from a string
@@ -5482,23 +5527,15 @@ parse_ncbi_tax_record <- function(record) {
    species_dat
 }
 
-#' Clean up species names downloaded from NCBI taxonomy database
+#' Clean up species names extracted from NCBI taxonomy database
 #'
 #' @param ncbi_names_raw Tibble with columns `taxid` `species` `accepted` 
-#' and `scientific_name`. Names downloaded from NCBI taxonomy database
-#' with fetch_taxonomy()
+#' and `scientific_name`.
 #'
 #' @return Tibble
 #' 
 clean_ncbi_names <- function(ncbi_names_raw) {
-  
   ncbi_names_raw %>%
-  # Make sure all names have only one accepted name
-  group_by(taxid) %>%
-  mutate(n_accepted = sum(accepted)) %>%
-  ungroup() %>%
-  verify(all((n_accepted) == 1)) %>%
-  select(-n_accepted) %>%
     mutate(
       # Remove brackets around species name
       # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
@@ -5513,7 +5550,6 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         TRUE ~ scientific_name
       )
     )
-  
 }
 
 #' Exclude invalid names from taxonomic name resolution
@@ -6065,4 +6101,11 @@ paste3 <- function(..., sep=" ") {
                   do.call(paste,c(L,list(sep=sep)))))
   is.na(ret) <- ret==""
   ret
+}
+
+# Quiet version of rgnparser::gn_parse_tidy()
+gn_parse_tidy_quiet <- function(...) {
+  suppressMessages(
+    rgnparser::gn_parse_tidy(...)
+  )
 }
