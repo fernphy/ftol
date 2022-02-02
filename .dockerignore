@@ -4,12 +4,14 @@
 .Rprofile
 .Renviron
 .gitignore
-R
 _targets
-data_raw
 docs
 intermediates
+prep_ref_seqs_store
+R
 renv
 reports
 results
+temp
+trash
 working

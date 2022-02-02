@@ -8,16 +8,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # gawk for taxon-tools
 # gcc through libtool for treePL
-# cmake, libeigen3-dev for IQTREE
 # zlib1g-dev for R package XVector
 # libxml2-dev for R package XML
 # libudunits2-dev for R package units
 # libgdal-dev for R package sf
 # libzmq3-dev for R package rzmq -> clustermq
 # libmagick++-dev for R package magick -> phytools
+# python-dev-is-python3 for biopython -> superCRUNCH
 
-# curl, python-dev-is-python3 for hybpiper
-# cd-hit for clustering sequences
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     gcc \
@@ -32,8 +30,6 @@ RUN apt-get update \
     autotools-dev \
     automake \
     libtool \
-    cmake \
-    libeigen3-dev \
     zlib1g-dev \
     libxml2-dev \
     libudunits2-dev \
@@ -56,7 +52,7 @@ RUN apt-get update \
 ### python libraries ###
 ########################
 
-# biopython for Hybpiper
+# biopython for superCRUNCH
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python \
   && pip install biopython
@@ -95,16 +91,14 @@ RUN wget https://github.com/gnames/gnparser/releases/download/v$VERSION/gnparser
   && rm $APP_NAME-v$VERSION-linux.tar.gz \
   && mv "$APP_NAME" /usr/local/bin/
 
-### IQ Tree ###
+### IQ Tree v2 ###
 WORKDIR $APPS_HOME
-ENV APP_NAME=IQ-TREE
-RUN git clone https://github.com/Cibiv/$APP_NAME.git && \
-	cd $APP_NAME && \
-	mkdir build && \
-	cd build && \
-	cmake -DIQTREE_FLAGS=omp .. && \
-	make && \
-	cp iqtree /usr/local/bin
+ENV APP_NAME=iqtree
+ENV VERSION=2.1.3
+RUN wget https://github.com/iqtree/iqtree2/releases/download/v$VERSION/iqtree-$VERSION-Linux.tar.gz \
+  && tar xf $APP_NAME-$VERSION-Linux.tar.gz \
+  && rm $APP_NAME-$VERSION-Linux.tar.gz \
+  && mv $APP_NAME-$VERSION-Linux/bin/iqtree2 /usr/local/bin/
 
 ### trimAL ###
 WORKDIR $APPS_HOME
@@ -114,19 +108,6 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	make && \
 	cp trimal /usr/local/bin
 
-### HybPiper ###
-# Use my fork until PR gets submitted and merged (or chmod won't work).
-WORKDIR $APPS_HOME
-ENV APP_NAME=HybPiper
-ENV DEST=$APPS_HOME/$APP_NAME
-RUN git clone https://github.com/joelnitta/$APP_NAME.git \
-  && chmod +x $DEST/*.py
-ENV PATH="$PATH:$DEST/"
-
-# Silence parallel citation warning
-RUN mkdir /root/.parallel \
-  && touch /root/.parallel/will-cite
-  
 ### taxon-tools ###
 WORKDIR $APPS_HOME
 ENV APP_NAME=taxon-tools
@@ -158,47 +139,8 @@ RUN echo ". $CONDA_DIR/etc/profile.d/conda.sh" >> ~/.profile
 # make conda activate command available from /bin/bash --interative shells
 RUN conda init bash
 
-# build conda environment: kindel
-
-ENV APPNAME kindel
-
-COPY conda/$APPNAME-environment.yml /tmp/
-
-ENV ENV_PREFIX /env/$APPNAME
-RUN conda update --name base --channel defaults conda && \
-    conda env create --prefix $ENV_PREFIX --file /tmp/$APPNAME-environment.yml --force && \
-    conda clean --all --yes
-
-# make shell script to run conda app
-# e.g., kindel can be run with `kindel`
-
-RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
-  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
-  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
-  echo "$APPNAME \"\$@\"" >> /usr/local/bin/$APPNAME && \
-  chmod 755 /usr/local/bin/$APPNAME
-
-# build conda environment: bbmap
-
-ENV APPNAME bbmap
-
-COPY conda/$APPNAME-environment.yml /tmp/
-
-ENV ENV_PREFIX /env/$APPNAME
-RUN conda update --name base --channel defaults conda && \
-    conda env create --prefix $ENV_PREFIX --file /tmp/$APPNAME-environment.yml --force && \
-    conda clean --all --yes
-
-# make shell script to run conda app
-# NOTE: the actual command within conda to run bbmap is bbmap.sh
-
-RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
-  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
-  echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
-  echo "$APPNAME.sh \"\$@\"" >> /usr/local/bin/$APPNAME && \
-  chmod 755 /usr/local/bin/$APPNAME
-
-# Build conda environment: SuperCRUNCH
+### SuperCRUNCH ###
+# Needs to run in a conda env
 ENV APPNAME supercrunch
 ENV VERSION 1.3.1
 ENV ENV_PREFIX /env/$APPNAME
@@ -220,9 +162,6 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
   echo "python /apps/SuperCRUNCH-$VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
-
-# radian (for interactive R terminal)
-RUN conda install -c conda-forge radian
 
 ####################################
 ### Install R packages with renv ###
