@@ -5549,7 +5549,38 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
         TRUE ~ scientific_name
       )
-    )
+    ) %>%
+    # Mixup in NCBI taxonomy: 160848 should be Hymenophyllum baileyanum Domin
+    # at least of 2022-02-02
+    filter(!(taxid == "160848" & accepted == FALSE)) %>%
+      mutate(
+        scientific_name = case_when(
+          taxid == "160848" ~ "Hymenophyllum baileyanum Domin",
+          TRUE ~ scientific_name
+        ),
+        species = case_when(
+          taxid == "160848" ~ "Hymenophyllum baileyanum",
+          TRUE ~ species
+        )
+      ) %>%
+      # Mixup in NCBI taxonomy: 295380 should be Hymenophyllum badium Hook. & Grev.
+    filter(!(taxid == "295380" & species == "Trichomanes badium")) %>%
+    mutate(
+      accepted = case_when(
+          taxid == "295380" ~ TRUE,
+          TRUE ~ accepted
+        )
+     ) %>%
+     # Mixup in NCBI taxonomy: 449813 should be Arthromeris wallichiana (Spreng.) Ching
+     # not Selliguea wallichiana Hook. -> Loxogramme wallichiana (Hook.) M.G.Price
+    filter(!(taxid == "449813" & scientific_name == "Selliguea wallichiana Hook.")) %>%
+    filter(!(taxid == "449813" & scientific_name == "Polypodium wallichianum Spreng.")) %>%
+    mutate(
+      accepted = case_when(
+          taxid == "449813" ~ TRUE,
+          TRUE ~ accepted
+        )
+     )
 }
 
 #' Exclude invalid names from taxonomic name resolution
