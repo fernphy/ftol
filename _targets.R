@@ -446,14 +446,21 @@ tar_plan(
       path(int_dir, "iqtree/constraint.tre")
     )
   ),
-  # - Sanger tree
+  # - Initial Sanger tree (fast mode)
   tar_target(
-    sanger_tree,
+    sanger_tree_fast,
     iqtree(
       sanger_alignment,
-      m = "GTR+I+G", bb = 1000, nt = "AUTO", seed = 20220129,
-      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
-      other_args = c("-t", "PARS", "-g", path_abs(constraint_tree_file))
+      m = "GTR+I+G", nt = 6, seed = 20220129,
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger_fast"),
+      other_args = c(
+        "-fast",
+        "-t", "PARS",
+        "-alrt", "1000",
+        "-g", path_abs(constraint_tree_file)
+      ),
+      tree_path = path(
+        int_dir, "iqtree/sanger_fast/sanger_alignment.phy.treefile")
     ),
     deployment = "main"
   )
