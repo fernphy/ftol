@@ -91,8 +91,7 @@ tar_plan(
     fern_sanger_seqs_raw,
     fetch_fern_sanger_seqs(
       target_loci,
-      end_date = date_cutoff,
-      accs_exclude = accs_exclude$accession),
+      end_date = date_cutoff),
     pattern = map(target_loci),
     # don't run in parallel, or will get HTTP status 429 errors
     deployment = "main"
@@ -101,6 +100,7 @@ tar_plan(
   tar_target(
     fern_sanger_extract_res,
     extract_from_ref_blast(
+      # Drop excluded sequences
       query_seqtbl = fern_sanger_seqs_raw,
       ref_seqtbl = fern_ref_seqs,
       target = target_loci,
@@ -109,18 +109,21 @@ tar_plan(
     ),
     pattern = map(target_loci)
   ),
-  raw_fasta = clean_extract_res(fern_sanger_extract_res, "dc-megablast"),
+  raw_fasta_all = clean_extract_res(fern_sanger_extract_res, "dc-megablast"),
+  # Drop excluded sequences
+  raw_fasta = anti_join(raw_fasta_all, accs_exclude, by = "accession"),
   # Fetch metadata
   tar_target(
     raw_meta_all,
     fetch_fern_metadata(
       target_loci,
-      end_date = date_cutoff,
-      accs_exclude = accs_exclude$accession),
+      end_date = date_cutoff),
     pattern = map(target_loci),
     deployment = "main"
   ),
-  raw_meta = unique(raw_meta_all),
+  raw_meta = unique(raw_meta_all) %>%
+    # Drop excluded sequences from metadata
+    anti_join(accs_exclude, by = "accession"),
 
   # Resolve taxonomic names for Sanger sequences ----
   # Specify varieties to exclude from collapsing
@@ -285,10 +288,14 @@ tar_plan(
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
-  plastome_metadata_raw = download_plastome_metadata(
+  plastome_metadata_raw_all = download_plastome_metadata(
     end_date = date_cutoff,
-    outgroups = plastome_outgroups,
-    accs_exclude = accs_exclude$accession),
+    outgroups = plastome_outgroups),
+  # Drop sequences to exclude
+  plastome_metadata_raw = anti_join(
+    plastome_metadata_raw_all,
+    accs_exclude, by = "accession"
+  ),
   # Extract species names in plastome data from NCBI taxonomy
    plastome_ncbi_names_raw = extract_ncbi_names(
      taxdump_zip_file, taxid_keep = plastome_metadata_raw,
