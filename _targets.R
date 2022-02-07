@@ -223,8 +223,6 @@ tar_plan(
     pattern = map(sanger_blast_query)
   ),
   # Identify rogues (sequences matching wrong family)
-  # FIXME: many of these are due to bad taxonomy.
-  # inspect results and modify WF taxonomy as needed
   sanger_seqs_rogues = detect_rogues(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,

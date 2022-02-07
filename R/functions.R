@@ -1313,7 +1313,8 @@ define_varieties_to_keep = function() {
 	  "Polystichum polyblepharum var. polyblepharum",
     "Dicksonia lanata subsp. lanata",
     "Dryopteris simasakii var. simasakii",
-    "Elaphoglossum peltatum f. peltatum"
+    "Elaphoglossum peltatum f. peltatum",
+    "Hypolepis rugosula subsp. rugosula"
   )
 }
 
@@ -5580,6 +5581,22 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       accepted = case_when(
           taxid == "449813" ~ TRUE,
           TRUE ~ accepted
+        )
+     ) %>%
+     # Mixup: Acrostichum scandens should be Acrostichum scandens Raddi, not
+     # Acrostichum scandens Bory ex Fee for accs GU376696 GU376547
+     mutate(
+       scientific_name = case_when(
+          taxid == "861201" ~ "Acrostichum scandens Raddi",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+     # Mixup: Cyathea affinis should be Cyathea affinis Brack. (from Samoa), not
+     # Cyathea affinis (G.Forst.) Sw. for acc MT657764 
+     mutate(
+       scientific_name = case_when(
+          taxid == "2853751" ~ "Cyathea affinis Brack.",
+          TRUE ~ scientific_name
         )
      )
 }
