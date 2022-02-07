@@ -3463,9 +3463,10 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     left_join(plastome_ncbi_names_raw, by = "taxid") %>%
     # Use only accepted name
     filter(accepted == TRUE) %>%
-    select(-accepted) %>%
     # Clean names: removes brackets and years
     clean_ncbi_names() %>%
+    # (needed `accepted` during cleaning, now ok to drop)
+    select(-accepted) %>%
     # Remove any names not identified to species
     filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
     # Fix some names NCBI got wrong
