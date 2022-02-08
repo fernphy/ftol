@@ -5598,6 +5598,17 @@ clean_ncbi_names <- function(ncbi_names_raw) {
           taxid == "2853751" ~ "Cyathea affinis Brack.",
           TRUE ~ scientific_name
         )
+     ) %>%
+     # Trichomanes bimarginatum has two ambiguous synonyms,
+     # Trichomanes bimarginatum (Bosch) Bosch -> Didymoglossum bimarginatum (Bosch) Ebihara & K. Iwats. #nolint
+     # Trichomanes bimarginatum Bedd. -> Vandenboschia birmanica (Bedd.) Ching
+     # in this dataset there is only one sequence (AB257494) and it is
+     # Trichomanes bimarginatum (Bosch) Bosch
+     mutate(
+       scientific_name = case_when(
+          taxid == "381227" ~ "Trichomanes bimarginatum (Bosch) Bosch",
+          TRUE ~ scientific_name
+        )
      )
 }
 
@@ -6031,6 +6042,215 @@ di2multi4node <- function (phy, tol = 0.5)
 		phy$node.label <- phy$node.label[-(node2del - length(phy$tip.label))]
 	phy
 }
+
+# Monophyly ----
+
+#' Load data on Equisetum subgenera
+#'
+#' Filters species to those in the tree. Checks to make sure all Equisetum
+#' species in the tree are included in the data.
+#'
+#' @param equisteum_subgen_path Path to CSV file with two columns,
+#' "scientificName" and "subgenus".
+#' @param sanger_tree Phylogenetic tree including Equisetum species.
+#'
+#' @return Tibble
+#' 
+load_equisetum_subgen <- function(equisteum_subgen_path, sanger_tree) {
+  # Load CSV file, parse sci names
+  equisetum_subgen <- read_csv(
+    equisteum_subgen_path, col_types = "cc") %>%
+    mutate(
+      taxastand::ts_parse_names(scientificName) %>%
+        select(genus = genus_name, specific_epithet),
+      species = paste(genus, specific_epithet, sep = "_")) %>%
+    select(species, subgenus) %>%
+    unique() %>%
+    # Format subgenus as it is in fossil data
+    mutate(subgenus = paste3("Equisetum subgen.", subgenus))
+
+  # Make sure all species are in tree
+  tibble(
+    species = sanger_tree$tip.label) %>%
+    filter(str_detect(species, "Equisetum")) %>%
+    left_join(equisetum_subgen, by = "species") %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, species)
+}
+
+#' Add "major clade" to Sanger sampling table
+#'
+#' "major clade" includes pteridophyte suborder or order, and combines
+#' Ophioglossales + Psilotales into one group
+#'
+#' @param data Tibble including columns "suborder" and "order".
+#'
+#' @return Tibble withh column "major_clade" added
+#'
+add_major_clade <- function(data) {
+  data %>%
+    mutate(
+      major_clade = coalesce(suborder, order),
+      major_clade = case_when(
+        major_clade %in% c("Ophioglossales", "Psilotales") ~ "Ophioglossales + Psilotales", #nolint
+        TRUE ~ major_clade
+      )
+    )
+}
+
+#' Make tibble summarizing sampling of Sanger dataset
+#'
+#' @param plastome_metadata_renamed Plastome data with final (resolved) species
+#' names.
+#' @param sanger_alignment Sanger DNA alignment.
+#' @param sanger_tree Sanger ML tree.
+#' @param ppgi_taxonomy PPGI taxonomy
+#'
+#' @return Tibble with columns "species",  "genus", "order", "suborder",
+#' "family"  "subfamily"  "major_clade" "outgroup"
+#'
+make_sanger_sampling_tbl <- function(
+  plastome_metadata_renamed, sanger_alignment,
+  sanger_tree, ppgi_taxonomy
+) {
+
+  # check monophyly ----
+  # Make tibble of outgroup species
+  og_species <-
+    plastome_metadata_renamed %>%
+    select(species, outgroup) %>%
+    filter(outgroup == TRUE)
+
+  # Make tibble with one row per species in Sanger sampling
+  tibble(species = rownames(sanger_alignment)) %>%
+    # Add higher-level taxonomy
+    mutate(
+      genus = str_split(species, "_") %>% map_chr(1)
+    ) %>%
+    left_join(
+      select(
+        ppgi_taxonomy, order, suborder, family, subfamily, genus), by = "genus"
+    ) %>%
+    # Add major_clade
+    add_major_clade() %>%
+    # Add outgroup status
+    left_join(og_species, by = "species") %>%
+    mutate(outgroup = replace_na(outgroup, FALSE)) %>%
+    verify(nrow(.) == nrow(sanger_alignment)) %>%
+    verify(sum(outgroup) == nrow(og_species)) %>%
+    # Check for match for tips with tree
+    verify(all(species %in% sanger_tree$tip.label)) %>%
+    verify(all(sanger_tree$tip.label %in% .$species))
+}
+
+#' Get results of monophyly test for various taxa
+#'
+#' @param solution Result of assessing monophyly with assess_monophy().
+#' @param taxlevels Numeric vector: taxonomic levels to extract.
+#'
+#' @return Tibble
+#'
+get_result_monophy <- function(solution, taxlevels) {
+  MonoPhy::GetResultMonophyly(solution, taxlevels = taxlevels) %>%
+  magrittr::extract2(1) %>%
+  rownames_to_column("taxon") %>%
+  as_tibble() %>%
+  janitor::clean_names()
+}
+
+#' Get summary of monophyly test
+#'
+#' @param solution Result of assessing monophyly with assess_monophy().
+#' @param taxlevels Numeric vector: taxonomic levels to extract.
+#'
+#' @return Tibble
+get_summary_monophy <- function(solution, taxlevels) {
+  mp_sum <- MonoPhy::GetSummaryMonophyly(solution, taxlevels = taxlevels)
+
+  mp_sum %>%
+  magrittr::extract2(1) %>%
+  rownames_to_column("var") %>%
+  as_tibble() %>%
+  mutate(tax_level = names(mp_sum)) %>%
+  janitor::clean_names() %>%
+  select(tax_level, var, taxa, tips)
+}
+
+#' Assess monophyly
+#'
+#' Wrapper around MonoPhy::AssessMonophyly()
+#'
+#' @param taxon_sampling Dataframe of taxa to assess for monophyly. Must
+#' include column "species"
+#' @param tree Phylogenetic tree.
+#' @param og_taxa Character vector; pair of taxa to define the outgroup to
+#' root the tree.
+#' @param tax_levels Character vector; names of columns in `taxon_sampling`
+#' to check for monophyly.
+#'
+#' @return List; results of MonoPhy::AssessMonophyly()
+#'
+assess_monophy <- function(
+  taxon_sampling, tree,
+  og_taxa = c("Magnolia_tripetala", "Ginkgo_biloba"),
+  tax_levels) {
+
+  tax_levels <- c("species", tax_levels) %>% unique()
+
+  # Root tree
+  tree_rooted <- phytools::reroot(
+    tree,
+    getMRCA(tree, og_taxa)
+  )
+
+  # Check monophyly
+  taxon_sampling %>%
+    verify("species" %in% colnames(.)) %>%
+    select(species, all_of(tax_levels)) %>%
+    as.data.frame() %>%
+    MonoPhy::AssessMonophyly(tree_rooted, .)
+}
+
+# Dating ----
+
+#' Load data on fossil calibration points
+#'
+#' Filters list to one point (oldest available fossil) per calibration
+#' node, excludes "Incertae sedis" taxa
+#'
+#' @param fossil_dates_path Path to CSV file with fossil calibration
+#' points for pteridophytes.
+#'
+#' @return Tibble
+load_fossil_calibration_points <- function(fossil_dates_path) {
+  read_csv(
+    fossil_dates_path,
+    skip = 1) %>%
+    janitor::clean_names() %>%
+    # Select needed columns
+    select(
+      minimum_age, node_calibrated, fossil_taxon,
+      affinities_group, affinities) %>%
+    # FIXME remove duplicates.
+    # original data shouldn't include these, needs to be fixed
+    unique() %>%
+    add_count(fossil_taxon) %>%
+    filter(n == 1) %>%
+    select(-n) %>%
+    assert(is_uniq, fossil_taxon) %>%
+    # Exclude Incertae sedis
+    filter(
+      str_detect(
+        node_calibrated,
+        regex("Incertae sedis", ignore.case = TRUE),
+        negate = TRUE)
+    ) %>%
+    # Keep only one oldest fossil per calibration node, no ties
+    group_by(node_calibrated) %>%
+    slice_max(n = 1, order_by = minimum_age, with_ties = FALSE) %>%
+    ungroup()
+}
+
 
 # Etc ----
 # This function can be called inside of other functions to check
