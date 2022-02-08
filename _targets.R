@@ -27,12 +27,14 @@ tar_plan(
   # until {pteridocat} package is live
   tar_file(pteridocat_file, path(data_raw, "pteridocat.RDS")),
   pteridocat = readRDS(pteridocat_file),
-  # - Modified PPGI taxonomy
+  # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(
     ppgi_taxonomy_path,
     path(data_raw, "ppgi_taxonomy_mod.csv")),
   ppgi_taxonomy = read_csv(ppgi_taxonomy_path),
+  # Equisetum subgenus level taxonomy
+  tar_file(equisteum_subgen_path, path(data_raw, "equisetum_subgenera.csv")),
   # List of coding genes to extract from plastomes
   # (based on genes of Wei et al 2017, then trimmed to non-duplicated genes)
   tar_file(
@@ -71,6 +73,11 @@ tar_plan(
   # downloaded from
   # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip #nolint
   tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-02-01.zip")),
+  # Fossil calibration points
+  tar_file(
+    fossil_dates_path,
+    path(data_raw, "Fossils_Ferns_v.1.0(3.2.2022).csv")
+  ),
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
@@ -480,4 +487,34 @@ tar_plan(
         int_dir, "iqtree/sanger/sanger_alignment.phy.treefile")
     )
   ),
+  # Dating ----
+  # Load Equisetum data (only group with subgenera in fossils)
+  equisetum_subgen = load_equisetum_subgen(
+    equisteum_subgen_path, sanger_tree_fast),
+  # Define groups for checking monophyly
+  taxa_levels_check = c(
+    "order", "suborder", "family",
+   "subfamily", "genus", "subgenus"),
+  # Make tibble mapping species to putatively monophyletic groups
+  sanger_sampling = make_sanger_sampling_tbl(
+    plastome_metadata_renamed, sanger_alignment,
+    sanger_tree = sanger_tree_fast,
+    ppgi_taxonomy = ppgi_taxonomy) %>%
+    # Add Equisetum subgenera
+    left_join(equisetum_subgen, by = "species"),
+  ,
+  # Check monophyly
+  mono_test = assess_monophy(
+    taxon_sampling = sanger_sampling,
+    tree = sanger_tree_fast,
+    # Root on seed plants when checking
+    og_taxa = c("Magnolia_tripetala", "Ginkgo_biloba"),
+    tax_levels = taxa_levels_check
+  ),
+  monophy_by_clade = map_df(
+    seq_along(taxa_levels_check),
+    ~get_result_monophy(mono_test, .)
+  ),
+  # Load fossil calibration points
+  fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path)
 )
