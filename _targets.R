@@ -424,18 +424,21 @@ tar_plan(
   plastome_alignment = concatenate_to_ape(plastome_alignment_tbl),
 
   # Phylogenetic analysis ----
-  # - backbone tree
+  # Backbone consensus tree
   tar_target(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      m = "GTR+I+G", bb = 1000, nt = 12, seed = 20220123,
+      m = "MFP", # test model followed by ML analysis
+      bb = 1000, nt = 12, seed = 20220123,
       redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
-      other_args = c("-t", "PARS")
+      other_args = c(
+        "-mset", "GTR", # only test GTR models
+        "-t", "PARS")
     ),
     deployment = "main"
   ),
-  # - collapse nodes with BS < 95, write out as constraint tree
+  # collapse nodes with BS < 95, write out as constraint tree
   constraint_tree = di2multi4node(plastome_tree, 95),
   tar_file(
     constraint_tree_file,
@@ -444,7 +447,7 @@ tar_plan(
       path(int_dir, "iqtree/constraint.tre")
     )
   ),
-  # - Initial Sanger tree (fast mode)
+  # Initial Sanger tree (fast mode)
   tar_target(
     sanger_tree_fast,
     iqtree(
@@ -459,7 +462,22 @@ tar_plan(
       ),
       tree_path = path(
         int_dir, "iqtree/sanger_fast/sanger_alignment.phy.treefile")
-    ),
-    deployment = "main"
-  )
+    )
+  ),
+  # Final Sanger ML tree
+  tar_target(
+    sanger_ml_tree,
+    iqtree(
+      sanger_alignment,
+      m = "MFP", nt = 6, seed = 20220129,
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
+      other_args = c(
+        "-mset", "GTR",
+        "-t", "PARS",
+        "-g", path_abs(constraint_tree_file)
+      ),
+      tree_path = path(
+        int_dir, "iqtree/sanger/sanger_alignment.phy.treefile")
+    )
+  ),
 )
