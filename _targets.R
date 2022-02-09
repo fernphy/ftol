@@ -481,14 +481,21 @@ tar_plan(
         int_dir, "iqtree/sanger/sanger_alignment.phy.treefile")
     )
   ),
-  # Dating ----
+  # Check monophyly ----
+  # FIXME: use sanger_tree, not sanger_tree_fast, when ready
+  # Root tree on bryophytes
+  sanger_tree_rooted = phytools::reroot(
+    sanger_tree_fast,
+    getMRCA(sanger_tree_fast,
+      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
+  ),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path, sanger_tree_fast),
   # Define groups for checking monophyly
   taxa_levels_check = c(
     "order", "suborder", "family",
-   "subfamily", "genus", "subgenus"),
+    "subfamily", "genus", "subgenus"),
   # Make tibble mapping species to putatively monophyletic groups
   sanger_sampling = make_sanger_sampling_tbl(
     plastome_metadata_renamed, sanger_alignment,
@@ -500,15 +507,76 @@ tar_plan(
   # Check monophyly
   mono_test = assess_monophy(
     taxon_sampling = sanger_sampling,
-    tree = sanger_tree_fast,
-    # Root on seed plants when checking
-    og_taxa = c("Magnolia_tripetala", "Ginkgo_biloba"),
+    tree = sanger_tree_rooted,
     tax_levels = taxa_levels_check
   ),
   monophy_by_clade = map_df(
     seq_along(taxa_levels_check),
     ~get_result_monophy(mono_test, .)
   ),
+  # Dating prep ----
   # Load fossil calibration points
-  fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path)
+  fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path),
+  # Define some tips for spanning non-monophyletic groups
+  manual_spanning_tips = define_manual_spanning_tips(),
+  # Map species in the tree to their fossil groups
+  fossil_node_species_map = make_fossil_species_map(
+    sanger_tree_rooted, fossil_calibration_points,
+    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed),
+  # Get pairs of tips that define fossil groups
+  fossil_calibration_tips = get_fossil_calibration_tips(
+    fossil_node_species_map, sanger_tree_rooted, fossil_calibration_points,
+    manual_spanning_tips
+  ),
+  # Specify calibration point for root
+  root_calibration = calibrate_root_node(
+    sanger_tree_rooted, "land_plants", 475,
+    "Anthoceros_angustus", "Polypodium_virginianum"
+  ),
+  # Format fossil calibration points for treePL
+  fossil_calibrations_for_treepl = format_calibrations_for_treepl(
+    fossil_calibration_tips, root_calibration
+  ),
+  # Dating with treePL ----
+  # Run initial treepl search to identify smoothing parameter
+  treepl_cv_results = run_treepl_cv(
+    phy = sanger_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = fossil_calibrations_for_treepl,
+    cvstart = "1000",
+    cvstop = "0.000001",
+    plsimaniter = "200000", # preliminary output suggested > 100000
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl"),
+    nthreads = 1,
+    echo = TRUE
+  ),
+  # Run priming analysis to determine optimal states for other parameters
+  treepl_priming_results = run_treepl_prime(
+    phy = sanger_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = fossil_calibrations_for_treepl,
+    cv_results = treepl_cv_results,
+    plsimaniter = "200000", # preliminary output suggested > 100000
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl"),
+    nthreads = 1,
+    echo = TRUE
+  ),
+  # Run treePL dating analysis
+  plastid_tree_dated = run_treepl(
+    phy = sanger_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = fossil_calibrations_for_treepl,
+    cv_results = treepl_cv_results,
+    priming_results = treepl_priming_results,
+    plsimaniter = "200000", # preliminary output suggested > 100000
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl"),
+    nthreads = 7,
+    echo = TRUE
+  )
 )
