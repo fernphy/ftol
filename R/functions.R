@@ -6215,7 +6215,7 @@ assess_monophy <- function(
 #' Load data on fossil calibration points
 #'
 #' Filters list to one point (oldest available fossil) per calibration
-#' node, excludes "Incertae sedis" taxa
+#' node, excludes "Incertae sedis" and known non-monophyletic taxa
 #'
 #' @param fossil_dates_path Path to CSV file with fossil calibration
 #' points for pteridophytes.
@@ -6230,12 +6230,7 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
     select(
       minimum_age, node_calibrated, fossil_taxon,
       affinities_group, affinities) %>%
-    # FIXME remove duplicates.
-    # original data shouldn't include these, needs to be fixed
-    unique() %>%
-    add_count(fossil_taxon) %>%
-    filter(n == 1) %>%
-    select(-n) %>%
+    # Check for duplicates
     assert(is_uniq, fossil_taxon) %>%
     # Exclude Incertae sedis
     filter(
