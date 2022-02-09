@@ -4212,7 +4212,7 @@ run_treepl_cv <- function (
   if(isTRUE(write_tree)) {ape::write.tree(phy, fs::path(wd, phy_path))}
   
   # Get number of sites in alignment
-  num_sites <- dim(alignment)[2]
+  num_sites <- dim(alignment)[2] # nolint
   
   outfile_path <- fs::path_ext_set(paste0(phy_name, "_cv"), "out")
   
@@ -4221,8 +4221,8 @@ run_treepl_cv <- function (
     glue("treefile = {phy_path}"),
     glue("numsites = {num_sites}"),
     calibration_dates$mrca,
-    calibration_dates %>% filter(!is.na(min_dates)) %>% pull(min_dates),
-    calibration_dates %>% filter(!is.na(max_dates)) %>% pull(max_dates),
+    calibration_dates %>% filter(!is.na(min)) %>% pull(min),
+    calibration_dates %>% filter(!is.na(max)) %>% pull(max),
     glue("cvstart = {cvstart}"),
     glue("cvstop = {cvstop}"),
     glue("cvsimaniter = {cvsimaniter}"),
@@ -4243,7 +4243,7 @@ run_treepl_cv <- function (
   processx::run("treePL", config_file_name, wd = wd, echo = echo)
   
   # Return cross-validation results
-  read_lines(fs::path(wd, outfile_path))
+  readr::read_lines(fs::path(wd, outfile_path))
   
 }
 
@@ -4323,8 +4323,8 @@ run_treepl_prime <- function (
     glue("treefile = {phy_path}"),
     glue("numsites = {num_sites}"),
     calibration_dates$mrca,
-    calibration_dates %>% filter(!is.na(min_dates)) %>% pull(min_dates),
-    calibration_dates %>% filter(!is.na(max_dates)) %>% pull(max_dates),
+    calibration_dates %>% filter(!is.na(min)) %>% pull(min),
+    calibration_dates %>% filter(!is.na(max)) %>% pull(max),
     glue("cvsimaniter = {cvsimaniter}"),
     glue("plsimaniter = {plsimaniter}"),
     glue("seed = {seed}"),
@@ -4429,8 +4429,8 @@ run_treepl <- function (
     glue("numsites = {num_sites}"),
     glue("smooth = {best_smooth}"),
     calibration_dates$mrca,
-    calibration_dates %>% filter(!is.na(min_dates)) %>% pull(min_dates),
-    calibration_dates %>% filter(!is.na(max_dates)) %>% pull(max_dates),
+    calibration_dates %>% filter(!is.na(min)) %>% pull(min),
+    calibration_dates %>% filter(!is.na(max)) %>% pull(max),
     glue("cvsimaniter = {cvsimaniter}"),
     glue("plsimaniter = {plsimaniter}"),
     glue("seed = {seed}"),
