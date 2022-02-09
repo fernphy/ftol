@@ -6269,6 +6269,505 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
     ungroup()
 }
 
+#' Make a tibble mapping fossil groups (affinities) to species
+#'
+#' @param tree Phylogenetic tree.
+#' @param fossil_calibration_points Tibble of fossil calibration points.
+#' @param ppgi_taxonomy Pteridophyte phylogeny group I taxonomy.
+#' @param equisetum_subgen Subgenera of Equisetum and their species.
+#' @param plastome_metadata_renamed Metada for plastome sequences, including
+#' species and outgroup status.
+#'
+#' @return Tibble with two columns, "affinities" and "species"
+#'
+make_fossil_species_map <- function(
+  tree, fossil_calibration_points, ppgi_taxonomy,
+  equisetum_subgen, plastome_metadata_renamed) {
+
+  # Make tibble of tips with genus and species
+  tip_tbl <- tibble(species = tree$tip.label) %>%
+    mutate(genus = str_split(species, "_") %>% map_chr(1)) %>%
+    assert(is_uniq, species) %>%
+    assert(not_na, everything()) %>%
+    # Modify for Polypodium s.l.: includes Pleurosoriopsis
+    mutate(genus = case_when(
+      genus == "Polypodium" ~ "Polypodium s.l.",
+      genus == "Pleurosoriopsis" ~ "Polypodium s.l.",
+      TRUE ~ genus
+    ))
+
+  # Filter PPGI taxonomy to only genera in the tree
+  ppgi_taxonomy_in_tree <-
+    ppgi_taxonomy %>%
+    inner_join(select(tip_tbl, genus), by = "genus")
+
+  # Filter equisetum subgenera to only species in the tree
+  equisetum_subgen_in_tree <-
+    equisetum_subgen %>%
+    inner_join(select(tip_tbl, species), by = "species")
+
+  # Make tibble of deeper groups (Euphyllophytes and Tracheophytes)
+  # Needs to include outgroup taxa
+  bryo_genera <- c("Anthoceros", "Physcomitrium", "Marchantia")
+  lyco_genera <- c("Isoetes", "Lycopodium", "Selaginella")
+
+  og_deep_clades <-
+    plastome_metadata_renamed %>%
+    filter(outgroup == TRUE) %>%
+    select(species) %>%
+    mutate(
+      clade_1 = if_else(
+        str_detect(species, paste(bryo_genera, collapse = "|"), negate = TRUE),
+        "Tracheophytes", NA_character_),
+      clade_2 = if_else(
+        str_detect(species, 
+          paste(c(bryo_genera, lyco_genera), collapse = "|"), negate = TRUE),
+        "Euphyllophytes", NA_character_)
+    ) %>%
+    select(species, contains("clade")) %>%
+    arrange(clade_2, clade_1, species)
+
+  deep_clades <-
+  tip_tbl %>%
+    anti_join(og_deep_clades, by = "species") %>%
+    select(-genus) %>%
+    mutate(clade_1 = "Tracheophytes", clade_2 = "Euphyllophytes") %>%
+    bind_rows(og_deep_clades) %>%
+    arrange(clade_2, clade_1, species) %>%
+    verify(all(species %in% tip_tbl$species)) %>%
+    verify(all(tip_tbl$species %in% species)) %>%
+    verify(nrow(.) == nrow(tip_tbl))
+
+  fossil_calibration_points %>%
+    select(affinities) %>%
+    # Split affinities that are composed of multiple taxa separated by '+'
+    mutate(aff_split = affinities) %>%
+    separate_rows(aff_split, sep = "\\+") %>%
+    # Affinities comprse family, order, subgenus (Equisetum only)
+    # - join genus by family
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = family, genus_1 = genus),
+      by = "aff_split"
+    ) %>%
+    # - join genus by order
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = order, genus_2 = genus),
+      by = "aff_split"
+    ) %>%
+    mutate(genus = coalesce(genus_2, genus_1, aff_split)) %>%
+    select(affinities, aff_split, genus) %>%
+    unique() %>%
+    assert(not_na, everything()) %>%
+    # - join species by genus
+    left_join(tip_tbl, by = "genus") %>%
+    # Join equisetum species by subgenus
+    left_join(
+      select(
+        equisetum_subgen_in_tree,
+        species_2 = species,
+        aff_split = subgenus
+      ),
+      by = "aff_split"
+    ) %>%
+    # Join deeper groups by species
+    left_join(
+      select(deep_clades, species_3 = species, aff_split = clade_1),
+      by = "aff_split"
+    ) %>%
+    left_join(
+      select(deep_clades, species_4 = species, aff_split = clade_2),
+      by = "aff_split"
+    ) %>%
+    mutate(species = coalesce(species, species_2, species_3, species_4)) %>%
+    select(affinities, species) %>%
+    unique() %>%
+    assert(not_na, everything())
+}
+
+#' Test monophyly of fossil groups
+#'
+#' @param tree Phylogenetic tree, should be rooted.
+#' @param fossil_node_species_map Tibble with two columns,
+#' "affinities" and "species".
+#' @param fossil_affinity_select Name of fossil group to test.
+#'
+#' @return Tibble with monophyletic status of selected fossil group
+#' 
+mono_test_fossil <- function(
+  tree,
+  fossil_node_species_map,
+  fossil_affinity_select
+) {
+  # Make tibble with taxon sampling of fossil groups
+  taxon_sampling <-
+    tibble(species = tree$tip.label) %>%
+    left_join(
+      filter(fossil_node_species_map, affinities == fossil_affinity_select),
+      by = "species"
+    )
+  # Test monophyly of selected group
+  assess_monophy(
+    taxon_sampling = taxon_sampling,
+    tree = tree,
+    tax_levels = "affinities"
+  ) %>%
+  get_result_monophy(., 1)
+}
+
+#' Get a pair of tips that define a clade in a phylogenetic tree
+#'
+#' @param tree Phylogenetic tree, must be rooted.
+#' @param node Number of a node in the tree.
+#'
+#' @return Character vector; a pair of tips whose MRCA is `node`
+#' 
+get_spanning_tips <- function(tree, node) {
+  # Tree must be rooted
+  assertthat::assert_that(ape::is.rooted(tree))
+  # Ladderize tree
+  tree <- ape::ladderize(tree)
+  # Get vector of tips in ladderized order
+  all_tips_ladder_ord <- get_tips_in_ape_plot_order(tree)
+  # Get spanning tips, not in ladderized order
+  spanning_tips_unord <- phangorn::Descendants(tree, node, "tips") %>%
+    magrittr::extract2(1) %>%
+    magrittr::extract(tree$tip.label, .)
+  # Put 'final' spanning tips in ladderized order
+  final_tips <-
+    all_tips_ladder_ord[all_tips_ladder_ord %in% spanning_tips_unord]
+  # Return first and last spanning tips in ladderized order
+  if (length(final_tips) > 2) return(
+    c(dplyr::first(final_tips), dplyr::last(final_tips)))
+  final_tips
+}
+
+#' Count the number of tips descending from a node defined by a pair of tips 
+#' in a phylogenetic tree
+#'
+#' @param tree Phylogenetic tree.
+#' @param tips Character vector; a pair of tips in the tree.
+#'
+#' @return Number of terminal tips in the clade that is defined by the MRCA of 
+#' `tips`
+#' 
+check_num_tips <- function(tree, tips) {
+  if (is.null(tips)) return(NA)
+  getMRCA(tree, tips) %>%
+    phangorn::Descendants(tree, node = ., "tips") %>%
+    magrittr::extract2(1) %>%
+    length()
+}
+
+#' Get parent node from a tip taxon
+#'
+#' @param tree Phylogenetic tree.
+#' @param species Single tip of the tree.
+#'
+#' @return Number of the parent node of the species
+#' 
+get_parent <- function(tree, species) {
+  node <- which(tree$tip.label == species)
+  phangorn::Ancestors(tree, node, type = "parent")
+}
+
+#' Get child tips (taxa) from parent node
+#'
+#' @param tree Phylogenetic tree.
+#' @param node Number of a node in the tree.
+#'
+#' @return Character vector; tips that descend from `node`
+#' 
+get_children <- function(tree, node) {
+  # Tree must be rooted
+  assertthat::assert_that(ape::is.rooted(tree))
+  # Get spanning tips, not in ladderized order
+  phangorn::Descendants(tree, node, "tips") %>%
+    magrittr::extract2(1) %>%
+    magrittr::extract(tree$tip.label, .)
+}
+
+#' Make tibble of manual spanning tips
+#' 
+#' @return Tibble with columns "affinities", "tip_1_manual", and "tip_2_manual".
+#' - "affinities" is the name of the group that corresponds to
+#' a fossil calibration point.
+#' - The MRCA of "tip_1_manual" and "tip_2_manual" define each group
+#' in "affinities"
+define_manual_spanning_tips <- function() {
+  tribble(
+  ~affinities, ~tip_1_manual, ~tip_2_manual,
+  "Cyathea", "Cyathea_robertsiana", "Cyathea_fulva",
+  "Cyatheaceae", "Sphaeropteris_truncata", "Cyathea_fulva",
+  "Pleopeltis", "Pleopeltis_bradeorum", "Pleopeltis_bombycina",
+  "Polypodium s.l.", "Polypodium_pellucidum", "Polypodium_virginianum"
+  )
+}
+
+#' Get tips that define clades corresponding to each fossil
+#' calibration point
+#'
+#' @param fossil_node_species_map Tibble in long format with two columns,
+#' "affinities" and "species".
+#' @param sanger_tree_rooted Rooted phylogeny.
+#' @param fossil_calibration_points Fossil calibration points read in with
+#' load_fossil_calibration_points().
+#' @param manual_spanning_tips Tibble of tips that define clades corresponding
+#' to fossils prepared by hand; used for groups that are non-monophyletic in
+#' sanger_tree_rooted.
+#'
+#' @return Tibble of fossil calibration points with two columns added, "tip_1"
+#' and "tip_2" that define the clades corresponding to each fossil
+#' calibration point
+#'
+get_fossil_calibration_tips <- function(
+  fossil_node_species_map,
+  sanger_tree_rooted,
+  fossil_calibration_points,
+  manual_spanning_tips
+) {
+  # Make sure phylogeny is rooted
+  assertthat::assert_that(ape::is.rooted(sanger_tree_rooted))
+
+  # Check monophyly of each group
+  fossil_node_monophy <-
+  map_df(
+    sort(unique(fossil_node_species_map$affinities)),
+    ~mono_test_fossil(
+      tree = sanger_tree_rooted,
+      fossil_node_species_map = fossil_node_species_map,
+      fossil_affinity_select = .
+    )
+  ) %>%
+    mutate(across(matches("mrca|number|delta"), parse_number)) %>%
+    rename(affinities = taxon)
+
+  # Make tibble of stem MRCA for monotypic calibration groups
+  monotypic_stem_mrca_tib <-
+  fossil_node_monophy %>%
+    filter(monophyly == "Monotypic") %>%
+    mutate(affinities_group = "stem") %>%
+    left_join(fossil_node_species_map, by = "affinities") %>%
+    select(affinities, affinities_group, species) %>%
+    mutate(
+      monotypic_stem_mrca = map_dbl(species, ~get_parent(sanger_tree_rooted, .))
+    ) %>%
+    # Check that species is amongst descendents from MRCA
+    mutate(
+      children = map(monotypic_stem_mrca, ~get_children(sanger_tree_rooted, .)),
+      sp_in_children = map2_lgl(species, children, ~magrittr::is_in(.x, .y))
+    ) %>%
+    assert(isTRUE, sp_in_children) %>%
+    select(affinities, affinities_group, monotypic_stem_mrca)
+
+  # Make tibble of tips spanning each fossil group
+  # in "long" format with spanning tips as list-col
+  spanning_tips_long <-
+    # Start with fossil calibration points
+    fossil_calibration_points %>%
+    # Add MRCA and monophyly status
+    left_join(
+      select(fossil_node_monophy, affinities, monophyly, number_tips, mrca),
+      by = "affinities"
+    ) %>%
+    # Add 'stem MRCA': the parent of each MRCA, used for stem groups
+    mutate(
+      stem_mrca = map_dbl(
+        mrca, ~phangorn::Ancestors(sanger_tree_rooted, ., "parent"))
+    ) %>%
+    # Add stem MRCA for monotypic stem groups
+    # (these will still lack "normal" mrca)
+    left_join(
+      monotypic_stem_mrca_tib,
+      by = c("affinities", "affinities_group")
+    ) %>%
+    mutate(
+      stem_mrca = coalesce(stem_mrca, monotypic_stem_mrca)
+    ) %>%
+    select(-monotypic_stem_mrca) %>%
+    assert(not_na, stem_mrca) %>%
+    mutate(
+      # Add tips spanning each crown group
+      rep_tips_crown = case_when(
+        monophyly == "Yes" ~ map(
+          mrca, ~get_spanning_tips(sanger_tree_rooted, .)
+          )
+      ),
+      # Add tips spanning each stem group
+      rep_tips_stem = case_when(
+        monophyly %in% c("Yes", "Monotypic") ~ map(
+          stem_mrca, ~get_spanning_tips(sanger_tree_rooted, .)
+          )
+      )
+    ) %>%
+    # Add double check on number of tips descendend from crown group
+    # spanning tips
+    mutate(
+      num_tips_check = map_dbl(
+        rep_tips_crown, ~check_num_tips(sanger_tree_rooted, .))
+    ) %>%
+    # Use stem or crown tips as appropriate
+    mutate(rep_tips = case_when(
+      affinities_group == "crown" ~ rep_tips_crown,
+      affinities_group == "stem" ~ rep_tips_stem,
+    )) %>%
+    select(-rep_tips_crown, -rep_tips_stem)
+
+  # Check that spanning tips cover all expected species
+  # or no MRCA exists in case of monotypic groups
+  spanning_tips_long %>%
+    filter(monophyly %in% c("Yes", "Monotypic")) %>%
+    verify(
+      all(number_tips == num_tips_check | is.na(mrca)),
+      error_fun = err_msg("Spanning tips do not match fossil group"),
+      success_fun = success_logical)
+
+  # Convert rep tips from list-col to two columns, "tip_1" and "tip_2"
+  # Also drop any remaining redundant calibration points
+  spanning_tips_nulls_gone <-
+    spanning_tips_long %>%
+    select(-num_tips_check) %>%
+    # drops NULLs so will need to rejoin later
+    unnest(rep_tips) %>%
+    group_by(node_calibrated) %>%
+    mutate(n_tip = 1:n() %>%
+      paste0("tip_", .)) %>%
+    ungroup() %>%
+    pivot_wider(values_from = rep_tips, names_from = n_tip) %>%
+    assert(is_uniq, node_calibrated) %>%
+    assert(not_na, node_calibrated) %>%
+    # Drop redundant calibration points (same tips)
+    assert(not_na, tip_1, tip_2) %>%
+    group_by(tip_1, tip_2) %>%
+    slice_max(n = 1, order_by = minimum_age, with_ties = FALSE) %>%
+    ungroup()
+
+  # Add back in monotypic groups (rep_tips are NULL)
+  # to get to final "spanning_tips" tbl
+  spanning_tips <-
+    # Combine spanning tips with rep_tips NULL to widened data
+    spanning_tips_long %>%
+    filter(map_lgl(rep_tips, is.null)) %>%
+    select(-rep_tips) %>%
+    bind_rows(spanning_tips_nulls_gone) %>%
+    assert(is_uniq, node_calibrated) %>%
+    assert(not_na, node_calibrated)
+
+  # Double check that there are no redundant tip sets
+  spanning_tips %>%
+    filter(!is.na(tip_1)) %>%
+    add_count(tip_1, tip_2) %>%
+    verify(
+      all(n == 1), success_fun = success_logical,
+      error_fun = err_msg("Redundant spanning tips detected"))
+
+  # Make sure affinities of manual_spanning_tips are in fossil data
+  manual_spanning_tips %>%
+    verify(
+      all(affinities %in% spanning_tips$affinities),
+      success_fun = success_logical,
+      error_fun = err_msg("Manually specified tip affinities not in fossil affinities")) #nolint
+
+  # Make sure manual tips cover all non-monophyletic groups
+  spanning_tips %>%
+    filter(monophyly == "No") %>%
+    anti_join(manual_spanning_tips, by = "affinities") %>%
+    verify(nrow(.) == 0, success_fun = success_logical)
+
+  # Fill in manually specified tips for non-monophyletic groups
+  spanning_tips %>%
+    select(-num_tips_check) %>%
+    left_join(manual_spanning_tips, by = "affinities") %>%
+    mutate(
+      tip_1 = coalesce(tip_1, tip_1_manual),
+      tip_2 = coalesce(tip_2, tip_2_manual)) %>%
+    select(-tip_1_manual, -tip_2_manual) %>%
+    # Run final checks
+    assert(not_na,
+      minimum_age, node_calibrated, fossil_taxon, affinities_group,
+      affinities, monophyly, number_tips, tip_1, tip_2) %>%
+    assert(is_uniq, node_calibrated)
+}
+
+#' Make tibble of times for calibrating the root of a tree when
+#' dating with treePL
+#'
+#' @param tree Phylogenetic tree, must be rooted.
+#' @param node_name Name to use for the root node.
+#' @param time Time to use for calibrating the root node.
+#' @param tip_1 Tip of the tree used to define clade including all tips in tree.
+#' @param tip_2 Tip of the tree used to define clade including all tips in tree.
+#'
+#' @return Tibble with columns "mrca", "min", and "max" formatted like
+#' lines "mrca", "min", and "max" in a treePL config file
+#'
+calibrate_root_node <- function(tree, node_name, time, tip_1, tip_2) {
+  # Tree must be rooted
+  assertthat::assert_that(ape::is.rooted(tree))
+  # Check that the clade defined by tip_1 and tip_2 includes all tips
+  # in the tree
+  tips_descended_from_root <-
+    ape::getMRCA(tree, c(tip_1, tip_2)) %>%
+      get_children(tree, .)
+
+  assertthat::assert_that(
+    length(tips_descended_from_root) == ape::Ntip(tree),
+    msg = "Tips used to define root node do not include MRCA of all tips in tree") #nolint
+
+  tribble(
+    ~mrca, ~min, ~max, ~taxon_1, ~taxon_2,
+    glue::glue("mrca = {node_name} {tip_1} {tip_2}"),
+    glue::glue("min = {node_name} {time}"),
+    glue::glue("max = {node_name} {time}"),
+    tip_1,
+    tip_2
+  ) %>%
+  mutate(across(everything(), as.character))
+}
+
+#' Format fossil calibration points so they can be used for treePL
+#' 
+#' See https://github.com/blackrim/treePL/wiki/Quick-run
+#'
+#' @param fossil_calibration_tips Tibble of fossil calibration points.
+#' @param root_tibble Tibble with calibration data for root node.
+#'
+#' @return Tibble with columns "mrca", "min", and "max" formatted like
+#' lines "mrca", "min", and "max" in a treePL config file
+#' 
+format_calibrations_for_treepl <- function(
+  fossil_calibration_tips, root_tibble) {
+
+  # Helper to check for presence of non-alphabetic or underscore character in a
+  # string
+  all_alpha_or_underscore <- function(x) {
+    stringr::str_detect(x, "[^_a-zA-Z]", negate = TRUE)
+    }
+
+  fossil_calibration_tips %>%
+    # Modify name of calibrated nodes to only use alphabet or underscore
+    mutate(
+      node_calibrated = str_replace_all(node_calibrated, " ", "_") %>%
+        str_replace_all("\\+", "_") %>%
+        str_remove_all("\\.")
+    ) %>%
+    assert(is_uniq, node_calibrated) %>%
+    assert(all_alpha_or_underscore, node_calibrated) %>%
+    transmute(
+      mrca = glue::glue("mrca = {node_calibrated} {tip_1} {tip_2}") %>%
+        as.character(),
+      min = glue::glue("min = {node_calibrated} {minimum_age}") %>%
+        as.character(),
+      taxon_1 = tip_1,
+      taxon_2 = tip_2
+    ) %>%
+    bind_rows(root_tibble) %>%
+    assert(not_na, mrca, taxon_1, taxon_2) %>%
+    assert(is_uniq, mrca)
+}
 
 # Etc ----
 # This function can be called inside of other functions to check
@@ -6395,4 +6894,21 @@ gn_parse_tidy_quiet <- function(...) {
   suppressMessages(
     rgnparser::gn_parse_tidy(...)
   )
+}
+
+#' Get tips of a phylogenetic tree in their plotted order
+#'
+#' After re-rooting a tree, the order of tips when the tree
+#' is plotted no longer match the order of $tip.label. Use
+#' this function to get tips in the order they are plotted.
+#' @param tree List of class "phylo"
+#' @return Character vector
+get_tips_in_ape_plot_order <- function (tree) {
+  assertthat::assert_that(inherits(tree, "phylo"))
+  # First filter out internal nodes
+  # from the the second column of the edge matrix
+  is_tip <- tree$edge[,2] <= length(tree$tip.label)
+  ordered_tips <- tree$edge[is_tip, 2]
+  # Use this vector to extract the tips in the right order
+  tree$tip.label[ordered_tips]
 }
