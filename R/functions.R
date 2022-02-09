@@ -6239,6 +6239,30 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
         regex("Incertae sedis", ignore.case = TRUE),
         negate = TRUE)
     ) %>%
+    # Fix taxonomy to match pteridocat:
+    # Aglaomorpha should be Drynaria
+    # Athyrium s.s. *is* Athyrium sensu pteridocat
+    mutate(
+      across(c(node_calibrated, affinities),
+      ~str_replace_all(., "Aglaomorpha", "Drynaria") %>%
+        str_replace_all("Athyrium s.s.", "Athyrium"))
+    ) %>%
+    # Exclude non-monophyletic groups: Dennstaedtia, Dicksonia+Calochlaena
+    filter(!affinities %in%
+      c("Dennstaedtia", "Dicksonia+Calochlaena")) %>%
+    # Use crown Equisetum subgen. Paramochaete (164 my) for crown Equisetum
+    # since Equisetum subgen. Paramochaete is monotypic,
+    # it is equivalent to dating crown Equisetum
+    mutate(node_calibrated = case_when(
+      node_calibrated == "crown Equisetum subgen. Paramochaete" ~
+        "crown Equisetum",
+      TRUE ~ node_calibrated
+    )) %>%
+    mutate(affinities = case_when(
+      affinities == "Equisetum subgen. Paramochaete" ~
+        "Equisetum",
+      TRUE ~ affinities
+    )) %>%
     # Keep only one oldest fossil per calibration node, no ties
     group_by(node_calibrated) %>%
     slice_max(n = 1, order_by = minimum_age, with_ties = FALSE) %>%
