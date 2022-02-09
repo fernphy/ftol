@@ -48,12 +48,6 @@ tar_plan(
     plastome_outgroups_path,
     path(data_raw, "plastome_outgroups.csv")),
   plastome_outgroups = read_csv(plastome_outgroups_path),
-  # Calibration dates after Testo and Sundue 2016
-  tar_file(
-    plastome_calibration_dates_path,
-    path(data_raw, "testo_sundue_2016_calibrations.csv")),
-  plastid_calibration_dates = load_calibration_dates(
-    plastome_calibration_dates_path),
   # Manually curated list of GenBank accessions to exclude from analysis
   tar_file(
     accs_exclude_path,
@@ -76,7 +70,7 @@ tar_plan(
   # Fossil calibration points
   tar_file(
     fossil_dates_path,
-    path(data_raw, "Fossils_Ferns_v.1.0(3.2.2022).csv")
+    path(data_raw, "Fossils_Ferns.csv")
   ),
 
   # Prep for assembling Sanger plastid regions ----
