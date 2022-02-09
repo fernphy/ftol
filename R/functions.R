@@ -4162,34 +4162,6 @@ build_tree_from_alignment_df <- function(gene_tree_alignment_df, program = "fast
 
 # Dating with treePL ----
 
-#' Read in calibration and configure dates for treepl
-#'
-#' @param date_file_path Path to CSV file with treepl dates.
-#' Must include at least the following columns:
-#' - clade: name of clade
-#' - taxon_1: representative taxon 1
-#' - taxon_2: representative taxon 2. The MRCA of the two taxa defines the clade
-#' - age: Age to assign to clade (in millions of years)
-#' - age_type: 'min', 'max' or 'fixed'
-#' 
-#' @return Tibble with columns for use in treepl config file.
-#'
-load_calibration_dates <- function(date_file_path) {
-  read_csv(date_file_path) %>%
-    janitor::clean_names() %>%
-    select(clade, age, age_type, taxon_1, taxon_2) %>%
-    assert(is_uniq, clade) %>%
-    assert(not_na, clade, age, age_type, taxon_1, taxon_2) %>%
-    mutate(mrca = glue("mrca = {clade} {taxon_1} {taxon_2}")) %>%
-    mutate(
-      min_dates = case_when(
-        age_type %in% c("min", "fixed") ~ glue("min = {clade} {age}"),
-        TRUE ~ NA_character_),
-      max_dates = case_when(
-        age_type %in% c("max", "fixed") ~ glue("max = {clade} {age}"),
-        TRUE ~ NA_character_))
-} 
-
 #' Do an initial treepl run to determine optimal
 #' smoothing parameters with random cross-validation.
 #' 
