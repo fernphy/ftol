@@ -6192,26 +6192,25 @@ get_summary_monophy <- function(solution, taxlevels) {
 #'
 assess_monophy <- function(
   taxon_sampling, tree,
-  og_taxa = c("Magnolia_tripetala", "Ginkgo_biloba"),
+  og_taxa = NULL,
   tax_levels) {
-
   tax_levels <- c("species", tax_levels) %>% unique()
-
   # Root tree
-  tree_rooted <- phytools::reroot(
-    tree,
-    getMRCA(tree, og_taxa)
-  )
-
+  if (!is.null(og_taxa)) {
+    tree <- phytools::reroot(
+      tree,
+      getMRCA(tree, og_taxa)
+    )
+  }
   # Check monophyly
   taxon_sampling %>%
     verify("species" %in% colnames(.)) %>%
     select(species, all_of(tax_levels)) %>%
     as.data.frame() %>%
-    MonoPhy::AssessMonophyly(tree_rooted, .)
+    MonoPhy::AssessMonophyly(tree, .)
 }
 
-# Dating ----
+# Dating prep ----
 
 #' Load data on fossil calibration points
 #'
