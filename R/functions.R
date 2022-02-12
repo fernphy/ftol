@@ -1383,6 +1383,13 @@ inspect_ts_results <- function(match_results_resolved_all) {
 
 # Combine Sanger sequences data ----
 
+# Count the number of non-missing bases in a DNA sequence
+#' @param seq List of class DNAbin of length one.
+count_non_missing <- function (seq) {
+  bases <- ape::base.freq(seq, all = TRUE, freq = TRUE)
+  sum(bases[!names(bases) %in% c("n", "N", "-", "?")])
+}
+
 #' Combine sanger sequence metadata with sequences, join to resolved names
 #' and filter by sequence length and if name was resolved or not
 #' 
@@ -1421,7 +1428,8 @@ combine_and_filter_sanger <- function(
     filter(nothogenus == "no") %>%
     select(-nothogenus) %>%
     # Calculate actual seq length
-    mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
+    # only count non-missing bases
+    mutate(seq_len = map_dbl(seq, ~count_non_missing(.[1]))) %>%
     # Categorize gene type
     mutate(
       target_type = case_when(
