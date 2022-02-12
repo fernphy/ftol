@@ -5522,7 +5522,10 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         # missing author
         species == "Dryopteris basisora" ~ "Dryopteris basisora Christ",
         TRUE ~ scientific_name
-      )
+      ),
+      # Drop "non" part of name,
+      # otherwise might match on the "non" author!
+      scientific_name = str_remove_all(scientific_name, ", non [^$]+$") #nolint
     ) %>%
     # Mixup in NCBI taxonomy: 160848 should be Hymenophyllum baileyanum Domin
     # at least of 2022-02-02
