@@ -279,9 +279,10 @@ tar_plan(
   # - all sequences for that species are from the same voucher, or
   # - all sequences for that species are from same publication
   # Criteria for selecting final set of sequences for each species (in order):
-  # - 1: specimens with rbcL + any other gene
-  # - 2: specimens with rbcL
+  # - 1: specimens with longest rbcL + any other gene
+  # - 2: specimens with longest rbcL
   # - 3: specimens with longest combined non-rbcL genes
+  # - 4: specimens with longest non-combined non-rbcL genes
   sanger_accessions_selection = select_genbank_genes(
     sanger_seqs_with_voucher_data, mpcheck_monophy),
 
