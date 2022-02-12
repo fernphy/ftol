@@ -436,7 +436,10 @@ tar_plan(
       redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
       other_args = c(
         "-mset", "GTR", # only test GTR models
-        "-t", "PARS")
+        "-mrate", "E,I,G,I+G", # don't test free-rate models
+        "-t", "PARS"),
+      tree_path = path(
+        int_dir, "iqtree/plastome/plastome_alignment.phy.contree")
     ),
     deployment = "main"
   ),
@@ -461,9 +464,7 @@ tar_plan(
         "-t", "PARS",
         "-alrt", "1000",
         "-g", path_abs(constraint_tree_file)
-      ),
-      tree_path = path(
-        int_dir, "iqtree/sanger_fast/sanger_alignment.phy.treefile")
+      )
     )
   ),
   # Final Sanger ML tree
@@ -471,15 +472,19 @@ tar_plan(
     sanger_ml_tree,
     iqtree(
       sanger_alignment,
-      m = "MFP", nt = 6, seed = 20220129,
+      m = "MFP", bb = 1000, nt = 6, seed = 20220129,
       redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
       other_args = c(
         "-mset", "GTR",
+        "-mrate", "E,I,G,I+G",
         "-t", "PARS",
         "-g", path_abs(constraint_tree_file)
       ),
-      tree_path = path(
-        int_dir, "iqtree/sanger/sanger_alignment.phy.treefile")
+      # Return best ML tree and consensus
+      tree_path = c(
+        ml_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.treefile"),
+        con_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.contree"),
+      )
     )
   ),
   # Check monophyly ----
