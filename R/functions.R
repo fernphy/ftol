@@ -5811,7 +5811,7 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
 #'   matrix (i.e., aligned sequences) of class DNAbin
 #' @param aln_path Path to DNA alignment. Either alignment, or aln_path must be
 #'   provided, but not both
-#' @param tree_path Optional; path to tree when it is written out by IQ-TREE,
+#' @param tree_path Optional; path to tree(s) written out by IQ-TREE,
 #'   useful if this differs from default alignment name.
 #' @param wd Path to working directory. The alignment and IQ-TREE intermediate
 #'   files and results will be written here.
@@ -5832,7 +5832,8 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
 #'   example, c("-pers", "0.2", "-nstop", "500").
 #' @param ... Additional arguments; not used by this function.
 #'
-#' @return Phylogenetic tree (list of class "phylo")
+#' @return List; either a single phylogenetic tree (list of class "phylo"),
+#' or list containing phylogenetic trees
 #'
 #' @examples
 #' \dontrun{
@@ -5947,16 +5948,35 @@ iqtree <- function(alignment = NULL, wd = getwd(),
     # https://github.com/iqtree/iqtree2/issues/18
     env = c("current", OMP_NUM_THREADS = "1"))
   
-  # Read in resulting consensus tree.
-  # Use default name of .phy file if tree_path not provided
+  # Read in resulting tree(s)
+  # Default: use default treefile if tree_path not provided
   if (is.null(tree_path)) {
     tree_path <- fs::path(wd, deparse(substitute(alignment))) %>%
-      fs::path_ext_set(".phy.contree")
+      fs::path_ext_set(".phy.treefile")
   }
-  
-  assertthat::assert_that(assertthat::is.readable(tree_path))
-  
-  ape::read.tree(tree_path)
+
+  # Return single tree if only one file in tree_path
+  if(length(tree_path) == 1) {
+    assertthat::assert_that(assertthat::is.readable(tree_path))
+    res <- ape::read.tree(tree_path)
+  }
+
+  # Return list of trees if multiple files in tree_path
+  if(length(tree_path) > 1) {
+    # Set up results list to have same
+    # names as tree_path
+    res <- vector(length = length(tree_path))
+    names(res) <- names(tree_path)
+    res <- as.list(res)
+    for(i in seq_along(tree_path)) {
+      assertthat::assert_that(assertthat::is.readable(tree_path[[i]]))
+      # although we check if file is readable
+      # beware that ape will crash R if it is not a newick file!
+      res[[i]] <- ape::read.tree(tree_path[[i]])
+    }
+  }
+
+  return(res)
   
 }
 
