@@ -1953,21 +1953,39 @@ parse_voucher <- function(genbank_seqs_tibble) {
     ) %>%
     unnest(meta_sel_index) %>%
     mutate(
-      specimen_voucher = map2(meta_data, meta_sel_index, ~magrittr::extract(.x, .y))
+      specimen_voucher_raw = map2(meta_data, meta_sel_index, ~magrittr::extract(.x, .y))
     ) %>%
-    unnest(specimen_voucher) %>%
-    select(subtype, subname, specimen_voucher) %>%
-    # Join back onto original data (so, adds `specimen_voucher` column)
+    unnest(specimen_voucher_raw) %>%
+    select(subtype, subname, specimen_voucher_raw) %>%
+    # Join back onto original data (so, adds `specimen_voucher_raw` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
-    select(target, species, specimen_voucher, publication, accession, seq_len, otu) %>%
+    select(target, species, specimen_voucher_raw, publication, accession, seq_len, otu) %>%
     # In some cases, there are multiple vouchers including `s.n.` and 
     # a numbered voucher. Use only the numbered voucher.
     # (still have some cases with multiple vouchers per accession though
     #  eg., MH101453, KY711736)
     assert(not_na, target, species, accession) %>%
     add_count(target, species, accession) %>%
-    filter(!(n > 1 & str_detect(specimen_voucher, "s\\.n\\."))) %>%
+    filter(!(n > 1 & str_detect(specimen_voucher_raw, "s\\.n\\."))) %>%
     select(-n) %>%
+    # Modify voucher:
+    # Drop part of voucher name in parentheses
+    # this is typically the herbarium; we just want to match on collection,
+    # not herbarium where it is stored
+    # Also drop "et al"
+    mutate(
+      specimen_voucher = 
+        str_remove_all(specimen_voucher_raw, "\\([^\\(|^\\)]+\\)") %>%
+        str_remove_all("et al\\.") %>%
+        str_remove_all("et al") %>%
+        # Drop characters that are not alphanumeric
+        str_remove_all("[^a-zA-Z0-9]+") %>%
+        # Convert to lowercase
+        str_to_lower() %>%
+        str_squish() %>%
+        # Replace empty string with NA
+        dplyr::na_if("")
+    ) %>%
     # Check that all OTUs are accounted for
     # (some are duplicated if there are multiple vouchers)
     verify(all(otu %in% genbank_seqs_tibble$otu)) %>%
