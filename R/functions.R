@@ -1393,22 +1393,21 @@ count_non_missing <- function (seq) {
 #' Combine sanger sequence metadata with sequences, join to resolved names
 #' and filter by sequence length and if name was resolved or not
 #' 
-#' Drops sequences with scientific names that could not be resolved, nothogenera,
-#' Adds `otu` column ({species}|{accession}|{gene})
+#' Drops sequences with scientific names that could not be resolved,
+#' adds `otu` column ({species}|{accession}|{gene})
 #'
 #' @param raw_meta Sanger sequence metadata; output of fetch_fern_metadata()
 #' @param raw_fasta Sanger sequences; output of fetch_fern_gene()
 #' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to accepted
 #' species name; output of make_ncbi_accepted_names_map()
-#' @param ppgi PPGI taxonomic system
 #' @param min_gene_len Number: minimum length (bp) required for Sanger genes
 #' @param min_spacer_len Number: minimum length (bp) required for Sanger intergenic spacer regions
 #'
 #' @return Tibble with Sanger sequence metadata, sequences, and accepted name
 #' 
 combine_and_filter_sanger <- function(
-  raw_meta, raw_fasta, ncbi_accepted_names_map, 
-  ppgi_taxonomy, min_gene_len, min_spacer_len) {
+  raw_meta, raw_fasta, ncbi_accepted_names_map,
+  min_gene_len, min_spacer_len) {
   
   # Check that input names match arguments
   check_args(match.call())
@@ -1420,13 +1419,6 @@ combine_and_filter_sanger <- function(
     filter(!map_lgl(seq, is.null)) %>%
     # Inner join to name resolution results: will drop un-resolved names
     inner_join(ncbi_accepted_names_map, by = "taxid") %>%
-    # Drop nothogenera
-    left_join(
-      select(ppgi_taxonomy, genus, nothogenus), 
-      by = "genus") %>%
-    assert(not_na, nothogenus) %>%
-    filter(nothogenus == "no") %>%
-    select(-nothogenus) %>%
     # Calculate actual seq length
     # only count non-missing bases
     mutate(seq_len = map_dbl(seq, ~count_non_missing(.[1]))) %>%

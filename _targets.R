@@ -200,7 +200,7 @@ tar_plan(
   min_spacer_len = 20,
   sanger_seqs_combined_filtered = combine_and_filter_sanger(
     raw_meta, raw_fasta, ncbi_accepted_names_map,
-    ppgi_taxonomy, min_gene_len, min_spacer_len),
+    min_gene_len, min_spacer_len),
   # Make BLAST database including all fern sequences
   tar_file(
     sanger_blast_db,
