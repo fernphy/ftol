@@ -6581,8 +6581,8 @@ get_children <- function(tree, node) {
 define_manual_spanning_tips <- function() {
   tribble(
   ~affinities, ~tip_1_manual, ~tip_2_manual,
-  "Cyathea", "Cyathea_robertsiana", "Cyathea_fulva",
-  "Cyatheaceae", "Sphaeropteris_truncata", "Cyathea_fulva",
+  "Lindsaeaceae", "Sphenomeris_clavata", "Lindsaea_seemannii",
+  "Polystichum", "Polystichum_craspedosorum", "Polystichum_lehmannii",
   "Pleopeltis", "Pleopeltis_bradeorum", "Pleopeltis_bombycina",
   "Polypodium s.l.", "Polypodium_pellucidum", "Polypodium_virginianum"
   )
