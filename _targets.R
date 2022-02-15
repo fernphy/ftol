@@ -72,6 +72,11 @@ tar_plan(
     fossil_dates_path,
     path(data_raw, "Fossils_Ferns.csv")
   ),
+  # Fossil calibration points from Testo and Sundue 2016 SI
+  tar_files_input(
+    testo_sundue_2016_si_path,
+    "_targets/user/data_raw/1-s2.0-S1055790316302287-mmc2.xlsx"
+  ),
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
@@ -524,7 +529,7 @@ tar_plan(
   # Load fossil calibration points
   fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path),
   # Define some tips for spanning non-monophyletic groups
-  manual_spanning_tips = define_manual_spanning_tips(),
+  manual_spanning_tips = define_manual_spanning_tips("this_study"),
   # Map species in the tree to their fossil groups
   fossil_node_species_map = make_fossil_species_map(
     sanger_tree_rooted, fossil_calibration_points,
@@ -542,6 +547,22 @@ tar_plan(
   # Format fossil calibration points for treePL
   fossil_calibrations_for_treepl = format_calibrations_for_treepl(
     fossil_calibration_tips, root_calibration
+  ),
+  # Format Testo and Sundue 2016 calibration points for comparison
+  ts_manual_spanning_tips = define_manual_spanning_tips("ts2016"),
+  ts_fossil_calibration_points = parse_ts_calibrations(
+    testo_sundue_2016_si_path) %>%
+    # remove Alsophila+Cyathea if not monophyletic
+    filter(node_calibrated != "stem Alsophila+Cyathea"),
+  ts_fossil_node_species_map = make_ts_fossil_species_map(
+    sanger_tree_rooted, ts_fossil_calibration_points, ppgi_taxonomy,
+    plastome_metadata_renamed),
+  ts_fossil_calibration_tips = get_fossil_calibration_tips(
+    ts_fossil_node_species_map, sanger_tree_rooted,
+    ts_fossil_calibration_points, ts_manual_spanning_tips
+  ),
+  ts_fossil_calibrations_for_treepl = format_calibrations_for_treepl(
+    ts_fossil_calibration_tips, root_calibration
   ),
   # Dating with treePL ----
   # Run initial treepl search to identify smoothing parameter

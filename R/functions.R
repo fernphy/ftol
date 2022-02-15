@@ -6368,19 +6368,27 @@ make_fossil_species_map <- function(
   # Make tibble of tips with genus and species
   tip_tbl <- tibble(species = tree$tip.label) %>%
     mutate(genus = str_split(species, "_") %>% map_chr(1)) %>%
-    assert(is_uniq, species) %>%
-    assert(not_na, everything()) %>%
     # Modify for Polypodium s.l.: includes Pleurosoriopsis
     mutate(genus = case_when(
       genus == "Polypodium" ~ "Polypodium s.l.",
       genus == "Pleurosoriopsis" ~ "Polypodium s.l.",
       TRUE ~ genus
-    ))
+    )) %>%
+    assert(is_uniq, species) %>%
+    assert(not_na, everything())
 
   # Filter PPGI taxonomy to only genera in the tree
   ppgi_taxonomy_in_tree <-
     ppgi_taxonomy %>%
-    inner_join(select(tip_tbl, genus), by = "genus")
+    # Modify for Polypodium s.l.: includes Pleurosoriopsis
+    mutate(genus = case_when(
+      genus == "Polypodium" ~ "Polypodium s.l.",
+      genus == "Pleurosoriopsis" ~ "Polypodium s.l.",
+      TRUE ~ genus
+    )) %>%
+    inner_join(unique(select(tip_tbl, genus)), by = "genus") %>%
+    unique() %>%
+    assert(is_uniq, genus)
 
   # Filter equisetum subgenera to only species in the tree
   equisetum_subgen_in_tree <-
@@ -6464,6 +6472,159 @@ make_fossil_species_map <- function(
       by = "aff_split"
     ) %>%
     mutate(species = coalesce(species, species_2, species_3, species_4)) %>%
+    select(affinities, species) %>%
+    unique() %>%
+    assert(not_na, everything())
+}
+
+#' Parse fossil calibration data in Sundue and Testo 2016 SI
+#'
+#' Testo WL, Sundue MA (2016) A 4000-species dataset provides new insight into
+#' the evolution of ferns. Molecular Phylogenetics and Evolution 105:200–211.
+#' https://doi.org/10.1016/j.ympev.2016.09.003
+#'
+#' @param testo_sundue_2016_si_path Path to Sundue and Testo 2016 SI file
+#' (xlsx format).
+#'
+#' @return Tibble with fossil calibration dates
+#' 
+parse_ts_calibrations <- function(testo_sundue_2016_si_path) {
+readxl::read_excel(
+  testo_sundue_2016_si_path,
+  # Divergence dates are in the 5th sheet
+  sheet = 3
+) %>%
+  janitor::clean_names() %>%
+  mutate(
+    stem_crown = str_to_lower(stem_crown),
+    clade = 
+      str_replace_all(clade, "Aglaomorpha heraclea", "Drynaria heraclea") %>%
+      str_replace_all("Alsophila/Cyathea clade", "Alsophila+Cyathea") %>%
+      str_replace_all("Isoetales", "Isoëtales") %>%
+      str_replace_all(" ", "_")) %>%
+  transmute(
+    minimum_age = age,
+    node_calibrated = paste(stem_crown, clade),
+    fossil_taxon = fossil,
+    affinities_group = stem_crown,
+    affinities = clade
+  ) %>%
+  mutate(across(
+    c(node_calibrated, affinities),
+    ~str_replace_all(., "Polypodium", "Polypodium s.l.")))
+}
+
+#' Make a tibble mapping fossil groups (affinities) to species
+#' for Testo and Sundue 2016 data
+#'
+#' @param tree Phylogenetic tree.
+#' @param fossil_calibration_points Tibble of fossil calibration points.
+#' @param ppgi_taxonomy Pteridophyte phylogeny group I taxonomy.
+#' @param plastome_metadata_renamed Metada for plastome sequences, including
+#' species and outgroup status.
+#'
+#' @return Tibble with two columns, "affinities" and "species"
+#'
+make_ts_fossil_species_map <- function(
+  tree, fossil_calibration_points, ppgi_taxonomy,
+  plastome_metadata_renamed) {
+
+  # Make tibble of tips with genus and species
+  tip_tbl <- tibble(species = tree$tip.label) %>%
+    mutate(genus = str_split(species, "_") %>% map_chr(1)) %>%
+    # Modify for Polypodium s.l.: includes Pleurosoriopsis
+    mutate(genus = case_when(
+      genus == "Polypodium" ~ "Polypodium s.l.",
+      genus == "Pleurosoriopsis" ~ "Polypodium s.l.",
+      TRUE ~ genus
+    )) %>%
+    assert(is_uniq, species) %>%
+    assert(not_na, everything())
+
+  # Filter PPGI taxonomy to only genera in the tree
+  ppgi_taxonomy_in_tree <-
+    ppgi_taxonomy %>%
+    # Modify for Polypodium s.l.: includes Pleurosoriopsis
+    mutate(genus = case_when(
+      genus == "Polypodium" ~ "Polypodium s.l.",
+      genus == "Pleurosoriopsis" ~ "Polypodium s.l.",
+      TRUE ~ genus
+    )) %>%
+    inner_join(unique(select(tip_tbl, genus)), by = "genus") %>%
+    unique() %>%
+    assert(is_uniq, genus)
+
+  # Make tibble of deeper clade (Euphyllophytes)
+  # Needs to include outgroup taxa
+  bryo_genera <- c("Anthoceros", "Physcomitrium", "Marchantia")
+  lyco_genera <- c("Isoetes", "Lycopodium", "Selaginella")
+
+  og_deep_clades <-
+    plastome_metadata_renamed %>%
+    filter(outgroup == TRUE) %>%
+    select(species) %>%
+    mutate(
+      clade = if_else(
+        str_detect(species, 
+          paste(c(bryo_genera, lyco_genera), collapse = "|"), negate = TRUE),
+        "Euphyllophytes", NA_character_)
+    ) %>%
+    select(species, contains("clade")) %>%
+    arrange(clade, species)
+
+  deep_clades <-
+  tip_tbl %>%
+    anti_join(og_deep_clades, by = "species") %>%
+    select(-genus) %>%
+    mutate(clade = "Euphyllophytes") %>%
+    bind_rows(og_deep_clades) %>%
+    verify(all(species %in% tip_tbl$species)) %>%
+    verify(all(tip_tbl$species %in% species)) %>%
+    verify(nrow(.) == nrow(tip_tbl))
+
+  fossil_calibration_points %>%
+    select(affinities) %>%
+    # Split affinities that are composed of multiple taxa separated by '+'
+    mutate(aff_split = affinities) %>%
+    separate_rows(aff_split, sep = "\\+") %>%
+    # Affinities comprse family, order, some species
+    # - join genus by family
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = family, genus_1 = genus),
+      by = "aff_split"
+    ) %>%
+    # - join genus by order
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = order, genus_2 = genus),
+      by = "aff_split"
+    ) %>%
+    # - join genus by genus
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = genus, genus_3 = genus),
+      by = "aff_split"
+    ) %>%
+    mutate(genus = coalesce(genus_3, genus_2, genus_1)) %>%
+    select(affinities, aff_split, genus) %>%
+    unique() %>%
+    # - join species by genus
+    left_join(tip_tbl, by = "genus") %>%
+    # Join deeper groups by species
+    left_join(
+      select(deep_clades, species_2 = species, aff_split = clade),
+      by = "aff_split"
+    ) %>%
+    # Fill in affinities at species level
+    left_join(
+      select(tip_tbl, aff_split = species, species_3 = species),
+      by = "aff_split"
+    ) %>%
+    mutate(species = coalesce(species, species_2, species_3)) %>%
     select(affinities, species) %>%
     unique() %>%
     assert(not_na, everything())
@@ -6573,18 +6734,30 @@ get_children <- function(tree, node) {
 
 #' Make tibble of manual spanning tips
 #' 
+#' This should always be done after inspecting the actual tree used for dating
+#' 
+#' @param data_set Choose data set; either "this_study" or "ts2016"
+#' (Testo and Sundue 2016 fossil calibration points)
 #' @return Tibble with columns "affinities", "tip_1_manual", and "tip_2_manual".
 #' - "affinities" is the name of the group that corresponds to
 #' a fossil calibration point.
 #' - The MRCA of "tip_1_manual" and "tip_2_manual" define each group
 #' in "affinities"
-define_manual_spanning_tips <- function() {
-  tribble(
-  ~affinities, ~tip_1_manual, ~tip_2_manual,
-  "Lindsaeaceae", "Sphenomeris_clavata", "Lindsaea_seemannii",
-  "Polystichum", "Polystichum_craspedosorum", "Polystichum_lehmannii",
-  "Pleopeltis", "Pleopeltis_bradeorum", "Pleopeltis_bombycina",
-  "Polypodium s.l.", "Polypodium_pellucidum", "Polypodium_virginianum"
+define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
+  switch(
+    data_set,
+    "this_study" = tribble(
+      ~affinities, ~tip_1_manual, ~tip_2_manual,
+      "Lindsaeaceae", "Sphenomeris_clavata", "Lindsaea_seemannii",
+      "Polystichum", "Polystichum_craspedosorum", "Polystichum_lehmannii",
+      "Pleopeltis", "Pleopeltis_michauxiana", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
+    "ts2016" = tribble(
+      ~affinities, ~tip_1_manual, ~tip_2_manual,
+      "Diplazium+Athyrium", "Ephemeropteris_tejeroi", "Diplazium_caudatum",
+      "Pleopeltis", "Pleopeltis_michauxiana", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
+    stop("Must choose either 'this_study' or 'ts2016'")
   )
 }
 
