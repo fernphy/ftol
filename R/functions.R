@@ -112,27 +112,31 @@ format_fern_query <- function(target, start_date = "1980/01/01", end_date, stric
   is_spacer <- str_detect(target, "-")
   if(isTRUE(is_spacer)) {
     # `spacer` should have exactly one hyphen
-	  assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
-	  
-	  # split into names of two flanking genes
-	  flank_1 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
-	  flank_2 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
-	  
+    assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
+    # split into names of two flanking genes
+    flank_1 <- str_split(target, "-") %>%
+      magrittr::extract2(1) %>%
+      magrittr::extract2(1)
+    flank_2 <- str_split(target, "-") %>%
+      magrittr::extract2(1) %>%
+      magrittr::extract2(2)
     if(isTRUE(strict)) {
-      query <- glue('({flank_1}[GENE] AND {flank_2}[GENE]) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+      query <- glue('({flank_1}[GENE] AND {flank_2}[GENE]) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene') # nolint
     } else {
-	    query <- glue('({flank_1} OR {flank_2}) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+      query <- glue('({flank_1} OR {flank_2}) AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene') # nolint
     }
   } else {
     if(isTRUE(strict)) {
-      query <- glue('{target}[GENE] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+      query <- glue('{target}[GENE] AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene') # nolint
     } else {
-      query <- glue('{target} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene')
+      # some rbcL sequences use
+      # "ribulose-1,5-bisphosphate carboxylase/oxygenase large subunit"
+      # but not "rbcL"
+      if(str_to_lower(target) == "rbcl") target <- "(ribu* OR rbcL)"
+      query <- glue('{target} AND Polypodiopsida[ORGN] AND 1:7000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) NOT pseudogene') # nolint
     }
   }
-
   query
-
 }
 
 #' Fetch raw sequences from GenBank
@@ -607,7 +611,7 @@ fetch_fern_sanger_seqs <- function(
 
   # Convert to tibble
   tibble::tibble(
-    seq = split(seqs, 1:length(seqs)), accession = names(seqs), gene = target)
+    seq = split(seqs, seq_along(seqs)), accession = names(seqs), gene = target)
 
 }
 
