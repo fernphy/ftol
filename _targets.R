@@ -448,12 +448,11 @@ tar_plan(
     ),
     deployment = "main"
   ),
-  # collapse nodes with BS < 95, write out as constraint tree
-  constraint_tree = di2multi4node(plastome_tree, 95),
+  # write out as plastome tree to use as constraint
   tar_file(
     constraint_tree_file,
     write_tree_tar(
-      constraint_tree,
+      plastome_tree,
       path(int_dir, "iqtree/constraint.tre")
     )
   ),
