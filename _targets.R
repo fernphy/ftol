@@ -504,7 +504,7 @@ tar_plan(
     "subfamily", "genus", "subgenus"),
   # Make tibble mapping species to putatively monophyletic groups
   sanger_sampling = make_sanger_sampling_tbl(
-    plastome_metadata_renamed, sanger_alignment,
+    plastome_metadata_renamed,
     sanger_tree = sanger_tree_fast,
     ppgi_taxonomy = ppgi_taxonomy) %>%
     # Add Equisetum subgenera

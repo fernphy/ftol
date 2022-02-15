@@ -6185,7 +6185,6 @@ add_major_clade <- function(data) {
 #'
 #' @param plastome_metadata_renamed Plastome data with final (resolved) species
 #' names.
-#' @param sanger_alignment Sanger DNA alignment.
 #' @param sanger_tree Sanger ML tree.
 #' @param ppgi_taxonomy PPGI taxonomy
 #'
@@ -6193,7 +6192,7 @@ add_major_clade <- function(data) {
 #' "family"  "subfamily"  "major_clade" "outgroup"
 #'
 make_sanger_sampling_tbl <- function(
-  plastome_metadata_renamed, sanger_alignment,
+  plastome_metadata_renamed,
   sanger_tree, ppgi_taxonomy
 ) {
 
@@ -6205,7 +6204,7 @@ make_sanger_sampling_tbl <- function(
     filter(outgroup == TRUE)
 
   # Make tibble with one row per species in Sanger sampling
-  tibble(species = rownames(sanger_alignment)) %>%
+  tibble(species = sanger_tree$tip.label) %>%
     # Add higher-level taxonomy
     mutate(
       genus = str_split(species, "_") %>% map_chr(1)
@@ -6219,7 +6218,6 @@ make_sanger_sampling_tbl <- function(
     # Add outgroup status
     left_join(og_species, by = "species") %>%
     mutate(outgroup = replace_na(outgroup, FALSE)) %>%
-    verify(nrow(.) == nrow(sanger_alignment)) %>%
     verify(sum(outgroup) == nrow(og_species)) %>%
     # Check for match for tips with tree
     verify(all(species %in% sanger_tree$tip.label)) %>%
