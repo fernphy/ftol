@@ -492,6 +492,26 @@ tar_plan(
       )
     )
   ),
+  # Bootstrap 100 trees for treepl confidence intervals
+  # - use topology of ML tree as constraint, so they all have
+  # exact same topology but different branch lengths
+  bs_tree_seeds = seq_len(100),
+  tar_target(
+    bs_trees,
+    iqtree_bs(
+      # FIXME: change to final ML tree
+      aln_path = path(int_dir, "iqtree/sanger_fast/sanger_alignment.phy"),
+      # FIXME: use final ML tree when ready
+      constraint_tree = remove_node_labels(sanger_tree_fast),
+      # FIXME: use same model as selected for final ML tree
+      m = "GTR+I+G",
+      seed = bs_tree_seeds,
+      other_args = c(
+        "-t", "PARS"
+      )
+    ),
+    pattern = map(bs_tree_seeds)
+  ),
   # Check monophyly ----
   # FIXME: use sanger_tree, not sanger_tree_fast, when ready
   # Root tree on bryophytes

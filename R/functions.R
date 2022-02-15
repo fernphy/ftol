@@ -6126,6 +6126,99 @@ di2multi4node <- function (phy, tol = 0.5)
 	phy
 }
 
+#' Remove node labels from a phylogenetic tree
+#' 
+#' Used for generating a constraint tree with no bootstrap support values
+#'
+#' @param phy Phylogenetic tree; list of class "phylo".
+#'
+#' @return Phylogenetic tree with no node labels
+#' 
+remove_node_labels <- function(phy) {
+  phy$node.label <- NULL
+  phy
+}
+
+#' Make a single bootstrap tree with IQTREE
+#'
+#' For making trees with the same topology but different branchlengths
+#' so we can obtain a range of age estimates with treePL
+#'
+#' Either alignment or aln_path should be provided, but not both
+#'
+#' @param alignment Matrix; DNA alignment.
+#' @param aln_path Path to DNA alignment in phylip format.
+#' @param constraint_tree Constraint tree; list of class "DNA bin".
+#' @param m Optional; specify model. If no model is given, ModelTest will be run
+#'   to identify the best model for the data.
+#' @param nt Optional; number of cores to use. Set to "AUTO" to determine
+#'   automatically.
+#' @param seed Specify a random seed for the bootstrap tree.
+#' @param echo Logical; should STDERR be written to the screen?
+#' @param other_args Other arguments to pass to IQ tree; must be entered as a
+#'   character vector with the name and value of each argument separately. For
+#'   example, c("-pers", "0.2", "-nstop", "500").
+#'
+#' @return A single phylogenetic tree (list of class "phylo")
+#'
+iqtree_bs <- function(
+  alignment = NULL, aln_path = NULL,
+  constraint_tree, m = NULL, nt = 1, seed = 1,
+  echo = FALSE, other_args = NULL) {
+
+  # Set up temporary working directory: unique WD for each seed
+  wd <- fs::path(tempdir(), glue::glue("iqtree_bs_{seed}"))
+  if (fs::dir_exists(wd)) fs::dir_delete(wd)
+  fs::dir_create(wd)
+
+  if (is.null(aln_path) && is.null(alignment)) stop("Must provide either alignment or aln_path") # nolint
+  if (!is.null(aln_path) && !is.null(alignment)) stop("Must provide either alignment or aln_path") # nolint
+
+  # Write out alignment
+  if (is.null(aln_path) && !is.null(alignment)) {
+  assertthat::assert_that(
+      is.matrix(alignment),
+      msg = "alignment must be a matrix (not a list of unaligned sequences)")
+
+  aln_path <- fs::path(wd, "alignment.phy")
+
+  phangorn::write.phyDat(alignment, aln_path, format = "phylip")
+  }
+
+  # Write out constraint tree
+  const_tree_path <- fs::path(wd, "constraint.tre")
+
+  ape::write.tree(constraint_tree, const_tree_path)
+
+  # Set up arguments
+  iqtree_arguments <- c(
+    "-s", fs::path_abs(aln_path),
+    if (!is.null(nt)) "-nt", nt,
+    if (!is.null(m)) "-m", m,
+    if (!is.null(seed)) "-seed", seed,
+    "-g", const_tree_path,
+    "-bo", 1,
+    "-pre", "boot",
+    other_args
+  )
+
+    # Run iqtree command
+  processx::run(
+    "iqtree2",
+    iqtree_arguments, wd = wd, echo = echo,
+    # Include env variable as workaround for initial parsimony analysis
+    # using all cores
+    # https://github.com/iqtree/iqtree2/issues/18
+    env = c("current", OMP_NUM_THREADS = "1"))
+
+  bs_tree <- ape::read.tree(fs::path(wd, "boot.boottrees"))
+
+  if (fs::dir_exists(wd)) fs::dir_delete(wd)
+
+  return(bs_tree)
+
+}
+
 # Monophyly ----
 
 #' Load data on Equisetum subgenera
