@@ -106,7 +106,6 @@ tar_plan(
   tar_target(
     fern_sanger_extract_res,
     extract_from_ref_blast(
-      # Drop excluded sequences
       query_seqtbl = fern_sanger_seqs_raw,
       ref_seqtbl = fern_ref_seqs,
       target = target_loci,
@@ -570,9 +569,7 @@ tar_plan(
   # Format Testo and Sundue 2016 calibration points for comparison
   ts_manual_spanning_tips = define_manual_spanning_tips("ts2016"),
   ts_fossil_calibration_points = parse_ts_calibrations(
-    testo_sundue_2016_si_path) %>%
-    # remove Alsophila+Cyathea if not monophyletic
-    filter(node_calibrated != "stem Alsophila+Cyathea"),
+    testo_sundue_2016_si_path),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
     sanger_tree_rooted, ts_fossil_calibration_points, ppgi_taxonomy,
     plastome_metadata_renamed),

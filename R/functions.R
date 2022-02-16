@@ -6788,6 +6788,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
     "ts2016" = tribble(
       ~affinities, ~tip_1_manual, ~tip_2_manual,
+      "Alsophila+Cyathea", "Cyathea_minuta", "Alsophila_capensis",
       "Diplazium+Athyrium", "Ephemeropteris_tejeroi", "Diplazium_caudatum",
       "Pleopeltis", "Pleopeltis_michauxiana", "Pleopeltis_conzattii",
       "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
