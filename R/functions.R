@@ -7040,7 +7040,9 @@ format_calibrations_for_treepl <- function(
     mutate(
       node_calibrated = str_replace_all(node_calibrated, " ", "_") %>%
         str_replace_all("\\+", "_") %>%
-        str_remove_all("\\.")
+        str_remove_all("\\.") %>%
+        # Tranform non-ascii characters
+        stringi::stri_trans_general("latin-ascii")
     ) %>%
     assert(is_uniq, node_calibrated) %>%
     assert(all_alpha_or_underscore, node_calibrated) %>%
