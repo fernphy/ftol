@@ -621,5 +621,13 @@ tar_plan(
     wd = path(int_dir, "treepl"),
     nthreads = 7,
     echo = TRUE
-  )
+  ),
+  # Compile reports ----
+  acc_table_long = make_long_acc_table(
+    raw_meta, sanger_seqs_combined_filtered,
+    plastome_seqs_combined_filtered,
+    ncbi_names_query, sanger_accessions_selection,
+    plastome_metadata_renamed,
+    plastome_metadata_raw,
+    plastome_ncbi_names_raw)
 )

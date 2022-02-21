@@ -5292,6 +5292,157 @@ make_gene_part_table <- function(gene_list) {
     assert(is_uniq, gene)
 }
 
+#' Make accessions table in long format
+#'
+#' @param raw_meta Tibble; Raw metadata for GenBank accessions in Sanger dataset
+#' @param sanger_seqs_combined_filtered Tibble; DNA sequences and metadata for
+#' Sanger dataset after removing rogues by all-by-all BLAST
+#' @param plastome_seqs_combined_filtered Tibble; DNA sequences and metadata for
+#' plastome dataset, filtered to single best accession per species
+#' @param ncbi_names_query Tibble; NCBI species names to query against 
+#' taxonomic standard
+#' @param sanger_accessions_selection Tibble; Final selection of accessions
+#' for Sanger dataset
+#' @param plastome_metadata_renamed Tibble; Metadata for plastome dataset
+#' renamed after resolving species names against taxonomic standard
+#' @param plastome_metadata_raw Tibble; Raw metadata for GenBank accessions 
+#' in plastome dataset
+#' @param plastome_ncbi_names_raw Tibble; Species names in plastome data 
+#' extracted from NCBI taxonomy
+#'
+#' @return Tibble with one row per accession including species (tips in FTOL),
+#' scientific name, accession length, etc.
+#' 
+make_long_acc_table <- function(
+  raw_meta, sanger_seqs_combined_filtered,
+  plastome_seqs_combined_filtered,
+  ncbi_names_query, sanger_accessions_selection,
+  plastome_metadata_renamed,
+  plastome_metadata_raw,
+  plastome_ncbi_names_raw) {
+
+  # Check argument names
+  check_args(match.call())
+  
+  ## Plastome data ##
+  # Tibble of NCBI accepted names
+  plastome_ncbi_accepted_names <-
+    plastome_ncbi_names_raw %>%
+    filter(accepted == TRUE) %>%
+    mutate(
+      ncbi_name = coalesce(scientific_name, species) %>%
+        # Drop years
+        str_remove_all(", [0-9]+$")) %>%
+    select(taxid, ncbi_name) %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, everything())
+  
+  # Tibble of taxid + accession
+  plastome_taxid_acc <-
+    plastome_metadata_raw %>%
+    select(taxid, accession) %>%
+    unique() %>%
+    assert(not_na, everything()) 
+  
+  # Tibble of plastome seqlengths
+  # (actual seq length of non-missing bases in final dataset)
+  plastome_acc_seqlen <-
+    plastome_seqs_combined_filtered %>%
+    select(accession, target, seq) %>%
+    mutate(seq_len = map_dbl(seq, ~count_non_missing(.[1]))) %>%
+    group_by(accession) %>%
+    summarize(seq_len = sum(seq_len))
+  
+  # Tibble of plastome data in long format
+  plastome_data <-
+    plastome_seqs_combined_filtered %>%
+    select(species, accession) %>%
+    unique() %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, everything()) %>%
+    mutate(locus = "plastome") %>%
+    left_join(plastome_metadata_renamed, by = c("species", "accession")) %>%
+    select(species, accession, locus, sci_name, outgroup) %>%
+    # Add seq len
+    left_join(plastome_acc_seqlen, by = "accession") %>%
+    # Add taxid
+    left_join(plastome_taxid_acc, by = "accession") %>%
+    # Add NCBI name
+    left_join(plastome_ncbi_accepted_names, by = "taxid") %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, species, accession)
+  
+  ## Sanger data
+  
+  # Tibble of taxid + scientific name
+  # unique taxid, but not resolved_name
+  taxid_sci_name <-
+    sanger_seqs_combined_filtered %>%
+    select(taxid, sci_name = resolved_name) %>%
+    unique() %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, taxid) 
+  
+  # Tibble of taxid + accepted NCBI name
+  ncbi_accepted_names <-
+    ncbi_names_query %>%
+    filter(accepted == TRUE) %>%
+    mutate(ncbi_name = coalesce(scientific_name, species)) %>%
+    select(taxid, ncbi_name) %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, everything())
+  
+  # Tibble of taxid, accession, and locus (gene)
+  # combination of accession + locus is unique
+  taxid_accession_locus <-
+    raw_meta %>%
+    select(taxid, accession, locus = target) %>%
+    unique() %>%
+    assert(not_na, everything()) %>%
+    assert_rows(col_concat, is_uniq, locus, accession) 
+  
+  # Convert Sanger seqs to long format
+  sanger_seq_len <-
+    sanger_accessions_selection %>%
+    select(species, matches("seq_len")) %>%
+    select(-total_seq_len) %>%
+    pivot_longer(names_to = "locus", values_to = "seq_len", -species) %>%
+    mutate(locus = str_remove_all(locus, "seq_len_")) %>%
+    filter(!is.na(seq_len)) %>%
+    filter(seq_len > 0)
+  
+  ## Combine data into final table
+  # Convert Sanger seqs to long format
+  sanger_accessions_selection %>%
+    select(species, matches("accession")) %>%
+    pivot_longer(names_to = "locus", values_to = "accession", -species) %>%
+    mutate(locus = str_remove_all(locus, "accession_")) %>%
+    filter(!is.na(accession)) %>%
+    # Add taxid by accession + locus
+    left_join(taxid_accession_locus, by = c("accession", "locus")) %>%
+    # Add sci name by taxid
+    left_join(taxid_sci_name, by = "taxid") %>%
+    left_join(ncbi_accepted_names, by = "taxid") %>%
+    # Add seq len
+    left_join(sanger_seq_len, by = c("species", "locus")) %>%
+    assert(not_na, everything()) %>%
+    assert_rows(col_concat, is_uniq, locus, accession) %>%
+    mutate(outgroup = FALSE) %>%
+    # Remove species in plastome data
+    anti_join(plastome_data, by = "species") %>%
+    # Add plastome species
+    bind_rows(plastome_data) %>%
+    arrange(outgroup, species, locus) %>%
+    # Modify outgroup col format
+    mutate(outgroup_status = if_else(outgroup == TRUE, "out", "in")) %>%
+    select(
+      species, locus, accession, seq_len, 
+      sci_name, ncbi_name, ncbi_taxid = taxid,
+      outgroup_status) %>%
+    assert(not_na, everything()) %>%
+    assert_rows(col_concat, is_uniq, species, locus)
+}
+
 # Managing data ----
 
 #' Make a zipped archive of raw data
