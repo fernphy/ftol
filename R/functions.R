@@ -6494,8 +6494,10 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
     janitor::clean_names() %>%
     # Select needed columns
     select(
-      minimum_age, node_calibrated, fossil_taxon,
+      n_fos, minimum_age, node_calibrated, fossil_taxon,
       affinities_group, affinities) %>%
+    # Delete any missing fossils (some records are empty that were errors)
+    filter(!is.na(fossil_taxon)) %>%
     # Check for duplicates
     assert(is_uniq, fossil_taxon) %>%
     # Exclude Incertae sedis
