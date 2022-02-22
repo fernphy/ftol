@@ -629,7 +629,7 @@ tar_plan(
     nthreads = 7,
     echo = TRUE
   ),
-  # Compile reports ----
+  # Format data for ftolr ----
   acc_table_long = make_long_acc_table(
     raw_meta, sanger_seqs_combined_filtered,
     plastome_seqs_combined_filtered,
@@ -637,7 +637,9 @@ tar_plan(
     plastome_metadata_renamed,
     plastome_metadata_raw,
     plastome_ncbi_names_raw),
-  # Format data for ftolr ----
+  acc_table_wide = make_wide_acc_table(
+    acc_table_long, sanger_accessions_selection
+  ),
   plastome_parts_table = make_parts_table(
     plastome_alignment_tbl, plastome_alignment),
   sanger_parts_table = make_parts_table(
@@ -649,10 +651,10 @@ tar_plan(
     write_csv_tar(acc_table_long, "results/ftolr/ftol_acc_table_long.csv")
   ),
   tar_file(
-    sanger_accessions_selection_ftolr,
+    acc_table_wide_ftolr,
     write_csv_tar(
-      sanger_accessions_selection,
-      "results/ftolr/ftol_sanger_accessions_selection.csv")
+      acc_table_wide,
+      "results/ftolr/ftol_acc_table_wide.csv")
   ),
   # - Taxonomy
   tar_file(

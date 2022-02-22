@@ -5293,6 +5293,8 @@ make_gene_part_table <- function(gene_list) {
 }
 
 #' Make accessions table in long format
+#' 
+#' (one row per accession)
 #'
 #' @param raw_meta Tibble; Raw metadata for GenBank accessions in Sanger dataset
 #' @param sanger_seqs_combined_filtered Tibble; DNA sequences and metadata for
@@ -5433,14 +5435,56 @@ make_long_acc_table <- function(
     # Add plastome species
     bind_rows(plastome_data) %>%
     arrange(outgroup, species, locus) %>%
-    # Modify outgroup col format
-    mutate(outgroup_status = if_else(outgroup == TRUE, "out", "in")) %>%
     select(
       species, locus, accession, seq_len, 
       sci_name, ncbi_name, ncbi_taxid = taxid,
-      outgroup_status) %>%
+      outgroup) %>%
     assert(not_na, everything()) %>%
     assert_rows(col_concat, is_uniq, species, locus)
+}
+
+#' Make accessions table in wide format
+#'
+#' (one row per species)
+#'
+#' @param acc_table_long Tibble; accession data in long format.
+#' @param sanger_accessions_selection Metadata for Sanger fern accessions.
+#'
+#' @return Tibble; accession data in wide format.
+#'
+make_wide_acc_table <- function(acc_table_long, sanger_accessions_selection) {
+  check_args(match.call())
+
+  # Make tibble of plastome species
+  species_plastome <-
+    acc_table_long %>%
+    filter(locus == "plastome") %>%
+    unique()
+
+  # Read in data on join method, voucher, and publication (Sanger ferns only)
+  species_join_voucher_pub <-
+    sanger_accessions_selection %>%
+    select(species, join_by, specimen_voucher, publication) %>%
+    anti_join(species_plastome, by = "species")
+
+  # Make tibble of species + outgroups
+  species_og <-
+    acc_table_long %>%
+    select(species, outgroup) %>%
+    unique()
+
+  # Assemble accessions in wide format
+  acc_table_long %>%
+    select(species, locus, accession) %>%
+    tidyr::pivot_wider(names_from = locus, values_from = accession) %>%
+    select(
+      species, atpA, atpB, matK, rbcL, rps4,
+      `rps4-trnS`, `trnL-trnF`, plastome) %>%
+    left_join(species_join_voucher_pub, by = "species") %>%
+    left_join(species_og, by = "species") %>%
+    assert(is_uniq, species) %>%
+    assert(not_na, species) %>%
+    arrange(outgroup, species)
 }
 
 # Format data for ftolr ----
