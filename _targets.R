@@ -518,6 +518,12 @@ tar_plan(
     getMRCA(sanger_tree_fast,
       c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
   ),
+  # - also root backbone tree for ftolr
+  plastome_tree_rooted = phytools::reroot(
+    plastome_tree,
+    getMRCA(plastome_tree,
+      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
+  ),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path, sanger_tree_fast),
@@ -609,6 +615,7 @@ tar_plan(
     echo = TRUE
   ),
   # Run treePL dating analysis
+  # FIXME: change name to sanger_tree_dated
   plastid_tree_dated = run_treepl(
     phy = sanger_tree_rooted,
     alignment = sanger_alignment,
@@ -629,5 +636,62 @@ tar_plan(
     ncbi_names_query, sanger_accessions_selection,
     plastome_metadata_renamed,
     plastome_metadata_raw,
-    plastome_ncbi_names_raw)
+    plastome_ncbi_names_raw),
+  # Format data for ftolr ----
+  plastome_parts_table = make_parts_table(
+    plastome_alignment_tbl, plastome_alignment),
+  sanger_parts_table = make_parts_table(
+    sanger_alignment_tbl, sanger_alignment),
+  # Write out data for ftolr ----
+  # - Accessions
+  tar_file(
+    acc_table_long_ftolr,
+    write_csv_tar(acc_table_long, "results/ftolr/ftol_acc_table_long.csv")
+  ),
+  tar_file(
+    sanger_accessions_selection_ftolr,
+    write_csv_tar(
+      sanger_accessions_selection,
+      "results/ftolr/ftol_sanger_accessions_selection.csv")
+  ),
+  # - Taxonomy
+  tar_file(
+    sanger_sampling_ftolr,
+    write_csv_tar(sanger_sampling, "results/ftolr/ftol_sanger_sampling.csv")
+  ),
+  # - Trees (all trees should be rooted)
+  # FIXME: add consensus trees when ready
+  tar_file(
+    sanger_tree_ftolr,
+    write_tree_tar(sanger_tree_rooted, "results/ftolr/ftol_sanger_rooted.tre")
+  ),
+  tar_file(
+    plastome_tree_ftolr,
+    write_tree_tar(
+      plastome_tree_rooted, "results/ftolr/ftol_plastome_rooted.tre")
+  ),
+  tar_file(
+    sanger_tree_dated_ftolr,
+    write_tree_tar(plastid_tree_dated, "results/ftolr/ftol_sanger_dated.tre")
+  ),
+  # - Alignments
+  tar_file(
+    sanger_alignment_ftolr,
+    write_fasta_tar(sanger_alignment,
+      "results/ftolr/ftol_sanger_alignment.fasta")
+  ),
+  tar_file(
+    plastome_alignment_ftolr,
+    write_fasta_tar(
+      plastome_alignment, "results/ftolr/ftol_plastome_alignment.fasta")
+  ),
+  # - Alignment parts
+  tar_file(
+    plastome_parts_table_ftolr,
+    write_csv_tar(plastome_parts_table, "results/ftolr/ftol_plastome_parts.csv")
+  ),
+  tar_file(
+    sanger_parts_table_ftolr,
+    write_csv_tar(sanger_parts_table, "results/ftolr/ftol_sanger_parts.csv")
+  )
 )

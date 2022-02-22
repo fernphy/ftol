@@ -5443,6 +5443,42 @@ make_long_acc_table <- function(
     assert_rows(col_concat, is_uniq, species, locus)
 }
 
+# Format data for ftolr ----
+
+#' Make a partition (by locus) table for a set of concatenated
+#' DNA alignments
+#'
+#' @param aln_tbl Tibble with list-column of DNA alignments.
+#' @param aln_seq Matrix of class "DNAbin": the concatenated DNA alignments.
+#' (only used for double-checking that aln_tbl and aln_seq are have identical
+#' sequences)
+#'
+#' @return Tibble with columns "locus", "start", "end"
+#'
+make_parts_table <- function(aln_tbl, aln_seq) {
+  # Get start and end position of each gene in concatenated alignment
+  res <- aln_tbl %>%
+  mutate(
+    nbp = map_dbl(align_trimmed, ncol),
+    end = cumsum(nbp),
+    start = end - nbp + 1) %>%
+  select(locus = target, start, end) %>%
+  assert(is_uniq, everything()) %>%
+  assert(not_na, everything())
+
+  # Double check that aln_tbl and aln_seq (alignment actually used
+  # for phy analysis) match
+  assertthat::assert_that(
+    isTRUE(all.equal(
+      aln_seq,
+      concatenate_to_ape(aln_tbl)
+    )),
+  msg = "aln_tbl and aln_seq don't match"
+  )
+
+  return(res)
+}
+
 # Managing data ----
 
 #' Make a zipped archive of raw data
