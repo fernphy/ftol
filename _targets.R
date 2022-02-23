@@ -596,9 +596,9 @@ tar_plan(
     phy = sanger_tree_rooted,
     alignment = sanger_alignment,
     calibration_dates = fossil_calibrations_for_treepl,
-    cvstart = "1000",
-    cvstop = "0.000001",
-    plsimaniter = "200000", # preliminary output suggested > 100000
+    cvstart = 1000,
+    cvstop = 0.000001,
+    plsimaniter = 200000, # preliminary output suggested > 100000
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
@@ -611,7 +611,7 @@ tar_plan(
     alignment = sanger_alignment,
     calibration_dates = fossil_calibrations_for_treepl,
     cv_results = treepl_cv_results,
-    plsimaniter = "200000", # preliminary output suggested > 100000
+    plsimaniter = 200000, # preliminary output suggested > 100000
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
@@ -625,13 +625,28 @@ tar_plan(
     calibration_dates = fossil_calibrations_for_treepl,
     cv_results = treepl_cv_results,
     priming_results = treepl_priming_results,
-    plsimaniter = "200000", # preliminary output suggested > 100000
+    plsimaniter = 200000, # preliminary output suggested > 100000
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
     nthreads = 7,
     echo = TRUE
   ),
+  # Run treePL dating analysis on bootstrap trees
+  tar_target(
+    bs_dated_trees,
+    run_treepl(
+      phy = bs_trees,
+      alignment = sanger_alignment,
+      calibration_dates = fossil_calibrations_for_treepl,
+      cv_results = treepl_cv_results,
+      priming_results = treepl_priming_results,
+      plsimaniter = 200000,
+      nthreads = 1,
+      seed = bs_tree_seeds
+      ),
+    pattern = map(bs_trees, bs_tree_seeds),
+    iteration = "list"),
   # Format data for ftolr ----
   acc_table_long = make_long_acc_table(
     raw_meta, sanger_seqs_combined_filtered,

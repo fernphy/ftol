@@ -4438,11 +4438,16 @@ run_treepl_prime <- function (
 #' Run treePL
 #' 
 #' Requires treepl to be installed and on PATH.
-#' 
+#'
 #' For more details on treepl options, see
 #' https://github.com/blackrim/treePL/wiki
 #'
-#' @param phy List of class "phy"; phylogeny
+#' @param phy List of class "phylo"; phylogeny
+#' @param treepl_config Character vector: treePL config. If provided,
+#' will be used in favor of `alignment`, `calibration_dates`, `priming_results`,
+#' and `cv_results` to run treePL. 
+#' The name of the infile must be "undated.tre".
+#' The name of the outfile must be "dated.tre".
 #' @param alignment List of class "DNAbin"; alignment
 #' @param calibration_dates Calibration points read in with
 #' load_calibration_dates()
@@ -4450,67 +4455,79 @@ run_treepl_prime <- function (
 #' determine optional parameters. Output of run_treepl_prime().
 #' @param cv_results Results of running treePL with cross-validation to
 #' determine optimal rate-smoothing parameter. Output of run_treepl_cv().
-#' @param write_tree Logical; should the phylogeny be written to working
-#' directory before running treePL? Can be FALSE if it is already there from
-#' run_treepl_initial().
-#' @param cvsimaniter Start the number of cross validation simulated annealing 
+#' @param cvsimaniter Start the number of cross validation simulated annealing
 #' iterations, default = 5000 for cross-validation
-#' @param plsimaniter the number of penalized likelihood simulated annealing 
+#' @param plsimaniter the number of penalized likelihood simulated annealing
 #' iterations, default = 5000
+#' @param nthreads Number of threads for treePL to use
 #' @param seed Seed for random number generator
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
-#' @param wd Working directory to run all treepl analyses
+#' @param wd Working directory to run all treepl analyses. If not provided,
+#' a temporary one will be created automatically and deleted at the end of the
+#' run.
+#' The input tree will be written here as "undated.tre".
+#' The config fill will be written here as "treepl_config.txt".
 #' @param echo Logical; should the output be printed to the screen?
 #'
-run_treepl <- function (
-  phy, alignment, calibration_dates, 
-  priming_results,
-  cv_results,
-  write_tree = FALSE,
-  cvsimaniter = "5000", 
-  plsimaniter = "5000",
-  nthreads = "1",
-  seed,
-  thorough = TRUE, wd, echo) {
-  
+run_treepl <- function(
+  phy,
+  treepl_config = NULL,
+  alignment = NULL,
+  calibration_dates = NULL,
+  priming_results = NULL,
+  cv_results = NULL,
+  cvsimaniter = 5000,
+  plsimaniter = 5000,
+  nthreads = 1,
+  seed = 1,
+  wd = NULL,
+  thorough = TRUE, echo = FALSE) {
+
+  # Save original arg input to wd for checking on this later
+  wd_arg <- wd
+
+  # Set up temporary working directory: unique WD for each seed
+  if (is.null(wd_arg)) {
+    wd <- fs::path(tempdir(), glue::glue("treepl_{seed}"))
+    assertthat::assert_that(
+      !fs::dir_exists(wd),
+      msg = "Temporary treepl directory already exists")
+    fs::dir_create(wd)
+  }
+
   # Check that all taxa are in tree
-  taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
-  
-  assertthat::assert_that(all(taxa %in% phy$tip.label),
-                          msg = glue(
-                            "Taxa in calibration dates not present in tree: 
-                            {taxa[!taxa %in% phy$tip.label]}"))
-  
-  # Write tree to working directory
-  phy_name <- deparse(substitute(phy))
-  phy_path <- fs::path_ext_set(phy_name, "tre")
-  if(isTRUE(write_tree)) {ape::write.tree(phy, fs::path(wd, phy_path))}
-  
+  if(is.null(treepl_config)) {
+    taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>%
+      unique()
+    assertthat::assert_that(all(taxa %in% phy$tip.label),
+      msg = glue(
+        "Taxa in calibration dates not present in tree:
+        {taxa[!taxa %in% phy$tip.label]}"))
+  }
+
+  # Write tree to wd
+  phy_path <- "undated.tre"
+  ape::write.tree(phy, fs::path(wd, phy_path))
+
+  # If the treePL config is provided, run that instead
+  if (!is.null(treepl_config)) {
+    readr::write_lines(treepl_config, fs::path(wd, "treepl_config.txt"))
+    # Run treePL
+    processx::run("treePL", "treepl_config.txt", wd = wd, echo = echo)
+    res <- ape::read.tree(fs::path(wd, "dated.tre"))
+    return(res)
+  }
+
   # Get number of sites in alignment
-  num_sites <- dim(alignment)[2]
-  
+  num_sites <- dim(alignment)[2] #nolint
+
   # Get best smoothing parameter
-  # Select the optimum smoothing value (smallest chisq) from cross-validation
-  # The raw output looks like this:
-  # chisq: (1000) 6.7037e+30
-  # chisq: (100) 3673.45
-  # etc.
-  best_smooth <-
-    tibble(cv_result = cv_results) %>%
-    mutate(smooth = str_match(cv_result, "\\((.*)\\)") %>% 
-             magrittr::extract(,2) %>%
-             parse_number()) %>%
-    mutate(chisq = str_match(cv_result, "\\) (.*)$") %>% 
-             magrittr::extract(,2) %>%
-             parse_number()) %>%
-    arrange(chisq) %>%
-    slice(1) %>%
-    pull(smooth)
-  
+  best_smooth <- get_best_smooth(cv_results)
+
   # Set name of output file
-  outfile_path <- fs::path_ext_set(paste0(phy_name, "_dated"), "tre")
-  
+  outfile_path <- "dated.tre"
+
   # Write config file to working directory
   treepl_config <- c(
     glue("treefile = {phy_path}"),
@@ -4529,19 +4546,24 @@ run_treepl <- function (
     priming_results %>% magrittr::extract(., str_detect(., "optad =")),
     priming_results %>% magrittr::extract(., str_detect(., "optcvad ="))
   )
-  
-  if(thorough) treepl_config <- c(treepl_config, "thorough")
-  
-  config_file_name <- glue::glue("{phy_name}_treepl_config")
-  
+
+  if (thorough) treepl_config <- c(treepl_config, "thorough")
+
+  config_file_name <- "treepl_config.txt"
+
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
-  
+
   # Run treePL
   processx::run("treePL", config_file_name, wd = wd, echo = echo)
-  
+
   # Read in tree
-  ape::read.tree(fs::path(wd, outfile_path))
-  
+  dated_tree <- ape::read.tree(fs::path(wd, outfile_path))
+
+  # Delete any temporary wd
+  if (fs::dir_exists(wd) && is.null(wd_arg)) fs::dir_delete(wd)
+
+  return(dated_tree)
+
 }
 
 #' Remove duplicate sequences from an alignment or tree,
