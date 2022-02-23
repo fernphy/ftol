@@ -508,6 +508,7 @@ tar_plan(
       constraint_tree = remove_node_labels(sanger_ml_tree$ml_tree),
       m = extract_iqtree_mod(sanger_ml_log), # same model as ML tree
       seed = bs_tree_seeds,
+      nt = 1,
       other_args = c(
         "-t", "PARS"
       )
