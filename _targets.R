@@ -555,12 +555,13 @@ tar_plan(
   # Dating prep ----
   # Load fossil calibration points
   fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path),
-  # Define some tips for spanning non-monophyletic groups
-  manual_spanning_tips = define_manual_spanning_tips("this_study"),
   # Map species in the tree to their fossil groups
   fossil_node_species_map = make_fossil_species_map(
     sanger_tree_rooted, fossil_calibration_points,
-    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed),
+    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
+    include_algaomorpha = TRUE),
+  # Define some tips for spanning non-monophyletic groups
+  manual_spanning_tips = define_manual_spanning_tips("this_study"),
   # Get pairs of tips that define fossil groups
   fossil_calibration_tips = get_fossil_calibration_tips(
     fossil_node_species_map, sanger_tree_rooted, fossil_calibration_points,
@@ -576,12 +577,12 @@ tar_plan(
     fossil_calibration_tips, root_calibration
   ),
   # Format Testo and Sundue 2016 calibration points for comparison
-  ts_manual_spanning_tips = define_manual_spanning_tips("ts2016"),
   ts_fossil_calibration_points = parse_ts_calibrations(
     testo_sundue_2016_si_path),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
     sanger_tree_rooted, ts_fossil_calibration_points, ppgi_taxonomy,
     plastome_metadata_renamed),
+  ts_manual_spanning_tips = define_manual_spanning_tips("ts2016"),
   ts_fossil_calibration_tips = get_fossil_calibration_tips(
     ts_fossil_node_species_map, sanger_tree_rooted,
     ts_fossil_calibration_points, ts_manual_spanning_tips
