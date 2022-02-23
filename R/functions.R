@@ -7355,7 +7355,8 @@ format_calibrations_for_treepl <- function(
     ) %>%
     bind_rows(root_tibble) %>%
     assert(not_na, mrca, taxon_1, taxon_2) %>%
-    assert(is_uniq, mrca)
+    assert(is_uniq, mrca) %>%
+    select(mrca, min, max, taxon_1, taxon_2)
 }
 
 # Etc ----
