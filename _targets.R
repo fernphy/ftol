@@ -492,6 +492,11 @@ tar_plan(
       )
     )
   ),
+  # Read in log file from Sanger ML tree analysis
+  sanger_ml_log = read_lines_tar(
+    path(int_dir, "iqtree/sanger/sanger_alignment.phy.log"),
+    depends = sanger_ml_tree
+  ),
   # Bootstrap 100 trees for treepl confidence intervals
   # - use topology of ML tree as constraint, so they all have
   # exact same topology but different branch lengths
@@ -499,12 +504,9 @@ tar_plan(
   tar_target(
     bs_trees,
     iqtree_bs(
-      # FIXME: change to final ML tree
-      aln_path = path(int_dir, "iqtree/sanger_fast/sanger_alignment.phy"),
-      # FIXME: use final ML tree when ready
-      constraint_tree = remove_node_labels(sanger_tree_fast),
-      # FIXME: use same model as selected for final ML tree
-      m = "GTR+I+G",
+      aln_path = path(int_dir, "iqtree/sanger/sanger_alignment.phy"),
+      constraint_tree = remove_node_labels(sanger_ml_tree$ml_tree),
+      m = extract_iqtree_mod(sanger_ml_log), # same model as ML tree
       seed = bs_tree_seeds,
       other_args = c(
         "-t", "PARS"
@@ -513,11 +515,10 @@ tar_plan(
     pattern = map(bs_tree_seeds)
   ),
   # Check monophyly ----
-  # FIXME: use sanger_tree, not sanger_tree_fast, when ready
   # Root tree on bryophytes
   sanger_tree_rooted = phytools::reroot(
-    sanger_tree_fast,
-    getMRCA(sanger_tree_fast,
+    sanger_ml_tree$ml_tree,
+    getMRCA(sanger_ml_tree$ml_tree,
       c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
   ),
   # - also root backbone tree for ftolr
@@ -617,8 +618,7 @@ tar_plan(
     echo = TRUE
   ),
   # Run treePL dating analysis
-  # FIXME: change name to sanger_tree_dated
-  plastid_tree_dated = run_treepl(
+  sanger_tree_dated = run_treepl(
     phy = sanger_tree_rooted,
     alignment = sanger_alignment,
     calibration_dates = fossil_calibrations_for_treepl,
@@ -676,7 +676,7 @@ tar_plan(
   ),
   tar_file(
     sanger_tree_dated_ftolr,
-    write_tree_tar(plastid_tree_dated, "results/ftolr/ftol_sanger_dated.tre")
+    write_tree_tar(sanger_tree_dated, "results/ftolr/ftol_sanger_dated.tre")
   ),
   # - Alignments
   tar_file(
