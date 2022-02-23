@@ -163,6 +163,13 @@
       "Source": "Bioconductor",
       "Hash": "506b92cb263d9e014a391b41939badcf"
     },
+    "MonoPhy": {
+      "Package": "MonoPhy",
+      "Version": "1.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "cfd2dcf74bf57d961f1bb65f75357a08"
+    },
     "R.cache": {
       "Package": "R.cache",
       "Version": "0.15.0",
