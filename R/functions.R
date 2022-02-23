@@ -7248,7 +7248,7 @@ get_fossil_calibration_tips <- function(
     verify(nrow(.) == 0, success_fun = success_logical)
 
   # Fill in manually specified tips for non-monophyletic groups
-  spanning_tips %>%
+  res <- spanning_tips %>%
     select(-num_tips_check) %>%
     left_join(manual_spanning_tips, by = "affinities") %>%
     mutate(
@@ -7260,6 +7260,23 @@ get_fossil_calibration_tips <- function(
       minimum_age, node_calibrated, fossil_taxon, affinities_group,
       affinities, monophyly, number_tips, tip_1, tip_2) %>%
     assert(is_uniq, node_calibrated)
+
+  # Check that stem age is older than crown age for each affinity with
+  # both crown and stem
+  res %>%
+    group_by(affinities) %>%
+    add_count() %>%
+    ungroup() %>%
+    filter(n > 1) %>%
+    select(minimum_age, affinities_group, affinities) %>%
+    pivot_wider(names_from = affinities_group, values_from = minimum_age) %>%
+    mutate(stem_older = stem > crown) %>%
+    verify(
+      all(stem_older == TRUE),
+      success_fun = success_logical,
+      error_fun = err_msg("At least one crown age is older than stem age"))
+
+  return(res)
 }
 
 #' Make tibble of times for calibrating the root of a tree when
