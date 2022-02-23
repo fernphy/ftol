@@ -6391,6 +6391,25 @@ iqtree_bs <- function(
 
 }
 
+# Wrapper around read_lines that can absorb additional dummy arguments
+read_lines_tar <- function(..., depends = NULL) {
+  readr::read_lines(...)
+}
+
+#' Extract the best-scoring model from an IQTREE log
+#'
+#' @param iqtree_log Raw IQTREE log file (ending in .log) read into R
+#'
+#' @return Best-scoring model
+#' 
+extract_iqtree_mod <- function(iqtree_log) {
+  iqtree_log[
+    # Formatted for IQTREE2
+    str_detect(iqtree_log, "Best-fit model: ")] %>%
+    str_match("([^ ]+) chosen") %>%
+    magrittr::extract(,2)
+}
+
 # Monophyly ----
 
 #' Load data on Equisetum subgenera
