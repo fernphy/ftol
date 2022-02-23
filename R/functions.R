@@ -6644,12 +6644,15 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
 #' @param equisetum_subgen Subgenera of Equisetum and their species.
 #' @param plastome_metadata_renamed Metada for plastome sequences, including
 #' species and outgroup status.
+#' @param include_algaomorpha Logical; should the Aglaomorpha subclade of
+#' Drynaria be included?
 #'
 #' @return Tibble with two columns, "affinities" and "species"
 #'
 make_fossil_species_map <- function(
   tree, fossil_calibration_points, ppgi_taxonomy,
-  equisetum_subgen, plastome_metadata_renamed) {
+  equisetum_subgen, plastome_metadata_renamed,
+  include_algaomorpha = TRUE) {
 
   # Make tibble of tips with genus and species
   tip_tbl <- tibble(species = tree$tip.label) %>%
@@ -6713,27 +6716,53 @@ make_fossil_species_map <- function(
     verify(all(tip_tbl$species %in% species)) %>%
     verify(nrow(.) == nrow(tip_tbl))
 
+  # Make tibble of Aglaomorpha (subclade of Drynaria) to include
+  if (include_algaomorpha == TRUE) {
+    aglaomorpha_tbl <-
+    ape::getMRCA(
+      tree, c("Drynaria_meyeniana", "Drynaria_novoguineensis")) %>%
+      get_children(tree, .) %>%
+      tibble(
+        species = .,
+        genus = "Aglaomorpha"
+      ) %>% 
+    # Make sure Aglaomorpha is formatted as expected:
+    # check that immediate sister species
+    # *outside* Aglaomorpha are *not* included
+    verify(!"Drynaria_mollis" %in% .$species) %>%
+    verify(!"Drynaria_fortunei" %in% .$species)
+  
+    tip_tbl <- bind_rows(tip_tbl, aglaomorpha_tbl)
+  }
+    
   fossil_calibration_points %>%
     select(affinities) %>%
     # Split affinities that are composed of multiple taxa separated by '+'
     mutate(aff_split = affinities) %>%
     separate_rows(aff_split, sep = "\\+") %>%
-    # Affinities comprse family, order, subgenus (Equisetum only)
+    # Affinities comprise subgenus (Equisetum only), subfamily, family, order
+    # - join genus by subfamily
+    left_join(
+      select(
+        ppgi_taxonomy_in_tree,
+        aff_split = subfamily, genus_1 = genus),
+      by = "aff_split"
+    ) %>%
     # - join genus by family
     left_join(
       select(
         ppgi_taxonomy_in_tree,
-        aff_split = family, genus_1 = genus),
+        aff_split = family, genus_2 = genus),
       by = "aff_split"
     ) %>%
     # - join genus by order
     left_join(
       select(
         ppgi_taxonomy_in_tree,
-        aff_split = order, genus_2 = genus),
+        aff_split = order, genus_3 = genus),
       by = "aff_split"
     ) %>%
-    mutate(genus = coalesce(genus_2, genus_1, aff_split)) %>%
+    mutate(genus = coalesce(genus_1, genus_2, genus_3, aff_split)) %>%
     select(affinities, aff_split, genus) %>%
     unique() %>%
     assert(not_na, everything()) %>%
@@ -7034,16 +7063,14 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
     data_set,
     "this_study" = tribble(
       ~affinities, ~tip_1_manual, ~tip_2_manual,
-      "Lindsaeaceae", "Sphenomeris_clavata", "Lindsaea_seemannii",
-      "Polystichum", "Polystichum_craspedosorum", "Polystichum_lehmannii",
-      "Pleopeltis", "Pleopeltis_michauxiana", "Pleopeltis_conzattii",
-      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
+      "Pleopeltis", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
     "ts2016" = tribble(
       ~affinities, ~tip_1_manual, ~tip_2_manual,
       "Alsophila+Cyathea", "Cyathea_minuta", "Alsophila_capensis",
       "Diplazium+Athyrium", "Ephemeropteris_tejeroi", "Diplazium_caudatum",
-      "Pleopeltis", "Pleopeltis_michauxiana", "Pleopeltis_conzattii",
-      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_glycyrrhiza"),
+      "Pleopeltis", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
     stop("Must choose either 'this_study' or 'ts2016'")
   )
 }
