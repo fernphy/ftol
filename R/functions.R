@@ -6608,13 +6608,13 @@ load_fossil_calibration_points <- function(fossil_dates_path) {
         regex("Incertae sedis", ignore.case = TRUE),
         negate = TRUE)
     ) %>%
-    # Fix taxonomy to match pteridocat:
-    # Aglaomorpha should be Drynaria
+    # Fix taxonomy to match pteridocat
     # Athyrium s.s. *is* Athyrium sensu pteridocat
+    # Note that fossil ferns still includes Aglaomorpha, which is
+    # actually a subclade of Drynaria
     mutate(
       across(c(node_calibrated, affinities),
-      ~str_replace_all(., "Aglaomorpha", "Drynaria") %>%
-        str_replace_all("Athyrium s.s.", "Athyrium"))
+      ~str_replace_all(., "Athyrium s.s.", "Athyrium"))
     ) %>%
     # Exclude non-monophyletic groups: Dennstaedtia, Dicksonia+Calochlaena
     filter(!affinities %in%
