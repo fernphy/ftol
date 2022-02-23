@@ -476,17 +476,19 @@ tar_plan(
     iqtree(
       sanger_alignment,
       m = "MFP", bb = 1000, nt = 6, seed = 20220129,
-      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
+      redo = FALSE, # FIXME: change to TRUE on next run
+      echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
       other_args = c(
         "-mset", "GTR",
         "-mrate", "E,I,G,I+G",
         "-t", "PARS",
-        "-g", path_abs(constraint_tree_file)
+        "-g", path_abs(constraint_tree_file),
+        "--undo" # FIXME: delete this on next run
       ),
       # Return best ML tree and consensus
       tree_path = c(
         ml_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.treefile"),
-        con_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.contree"),
+        con_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.contree")
       )
     )
   ),
