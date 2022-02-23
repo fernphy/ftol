@@ -6090,15 +6090,17 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
 #' @examples
 #' \dontrun{
 #' library(ape)
+#' temp_dir <- fs::dir_create(tempdir(), "blah")
 #' data(woodmouse)
 #' # Rapid boot-strap tree with 1000 replicates on best-fitting model
-#' tree <- iqtree(woodmouse, tempdir(), bb = 1000, echo = TRUE)
+#' tree <- iqtree(woodmouse, temp_dir, bb = 1000, echo = TRUE)
 #' plot(tree)
 #' # Check the optimum number of cores to use for GTR+I+G model
 #' iqtree(
 #'   woodmouse,
-#'   tempdir(),
+#'   temp_dir,
 #'   m = "GTR+I+G", nt = "AUTO", echo = TRUE, redo = TRUE)
+#' fs::dir_delete(temp_dir)
 #' }
 iqtree <- function(alignment = NULL, wd = getwd(),
                    aln_path = NULL,
