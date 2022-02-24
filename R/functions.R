@@ -7112,21 +7112,23 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
   switch(
     data_set,
     "this_study" = tribble(
-      ~affinities, ~tip_1_manual, ~tip_2_manual,
-      "Pleopeltis", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
-      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
+      ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
+      "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "crown", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
     "ts2016" = tribble(
-      ~affinities, ~tip_1_manual, ~tip_2_manual,
-      "Alsophila+Cyathea", "Cyathea_minuta", "Alsophila_capensis",
-      "Diplazium+Athyrium", "Ephemeropteris_tejeroi", "Diplazium_caudatum",
-      "Pleopeltis", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
-      "Polypodium s.l.", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
+      ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
+      "Alsophila+Cyathea", "stem", "Cyathea_minuta", "Alsophila_capensis",
+      "Diplazium+Athyrium", "stem", "Ephemeropteris_tejeroi", "Diplazium_caudatum",
+      "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
+      "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
     stop("Must choose either 'this_study' or 'ts2016'")
   )
 }
 
 #' Get tips that define clades corresponding to each fossil
 #' calibration point
+#' 
+#' Filters out redundant calibrations (fossils calibrating the same node)
 #'
 #' @param fossil_node_species_map Tibble in long format with two columns,
 #' "affinities" and "species".
@@ -7161,7 +7163,13 @@ get_fossil_calibration_tips <- function(
     )
   ) %>%
     mutate(across(matches("mrca|number|delta"), parse_number)) %>%
-    rename(affinities = taxon)
+    rename(affinities = taxon) %>%
+    # Set MRCA to NA if not monophyletic
+    # (so a manual MRCA can be added later)
+    mutate(mrca = case_when(
+      monophyly == "No" ~ NaN,
+      TRUE ~ mrca
+    ))
 
   # Make tibble of stem MRCA for monotypic calibration groups
   monotypic_stem_mrca_tib <-
@@ -7180,6 +7188,19 @@ get_fossil_calibration_tips <- function(
     ) %>%
     assert(isTRUE, sp_in_children) %>%
     select(affinities, affinities_group, monotypic_stem_mrca)
+
+  # Calculate mrca for manually specified groups (non-monophyletic taxa)
+  manual_mrca <-
+    manual_spanning_tips %>%
+    mutate(
+      mrca_manual = map2_dbl(
+        tip_1_manual, tip_2_manual,
+        ~ape::getMRCA(sanger_tree_rooted, c(.x, .y))
+        ),
+      stem_mrca_manual = phangorn::Ancestors(
+        sanger_tree_rooted, mrca_manual, type = "parent")
+    ) %>%
+    select(-tip_1_manual, -tip_2_manual)
 
   # Make tibble of tips spanning each fossil group
   # in "long" format with spanning tips as list-col
@@ -7206,20 +7227,26 @@ get_fossil_calibration_tips <- function(
       stem_mrca = coalesce(stem_mrca, monotypic_stem_mrca)
     ) %>%
     select(-monotypic_stem_mrca) %>%
+    # Add MRCA and stem MRCA for manually specified groups
+    left_join(
+      manual_mrca,
+      by = c("affinities", "affinities_group")
+    ) %>%
+    mutate(
+      mrca = coalesce(mrca, mrca_manual),
+      stem_mrca = coalesce(stem_mrca, stem_mrca_manual)
+    ) %>%
+    select(-mrca_manual, -stem_mrca_manual) %>%
+    # monotypic groups have NA for mrca, but not stem_mrca
     assert(not_na, stem_mrca) %>%
     mutate(
-      # Add tips spanning each crown group
+      # Add tips spanning each crown group for non-monotypic taxa
       rep_tips_crown = case_when(
-        monophyly == "Yes" ~ map(
-          mrca, ~get_spanning_tips(sanger_tree_rooted, .)
-          )
+        monophyly != "Monotypic" ~ map(
+          mrca, ~get_spanning_tips(sanger_tree_rooted, .))
       ),
-      # Add tips spanning each stem group
-      rep_tips_stem = case_when(
-        monophyly %in% c("Yes", "Monotypic") ~ map(
-          stem_mrca, ~get_spanning_tips(sanger_tree_rooted, .)
-          )
-      )
+      # Add tips spanning each stem group for all taxa
+      rep_tips_stem = map(stem_mrca, ~get_spanning_tips(sanger_tree_rooted, .))
     ) %>%
     # Add double check on number of tips descendend from crown group
     # spanning tips
@@ -7272,8 +7299,10 @@ get_fossil_calibration_tips <- function(
     select(-rep_tips) %>%
     bind_rows(spanning_tips_nulls_gone) %>%
     assert(is_uniq, node_calibrated) %>%
-    assert(not_na, node_calibrated)
+    assert(not_na, node_calibrated) %>%
+    select(-num_tips_check)
 
+  ## Check results ##
   # Double check that there are no redundant tip sets
   spanning_tips %>%
     filter(!is.na(tip_1)) %>%
@@ -7293,25 +7322,12 @@ get_fossil_calibration_tips <- function(
   spanning_tips %>%
     filter(monophyly == "No") %>%
     anti_join(manual_spanning_tips, by = "affinities") %>%
-    verify(nrow(.) == 0, success_fun = success_logical)
-
-  # Fill in manually specified tips for non-monophyletic groups
-  res <- spanning_tips %>%
-    select(-num_tips_check) %>%
-    left_join(manual_spanning_tips, by = "affinities") %>%
-    mutate(
-      tip_1 = coalesce(tip_1, tip_1_manual),
-      tip_2 = coalesce(tip_2, tip_2_manual)) %>%
-    select(-tip_1_manual, -tip_2_manual) %>%
-    # Run final checks
-    assert(not_na,
-      minimum_age, node_calibrated, fossil_taxon, affinities_group,
-      affinities, monophyly, number_tips, tip_1, tip_2) %>%
-    assert(is_uniq, node_calibrated)
+    verify(nrow(.) == 0, success_fun = success_logical,
+    error_fun = err_msg("Manually specified tips do not cover all non-monophyletic groups")) #nolint
 
   # Check that stem age is older than crown age for each affinity with
   # both crown and stem
-  res %>%
+  spanning_tips %>%
     group_by(affinities) %>%
     add_count() %>%
     ungroup() %>%
@@ -7324,7 +7340,12 @@ get_fossil_calibration_tips <- function(
       success_fun = success_logical,
       error_fun = err_msg("At least one crown age is older than stem age"))
 
-  return(res)
+  # Run final checks and output results
+  spanning_tips %>%
+    assert(not_na,
+      minimum_age, node_calibrated, fossil_taxon, affinities_group,
+      affinities, monophyly, number_tips, tip_1, tip_2) %>%
+    assert(is_uniq, node_calibrated)
 }
 
 #' Make tibble of times for calibrating the root of a tree when
