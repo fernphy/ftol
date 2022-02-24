@@ -4250,6 +4250,33 @@ build_tree_from_alignment_df <- function(gene_tree_alignment_df, program = "fast
 
 # Dating with treePL ----
 
+#' Get the best smoothing parameter for treePL
+#'
+#' @param cv_results Results of running treePL with cross-validation to
+#' determine optimal rate-smoothing parameter. Output of run_treepl_cv().
+#'
+#' @return Character
+#' 
+get_best_smooth <- function(cv_results) {
+  # Select the optimum smoothing value (smallest chisq) from cross-validation
+  # The raw output looks like this:
+  # chisq: (1000) 6.7037e+30
+  # chisq: (100) 3673.45
+  # etc.
+  tibble(cv_result = cv_results) %>%
+    mutate(
+      smooth = str_match(cv_result, "\\((.*)\\)") %>%
+      magrittr::extract(, 2) %>%
+      parse_number()) %>%
+    mutate(
+      chisq = str_match(cv_result, "\\) (.*)$") %>%
+      magrittr::extract(, 2) %>%
+      parse_number()) %>%
+    arrange(chisq) %>%
+    slice(1) %>%
+    pull(smooth)
+}
+
 #' Do an initial treepl run to determine optimal
 #' smoothing parameters with random cross-validation.
 #' 
@@ -6612,8 +6639,7 @@ assess_monophy <- function(
 #' @return Tibble
 load_fossil_calibration_points <- function(fossil_dates_path) {
   read_csv(
-    fossil_dates_path,
-    skip = 1) %>%
+    fossil_dates_path) %>%
     janitor::clean_names() %>%
     # Select needed columns
     select(
