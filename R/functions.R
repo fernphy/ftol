@@ -6628,27 +6628,33 @@ assess_monophy <- function(
 
 # Dating prep ----
 
-#' Load data on fossil calibration points
+#' Load fossil fern data
+#'
+#' @param file Path to fossil fern data (CSV file)
+#'
+#' @return Tibble
+load_fossil_data <- function(file) {
+  read_csv(file) %>%
+    janitor::clean_names()
+}
+
+#' Filter data on fossil calibration points
 #'
 #' Filters list to one point (oldest available fossil) per calibration
 #' node, excludes "Incertae sedis" and known non-monophyletic taxa
 #'
-#' @param fossil_dates_path Path to CSV file with fossil calibration
-#' points for pteridophytes.
+#' @param fossil_dates_all Tibble; fossil data read in with
+#' load_fossil_data()
 #'
 #' @return Tibble
-load_fossil_calibration_points <- function(fossil_dates_path) {
-  read_csv(
-    fossil_dates_path) %>%
-    janitor::clean_names() %>%
+filter_fossil_calibration_points <- function(fossil_dates_all) {
+  fossil_dates_all %>%
     # Select needed columns
     select(
       n_fos, minimum_age, node_calibrated, fossil_taxon,
       affinities_group, affinities) %>%
     # Delete any missing fossils (some records are empty that were errors)
     filter(!is.na(fossil_taxon)) %>%
-    # Check for duplicates
-    assert(is_uniq, fossil_taxon) %>%
     # Exclude Incertae sedis
     filter(
       str_detect(

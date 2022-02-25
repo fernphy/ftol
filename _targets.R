@@ -555,7 +555,10 @@ tar_plan(
   ),
   # Dating prep ----
   # Load fossil calibration points
-  fossil_calibration_points = load_fossil_calibration_points(fossil_dates_path),
+  fossil_ferns_all = load_fossil_data(fossil_dates_path),
+  # Filter fossil calibration points
+  fossil_calibration_points = filter_fossil_calibration_points(
+    fossil_ferns_all),
   # Map species in the tree to their fossil groups
   fossil_node_species_map = make_fossil_species_map(
     sanger_tree_rooted, fossil_calibration_points,
