@@ -7185,6 +7185,25 @@ get_fossil_calibration_tips <- function(
       TRUE ~ mrca
     ))
 
+  # Double check that all non-monophyletic taxa are specified in
+  # manual_spanning_tips (both affinities and affinities_group must match)
+  aff_non_mono <-
+  fossil_node_monophy %>%
+    filter(monophyly == "No") %>%
+    select(affinities) %>%
+    unique()
+
+  fossil_calibration_points %>%
+    inner_join(aff_non_mono, by = "affinities") %>%
+    select(affinities, affinities_group) %>%
+    anti_join(
+      manual_spanning_tips, by = c("affinities", "affinities_group")) %>%
+    verify(
+      nrow(.) == 0,
+      success_fun = success_logical,
+      error_fun = err_msg("Not exact match between non-monophyletic groups and manual spanning tips") # nolint
+    )
+
   # Make tibble of stem MRCA for monotypic calibration groups
   monotypic_stem_mrca_tib <-
   fossil_node_monophy %>%
@@ -7341,11 +7360,15 @@ get_fossil_calibration_tips <- function(
 
   # Check that stem age is older than crown age for each affinity with
   # both crown and stem
+  aff_with_stem_and_crown <-
   spanning_tips %>%
     group_by(affinities) %>%
     add_count() %>%
     ungroup() %>%
-    filter(n > 1) %>%
+    filter(n > 1)
+  
+  if (nrow(aff_with_stem_and_crown) > 0) {
+    aff_with_stem_and_crown %>%
     select(minimum_age, affinities_group, affinities) %>%
     pivot_wider(names_from = affinities_group, values_from = minimum_age) %>%
     mutate(stem_older = stem > crown) %>%
@@ -7353,6 +7376,7 @@ get_fossil_calibration_tips <- function(
       all(stem_older == TRUE),
       success_fun = success_logical,
       error_fun = err_msg("At least one crown age is older than stem age"))
+  }
 
   # Run final checks and output results
   spanning_tips %>%
