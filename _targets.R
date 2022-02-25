@@ -560,7 +560,7 @@ tar_plan(
     seq_along(taxa_levels_check),
     ~get_result_monophy(mono_test, .)
   ),
-  # Dating prep ----
+  # Prepare fossil calibrations ----
   # Load fossil calibration points
   fossil_ferns_all = load_fossil_data(fossil_dates_path),
   # Filter fossil calibration points
@@ -605,6 +605,7 @@ tar_plan(
     con_fossil_calibration_tips, root_calibration
   ),
   # Format Testo and Sundue 2016 calibration points for comparison
+  # (ML tree only)
   ts_fossil_calibration_points = parse_ts_calibrations(
     testo_sundue_2016_si_path),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
@@ -618,132 +619,67 @@ tar_plan(
   ts_fossil_calibrations_for_treepl = format_calibrations_for_treepl(
     ts_fossil_calibration_tips, root_calibration
   ),
-  # Dating with treePL: ML tree ----
-  # Run initial treepl search to identify smoothing parameter
-  treepl_cv_results = run_treepl_cv(
+  # Dating with treePL ----
+  # - ML tree, FernCal calibrations
+  sanger_tree_dated = run_treepl_combined(
     phy = sanger_tree_rooted,
     alignment = sanger_alignment,
     calibration_dates = fossil_calibrations_for_treepl,
     cvstart = 1000,
     cvstop = 0.000001,
+    cvsimaniter = 5000,
     plsimaniter = 200000, # preliminary output suggested > 100000
+    nthreads = 7,
     seed = 7167,
-    thorough = TRUE,
     wd = path(int_dir, "treepl"),
-    nthreads = 1
+    thorough = TRUE
   ),
-  # Run priming analysis to determine optimal states for other parameters
-  treepl_priming_results = run_treepl_prime(
+  # - ML tree, Testo and Sundue calibrations
+  ts_sanger_tree_dated = run_treepl_combined(
     phy = sanger_tree_rooted,
     alignment = sanger_alignment,
-    calibration_dates = fossil_calibrations_for_treepl,
-    cv_results = treepl_cv_results,
+    calibration_dates = ts_fossil_calibrations_for_treepl,
+    cvstart = 1000,
+    cvstop = 0.000001,
+    cvsimaniter = 5000,
     plsimaniter = 200000,
+    nthreads = 7,
     seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl"),
-    nthreads = 1
+    wd = path(int_dir, "treepl_ts"),
+    thorough = TRUE
   ),
-  # Run treePL dating analysis
-  sanger_tree_dated = run_treepl(
-    phy = sanger_tree_rooted,
+  # - Consensus tree, FernCal calibrations
+  con_sanger_tree_dated = run_treepl_combined(
+    phy = sanger_con_tree_rooted,
     alignment = sanger_alignment,
-    calibration_dates = fossil_calibrations_for_treepl,
-    cv_results = treepl_cv_results,
-    priming_results = treepl_priming_results,
+    calibration_dates = con_fossil_calibrations_for_treepl,
+    cvstart = 1000,
+    cvstop = 0.000001,
+    cvsimaniter = 5000,
     plsimaniter = 200000,
+    nthreads = 7,
     seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl"),
-    nthreads = 7
+    wd = path(int_dir, "treepl_con"),
+    thorough = TRUE
   ),
-  # Run treePL dating analysis on bootstrap ML trees
+  # - Bootstrap ML trees, FernCal calibrations
   tar_target(
     bs_dated_trees,
-    run_treepl(
+    run_treepl_combined(
       phy = bs_trees_list,
       alignment = sanger_alignment,
       calibration_dates = fossil_calibrations_for_treepl,
       cv_results = treepl_cv_results,
       priming_results = treepl_priming_results,
+      cvstart = 1000,
+      cvstop = 0.000001,
+      cvsimaniter = 5000,
       plsimaniter = 200000,
       nthreads = 2,
       seed = bs_tree_seeds
       ),
     pattern = map(bs_trees_list, bs_tree_seeds),
     iteration = "list"),
-  # treePL: ML tree with Testo and Sundue 2016 calibrations ----
-  ts_treepl_cv_results = run_treepl_cv(
-    phy = sanger_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = ts_fossil_calibrations_for_treepl,
-    cvstart = 1000,
-    cvstop = 0.000001,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_ts"),
-    nthreads = 1
-  ),
-  ts_treepl_priming_results = run_treepl_prime(
-    phy = sanger_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = ts_fossil_calibrations_for_treepl,
-    cv_results = ts_treepl_cv_results,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_ts"),
-    nthreads = 1
-  ),
-  ts_sanger_tree_dated = run_treepl(
-    phy = sanger_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = ts_fossil_calibrations_for_treepl,
-    cv_results = ts_treepl_cv_results,
-    priming_results = ts_treepl_priming_results,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_ts"),
-    nthreads = 7
-  ),
-  # treePL: consensus tree ----
-  con_treepl_cv_results = run_treepl_cv(
-    phy = sanger_con_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = con_fossil_calibrations_for_treepl,
-    cvstart = 1000,
-    cvstop = 0.000001,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_con"),
-    nthreads = 1
-  ),
-  con_treepl_priming_results = run_treepl_prime(
-    phy = sanger_con_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = con_fossil_calibrations_for_treepl,
-    cv_results = con_treepl_cv_results,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_con"),
-    nthreads = 1
-  ),
-  con_sanger_tree_dated = run_treepl(
-    phy = sanger_con_tree_rooted,
-    alignment = sanger_alignment,
-    calibration_dates = con_fossil_calibrations_for_treepl,
-    cv_results = con_treepl_cv_results,
-    priming_results = con_treepl_priming_results,
-    plsimaniter = 200000,
-    seed = 7167,
-    thorough = TRUE,
-    wd = path(int_dir, "treepl_con"),
-    nthreads = 7
-  ),
   # Format data for ftolr ----
   acc_table_long = make_long_acc_table(
     raw_meta, sanger_seqs_combined_filtered,

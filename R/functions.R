@@ -4599,6 +4599,132 @@ run_treepl <- function(
 
 }
 
+#' Run a full treePL analysis including cross-validation, priming, and dating
+#'
+#' The calibration dates dataframe should be formatted like this:
+#'
+#' A tibble: 64 × 5
+#' mrca                          min            max   taxon_1       taxon_2
+#'  <chr>                         <chr>          <chr> <chr>         <chr>
+#' mrca = stem_Cyclosorus        min = stem_Cy… NA    Ampelopteris… Cyclosorus_…
+#'
+#' @param phy List of class "phylo"; phylogeny.
+#' @param alignment List of class "DNAbin"; alignment.
+#' @param calibration_dates Dataframe; Calibration points, including
+#' columns "mrca", "min", "max", "taxon_1", and "taxon_2".
+#' @param cvstart Start value for cross-validation.
+#' @param cvstop Stop value for cross-validation.
+#' @param cvsimaniter The number of cross validation simulated annealing
+#' iterations.
+#' @param plsimaniter The number of penalized likelihood simulated annealing
+#' iterations.
+#' @param nthreads Number of threads for treePL to use.
+#' @param seed Seed for random number generator.
+#' @param wd Working directory to run all treepl analyses. If not provided,
+#' a temporary one will be created automatically.
+#' @param thorough Logical; should the "thorough" setting in
+#' treePL be used?
+#' @param rm_temp_dir_before Logical; if `wd` is `NULL` and the temporary
+#' working directory already exists, should it be deleted before the run?
+#' @param rm_temp_dir_after Logical; if `wd` is `NULL` should the temporary
+#' be after before the run?
+#'
+#' @return List of class "phlyo"; the dated tree
+#' @examples
+#' library(ape)
+#' data("woodmouse")
+#' mouse_tree <- fasttree(woodmouse)
+#' mouse_calibration_dates <- tibble(
+#'     mrca = "mrca = mouse No304 No306",
+#'     min = "min = mouse 123",
+#'     taxon_1 = "No304",
+#'     taxon_2 = "No306",
+#'     max = NA
+#'   )
+#' run_treepl_combined(
+#'   phy = mouse_tree, alignment = woodmouse,
+#'   calibration_dates = mouse_calibration_dates,
+#'   rm_temp_dir_before = TRUE, rm_temp_dir_after = TRUE)
+run_treepl_combined <- function(
+  phy,
+  alignment = NULL,
+  calibration_dates = NULL,
+  cvstart = 1000,
+  cvstop = 0.000001,
+  cvsimaniter = 5000,
+  plsimaniter = 200000,
+  nthreads = 1,
+  seed = 1,
+  wd = NULL,
+  thorough = TRUE,
+  rm_temp_dir_before = FALSE,
+  rm_temp_dir_after = FALSE
+) {
+
+  # Save original arg input to wd for checking on this later
+  wd_arg <- wd
+
+  # If working dir not specified,
+  # set up temporary working directory: unique WD for each seed
+  if (is.null(wd_arg)) {
+    wd <- fs::path(tempdir(), glue::glue("treepl_{seed}"))
+    if (rm_temp_dir_before == FALSE) {
+    assertthat::assert_that(
+      !fs::dir_exists(wd),
+      msg = glue("Temporary treepl directory already exists: {wd}"))
+    } else {
+      if (fs::dir_exists(wd)) fs::dir_delete(wd)
+    }
+    fs::dir_create(wd)
+  }
+
+  # Run cross-validation
+  cv_res <- run_treepl_cv(
+    phy = phy,
+    alignment = alignment,
+    calibration_dates = calibration_dates,
+    cvstart = cvstart,
+    cvstop = cvstop,
+    plsimaniter = plsimaniter,
+    seed = seed,
+    thorough = thorough,
+    wd = wd,
+    nthreads = nthreads
+  )
+
+  # Run priming
+  priming_res <- run_treepl_prime(
+    phy = phy,
+    alignment = alignment,
+    calibration_dates = calibration_dates,
+    cv_results = cv_res,
+    plsimaniter = plsimaniter,
+    seed = seed,
+    thorough = thorough,
+    wd = wd,
+    nthreads = nthreads
+  )
+
+  # Run treePL dating analysis
+  treepl_res <- run_treepl(
+    phy = phy,
+    alignment = alignment,
+    calibration_dates = calibration_dates,
+    cv_results = cv_res,
+    priming_results = priming_res,
+    plsimaniter = plsimaniter,
+    seed = seed,
+    thorough = thorough,
+    wd = wd,
+    nthreads = nthreads
+  )
+
+  # Delete temp wd if desired
+  if (is.null(wd_arg) && rm_temp_dir_after == TRUE) fs::dir_delete(wd)
+
+  return(treepl_res)
+}
+
 #' Remove duplicate sequences from an alignment or tree,
 #' and replace with representatives of sequence groups
 #' (groups of identical sequences)
