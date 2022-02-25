@@ -529,6 +529,12 @@ tar_plan(
     getMRCA(plastome_tree,
       c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
   ),
+  # - and consensus tree
+  sanger_con_tree_rooted = phytools::reroot(
+    sanger_ml_tree$con_tree,
+    getMRCA(sanger_ml_tree$con_tree,
+      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
+  ),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path, sanger_tree_fast),
@@ -560,26 +566,43 @@ tar_plan(
   # Filter fossil calibration points
   fossil_calibration_points = filter_fossil_calibration_points(
     fossil_ferns_all),
-  # Map species in the tree to their fossil groups
-  fossil_node_species_map = make_fossil_species_map(
-    sanger_tree_rooted, fossil_calibration_points,
-    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
-    include_algaomorpha = TRUE),
   # Define some tips for spanning non-monophyletic groups
   manual_spanning_tips = define_manual_spanning_tips("this_study"),
-  # Get pairs of tips that define fossil groups
-  fossil_calibration_tips = get_fossil_calibration_tips(
-    fossil_node_species_map, sanger_tree_rooted, fossil_calibration_points,
-    manual_spanning_tips
-  ),
   # Specify calibration point for root
   root_calibration = calibrate_root_node(
     sanger_tree_rooted, "land_plants", 475,
     "Anthoceros_angustus", "Polypodium_virginianum"
   ),
+  # Map species in the tree to their fossil groups
+  # - ML tree
+  fossil_node_species_map = make_fossil_species_map(
+    sanger_tree_rooted, fossil_calibration_points,
+    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
+    include_algaomorpha = TRUE),
+  # - consensus tree
+  con_fossil_node_species_map = make_fossil_species_map(
+    sanger_con_tree_rooted, fossil_calibration_points,
+    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
+    include_algaomorpha = TRUE),
+  # Get pairs of tips that define fossil groups
+  # - ML tree
+  fossil_calibration_tips = get_fossil_calibration_tips(
+    fossil_node_species_map, sanger_tree_rooted,
+    fossil_calibration_points, manual_spanning_tips
+  ),
+  # - consensus tree
+  con_fossil_calibration_tips = get_fossil_calibration_tips(
+    con_fossil_node_species_map, sanger_con_tree_rooted,
+    fossil_calibration_points, manual_spanning_tips
+  ),
   # Format fossil calibration points for treePL
+  # - ML tree
   fossil_calibrations_for_treepl = format_calibrations_for_treepl(
     fossil_calibration_tips, root_calibration
+  ),
+  # - consensus tree
+  con_fossil_calibrations_for_treepl = format_calibrations_for_treepl(
+    con_fossil_calibration_tips, root_calibration
   ),
   # Format Testo and Sundue 2016 calibration points for comparison
   ts_fossil_calibration_points = parse_ts_calibrations(
@@ -595,7 +618,7 @@ tar_plan(
   ts_fossil_calibrations_for_treepl = format_calibrations_for_treepl(
     ts_fossil_calibration_tips, root_calibration
   ),
-  # Dating with treePL ----
+  # Dating with treePL: ML tree ----
   # Run initial treepl search to identify smoothing parameter
   treepl_cv_results = run_treepl_cv(
     phy = sanger_tree_rooted,
@@ -662,6 +685,42 @@ tar_plan(
     wd = path(int_dir, "treepl_ts"),
     nthreads = 1
   ),
+  # treePL: consensus tree ----
+  con_treepl_cv_results = run_treepl_cv(
+    phy = sanger_con_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = con_fossil_calibrations_for_treepl,
+    cvstart = 1000,
+    cvstop = 0.000001,
+    plsimaniter = 200000,
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl_con"),
+    nthreads = 1
+  ),
+  con_treepl_priming_results = run_treepl_prime(
+    phy = sanger_con_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = con_fossil_calibrations_for_treepl,
+    cv_results = con_treepl_cv_results,
+    plsimaniter = 200000,
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl_con"),
+    nthreads = 1
+  ),
+  con_sanger_tree_dated = run_treepl(
+    phy = sanger_con_tree_rooted,
+    alignment = sanger_alignment,
+    calibration_dates = con_fossil_calibrations_for_treepl,
+    cv_results = con_treepl_cv_results,
+    priming_results = con_treepl_priming_results,
+    plsimaniter = 200000,
+    seed = 7167,
+    thorough = TRUE,
+    wd = path(int_dir, "treepl_con"),
+    nthreads = 7
+  ),
   # Format data for ftolr ----
   acc_table_long = make_long_acc_table(
     raw_meta, sanger_seqs_combined_filtered,
@@ -695,19 +754,34 @@ tar_plan(
     write_csv_tar(sanger_sampling, "results/ftolr/ftol_sanger_sampling.csv")
   ),
   # - Trees (all trees should be rooted)
-  # FIXME: add consensus trees when ready
-  tar_file(
-    sanger_tree_ftolr,
-    write_tree_tar(sanger_tree_rooted, "results/ftolr/ftol_sanger_rooted.tre")
-  ),
+  # -- plastome consensus
   tar_file(
     plastome_tree_ftolr,
     write_tree_tar(
-      plastome_tree_rooted, "results/ftolr/ftol_plastome_rooted.tre")
+      plastome_tree_rooted, "results/ftolr/ftol_plastome_con.tre")
   ),
+  # -- sanger ML
+  tar_file(
+    sanger_tree_ftolr,
+    write_tree_tar(sanger_tree_rooted, "results/ftolr/ftol_sanger_ml.tre")
+  ),
+  # -- sanger ML dated
   tar_file(
     sanger_tree_dated_ftolr,
-    write_tree_tar(sanger_tree_dated, "results/ftolr/ftol_sanger_dated.tre")
+    write_tree_tar(sanger_tree_dated, "results/ftolr/ftol_sanger_ml_dated.tre")
+  ),
+  # -- sagner consensus
+  tar_file(
+    sanger_con_tree_ftolr,
+    write_tree_tar(
+      sanger_con_tree_rooted, "results/ftolr/ftol_sanger_con.tre")
+  ),
+  # -- sagner consensus dated
+  tar_file(
+    sanger_con_tree_dated_ftolr,
+    write_tree_tar(
+      con_sanger_tree_dated, "results/ftolr/ftol_sanger_con_dated.tre"
+    )
   ),
   # - Alignments
   tar_file(
