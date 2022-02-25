@@ -7126,7 +7126,9 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
     "this_study" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
-      "Polypodium s.l.", "crown", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum"),
+      "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
+      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"
+      ),
     "ts2016" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Alsophila+Cyathea", "stem", "Cyathea_minuta", "Alsophila_capensis",
