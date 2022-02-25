@@ -676,7 +676,9 @@ tar_plan(
       cvsimaniter = 5000,
       plsimaniter = 200000,
       nthreads = 2,
-      seed = bs_tree_seeds
+      seed = bs_tree_seeds,
+      rm_temp_dir_before = TRUE,
+      rm_temp_dir_after = TRUE
       ),
     pattern = map(bs_trees_list, bs_tree_seeds),
     iteration = "list"),
@@ -729,13 +731,13 @@ tar_plan(
     sanger_tree_dated_ftolr,
     write_tree_tar(sanger_tree_dated, "results/ftolr/ftol_sanger_ml_dated.tre")
   ),
-  # -- sagner consensus
+  # -- sanger consensus
   tar_file(
     sanger_con_tree_ftolr,
     write_tree_tar(
       sanger_con_tree_rooted, "results/ftolr/ftol_sanger_con.tre")
   ),
-  # -- sagner consensus dated
+  # -- sanger consensus dated
   tar_file(
     sanger_con_tree_dated_ftolr,
     write_tree_tar(
