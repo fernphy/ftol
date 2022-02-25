@@ -502,7 +502,7 @@ tar_plan(
   # exact same topology but different branch lengths
   bs_tree_seeds = seq_len(100),
   tar_target(
-    bs_trees,
+    bs_trees_list,
     iqtree_bs(
       aln_path = path(int_dir, "iqtree/sanger/sanger_alignment.phy"),
       constraint_tree = remove_node_labels(sanger_ml_tree$ml_tree),
@@ -513,7 +513,8 @@ tar_plan(
         "-t", "PARS"
       )
     ),
-    pattern = map(bs_tree_seeds)
+    pattern = map(bs_tree_seeds),
+    iteration = "list"
   ),
   # Check monophyly ----
   # Root tree on bryophytes
@@ -633,11 +634,11 @@ tar_plan(
     wd = path(int_dir, "treepl"),
     nthreads = 7
   ),
-  # Run treePL dating analysis on bootstrap trees
+  # Run treePL dating analysis on bootstrap ML trees
   tar_target(
     bs_dated_trees,
     run_treepl(
-      phy = bs_trees,
+      phy = bs_trees_list,
       alignment = sanger_alignment,
       calibration_dates = fossil_calibrations_for_treepl,
       cv_results = treepl_cv_results,
