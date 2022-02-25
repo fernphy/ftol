@@ -4301,7 +4301,6 @@ get_best_smooth <- function(cv_results) {
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
 #' @param wd Working directory to run all treepl analyses
-#' @param echo Logical; should the output be printed to the screen?
 #'
 run_treepl_cv <- function (
   phy, alignment, calibration_dates, 
@@ -4311,25 +4310,25 @@ run_treepl_cv <- function (
   plsimaniter = "5000",
   nthreads = "1",
   seed,
-  thorough = TRUE, wd, echo) {
+  thorough = TRUE, wd) {
   
   # Check that all taxa are in tree
-  taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
+  taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>%
+    unique()
   
   assertthat::assert_that(all(taxa %in% phy$tip.label),
                           msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
   
-  # Write tree to working directory
-  phy_name <- deparse(substitute(phy))
-  phy_path <- fs::path_ext_set(phy_name, "tre")
-  if(isTRUE(write_tree)) {ape::write.tree(phy, fs::path(wd, phy_path))}
+  # Write tree to wd
+  phy_path <- "undated.tre"
+  ape::write.tree(phy, fs::path(wd, phy_path))
   
   # Get number of sites in alignment
   num_sites <- dim(alignment)[2] # nolint
   
-  outfile_path <- fs::path_ext_set(paste0(phy_name, "_cv"), "out")
+  outfile_path <- "treepl_cv_out.txt" # nolint
   
   # Write config file to working directory
   treepl_config <- c(
@@ -4350,12 +4349,16 @@ run_treepl_cv <- function (
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
   
-  config_file_name <- glue::glue("{phy_name}_treepl_cv_config")
+  config_file_name <- "treepl_cv_config.txt"
   
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
   
   # Run treePL
-  processx::run("treePL", config_file_name, wd = wd, echo = echo)
+  processx::run(
+    "treePL", config_file_name, wd = wd,
+    stdout = fs::path(wd, "treepl_cv.stdout"),
+    stderr = fs::path(wd, "treepl_cv.stderr")
+  )
   
   # Return cross-validation results
   readr::read_lines(fs::path(wd, outfile_path))
@@ -4407,13 +4410,12 @@ run_treepl_prime <- function (
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
   
-  # Write tree to working directory
-  phy_name <- deparse(substitute(phy))
-  phy_path <- fs::path_ext_set(phy_name, "tre")
-  if(isTRUE(write_tree)) {ape::write.tree(phy, fs::path(wd, phy_path))}
+  # Write tree to wd
+  phy_path <- "undated.tre"
+  ape::write.tree(phy, fs::path(wd, phy_path))
   
   # Get number of sites in alignment
-  num_sites <- dim(alignment)[2]
+  num_sites <- dim(alignment)[2] #nolint
   
   # Get best smoothing parameter
   # Select the optimum smoothing value (smallest chisq) from cross-validation
@@ -4450,15 +4452,19 @@ run_treepl_prime <- function (
   
   if(thorough) treepl_config <- c(treepl_config, "thorough")
   
-  config_file_name <- glue::glue("{phy_name}_treepl_prime_config")
+  config_file_name <- "treepl_prime_config.txt"
   
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
   
   # Run treePL
-  results <- processx::run("treePL", config_file_name, wd = wd, echo = echo)
+  results <- processx::run(
+    "treePL", config_file_name, wd = wd,
+    stdout = fs::path(wd, "treepl_prime.stdout"),
+    stderr = fs::path(wd, "treepl_prime.stderr")
+  )
   
   # Return stdout
-  read_lines(results$stdout)
+  readr::read_lines(fs::path(wd, "treepl_prime.stdout"))
   
 }
 

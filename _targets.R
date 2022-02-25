@@ -606,8 +606,7 @@ tar_plan(
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
-    nthreads = 1,
-    echo = TRUE
+    nthreads = 1
   ),
   # Run priming analysis to determine optimal states for other parameters
   treepl_priming_results = run_treepl_prime(
@@ -619,8 +618,7 @@ tar_plan(
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
-    nthreads = 1,
-    echo = TRUE
+    nthreads = 1
   ),
   # Run treePL dating analysis
   sanger_tree_dated = run_treepl(
@@ -633,8 +631,7 @@ tar_plan(
     seed = 7167,
     thorough = TRUE,
     wd = path(int_dir, "treepl"),
-    nthreads = 7,
-    echo = TRUE
+    nthreads = 7
   ),
   # Run treePL dating analysis on bootstrap trees
   tar_target(
