@@ -7317,7 +7317,7 @@ get_fossil_calibration_tips <- function(
     pivot_wider(values_from = rep_tips, names_from = n_tip) %>%
     assert(is_uniq, node_calibrated) %>%
     assert(not_na, node_calibrated) %>%
-    # Drop redundant calibration points (same tips)
+    # Filter out redundant calibration points (same tips)
     assert(not_na, tip_1, tip_2) %>%
     group_by(tip_1, tip_2) %>%
     slice_max(n = 1, order_by = minimum_age, with_ties = FALSE) %>%
@@ -7343,13 +7343,6 @@ get_fossil_calibration_tips <- function(
     verify(
       all(n == 1), success_fun = success_logical,
       error_fun = err_msg("Redundant spanning tips detected"))
-
-  # Make sure affinities of manual_spanning_tips are in fossil data
-  manual_spanning_tips %>%
-    verify(
-      all(affinities %in% spanning_tips$affinities),
-      success_fun = success_logical,
-      error_fun = err_msg("Manually specified tip affinities not in fossil affinities")) #nolint
 
   # Make sure manual tips cover all non-monophyletic groups
   spanning_tips %>%
