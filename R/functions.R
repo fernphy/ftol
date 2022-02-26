@@ -4657,8 +4657,8 @@ run_treepl_combined <- function(
   seed = 1,
   wd = NULL,
   thorough = TRUE,
-  rm_temp_dir_before = FALSE,
-  rm_temp_dir_after = FALSE
+  rm_temp_dir_before = TRUE,
+  rm_temp_dir_after = TRUE
 ) {
 
   # Save original arg input to wd for checking on this later

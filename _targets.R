@@ -517,23 +517,31 @@ tar_plan(
     iteration = "list"
   ),
   # Check monophyly ----
-  # Root tree on bryophytes
+  # Root ML tree on bryophytes
   sanger_tree_rooted = phytools::reroot(
     sanger_ml_tree$ml_tree,
     getMRCA(sanger_ml_tree$ml_tree,
       c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
   ),
-  # - also root backbone tree for ftolr
-  plastome_tree_rooted = phytools::reroot(
-    plastome_tree,
-    getMRCA(plastome_tree,
-      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
-  ),
-  # - and consensus tree
+  # same for consensus tree
   sanger_con_tree_rooted = phytools::reroot(
     sanger_ml_tree$con_tree,
     getMRCA(sanger_ml_tree$con_tree,
       c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
+  ),
+  # same for bootstrap trees
+  tar_target(
+    bs_trees_rooted,
+    phytools::reroot(
+      bs_trees_list,
+      getMRCA(
+        bs_trees_list,
+        c("Physcomitrium_patens", "Marchantia_polymorpha",
+          "Anthoceros_angustus")
+      )
+    ),
+    pattern = map(bs_trees_list),
+    iteration = "list"
   ),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
@@ -666,21 +674,17 @@ tar_plan(
   tar_target(
     bs_dated_trees,
     run_treepl_combined(
-      phy = bs_trees_list,
+      phy = bs_trees_rooted,
       alignment = sanger_alignment,
       calibration_dates = fossil_calibrations_for_treepl,
-      cv_results = treepl_cv_results,
-      priming_results = treepl_priming_results,
       cvstart = 1000,
       cvstop = 0.000001,
       cvsimaniter = 5000,
       plsimaniter = 200000,
       nthreads = 2,
-      seed = bs_tree_seeds,
-      rm_temp_dir_before = TRUE,
-      rm_temp_dir_after = TRUE
+      seed = bs_tree_seeds
       ),
-    pattern = map(bs_trees_list, bs_tree_seeds),
+    pattern = map(bs_trees_rooted, bs_tree_seeds),
     iteration = "list"),
   # Format data for ftolr ----
   acc_table_long = make_long_acc_table(
@@ -691,12 +695,16 @@ tar_plan(
     plastome_metadata_raw,
     plastome_ncbi_names_raw),
   acc_table_wide = make_wide_acc_table(
-    acc_table_long, sanger_accessions_selection
-  ),
+    acc_table_long, sanger_accessions_selection),
   plastome_parts_table = make_parts_table(
     plastome_alignment_tbl, plastome_alignment),
   sanger_parts_table = make_parts_table(
     sanger_alignment_tbl, sanger_alignment),
+  plastome_tree_rooted = phytools::reroot(
+    plastome_tree,
+    getMRCA(plastome_tree,
+      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
+  ),
   # Write out data for ftolr ----
   # - Accessions
   tar_file(
