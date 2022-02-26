@@ -7611,6 +7611,28 @@ write_fasta_tar <- function(x, file, ...) {
   file
   }
 
+# Write fasta.gz and return path
+write_fasta_gz_tar <- function(seqs, file, ...) {
+  # Make temp dir
+  temp_dir <- fs::path(tempdir(), digest::digest(seqs))
+  if (fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
+  fs::dir_create(temp_dir)
+  # Specify temporary files
+  seqs_file <- digest::digest(seqs) %>%
+    paste0(".fasta")
+  fasta_path <- fs::path(temp_dir, seqs_file)
+  fasta_zipped_path <- paste0(fasta_path, ".gz")
+  # Write fasta to temp dir
+  ape::write.FASTA(seqs, fasta_path)
+  # Zip fasta, move to final file
+  R.utils::gzip(fasta_path, ext = "gz")
+  fs::file_move(fasta_zipped_path, file)
+  # Delete temp dir
+  fs::dir_delete(temp_dir)
+  # Return path to final zipped file
+  file
+}
+
 # Write phylogeny and return path
 write_tree_tar <- function(phy, file, ...) {
   ape::write.tree(phy = phy, file = file, ...)

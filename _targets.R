@@ -747,13 +747,13 @@ tar_plan(
   # - Alignments
   tar_file(
     sanger_alignment_ftolr,
-    write_fasta_tar(sanger_alignment,
-      "results/ftolr/ftol_sanger_alignment.fasta")
+    write_fasta_gz_tar(sanger_alignment,
+      "results/ftolr/ftol_sanger_alignment.fasta.gz")
   ),
   tar_file(
     plastome_alignment_ftolr,
-    write_fasta_tar(
-      plastome_alignment, "results/ftolr/ftol_plastome_alignment.fasta")
+    write_fasta_gz_tar(
+      plastome_alignment, "results/ftolr/ftol_plastome_alignment.fasta.gz")
   ),
   # - Alignment parts
   tar_file(
