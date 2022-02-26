@@ -6804,7 +6804,10 @@ filter_fossil_calibration_points <- function(fossil_dates_all) {
     ) %>%
     # Exclude non-monophyletic groups: Dennstaedtia, Dicksonia+Calochlaena
     filter(!affinities %in%
-      c("Dennstaedtia", "Dicksonia+Calochlaena")) %>%
+      c("Dennstaedtia", "Dicksonia+Calochlaena")) %>% 
+    # Drop stem tracheophytes, since this is the same as MRCA land plants
+    # which is used as a fixed age for treePL
+    filter(node_calibrated != "stem Tracheophytes") %>%
     # Use crown Equisetum subgen. Paramochaete (164 my) for crown Equisetum
     # since Equisetum subgen. Paramochaete is monotypic,
     # it is equivalent to dating crown Equisetum
