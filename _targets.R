@@ -637,7 +637,7 @@ tar_plan(
     cvstop = 0.000001,
     cvsimaniter = 5000,
     plsimaniter = 200000, # preliminary output suggested > 100000
-    nthreads = 7,
+    nthreads = 5,
     seed = 7167,
     wd = path(int_dir, "treepl"),
     thorough = TRUE
@@ -651,7 +651,7 @@ tar_plan(
     cvstop = 0.000001,
     cvsimaniter = 5000,
     plsimaniter = 200000,
-    nthreads = 7,
+    nthreads = 5,
     seed = 7167,
     wd = path(int_dir, "treepl_ts"),
     thorough = TRUE
@@ -665,7 +665,7 @@ tar_plan(
     cvstop = 0.000001,
     cvsimaniter = 5000,
     plsimaniter = 200000,
-    nthreads = 7,
+    nthreads = 5,
     seed = 7167,
     wd = path(int_dir, "treepl_con"),
     thorough = TRUE
@@ -683,6 +683,24 @@ tar_plan(
       plsimaniter = 200000,
       nthreads = 2,
       seed = bs_tree_seeds
+      ),
+    pattern = map(bs_trees_rooted, bs_tree_seeds),
+    iteration = "list"),
+  # - Bootstrap ML trees, Testo and Sundue calibrations
+  tar_target(
+    ts_bs_dated_trees,
+    run_treepl_combined(
+      phy = bs_trees_rooted,
+      alignment = sanger_alignment,
+      calibration_dates = ts_fossil_calibrations_for_treepl,
+      cvstart = 1000,
+      cvstop = 0.000001,
+      cvsimaniter = 5000,
+      plsimaniter = 200000,
+      nthreads = 2,
+      # modify seed to avoid creating temp wd with same name
+      # as bootstrap ML trees with FernCal calibrations
+      seed = bs_tree_seeds + 1000
       ),
     pattern = map(bs_trees_rooted, bs_tree_seeds),
     iteration = "list"),
