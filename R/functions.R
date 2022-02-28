@@ -4297,9 +4297,10 @@ get_best_smooth <- function(cv_results) {
 #' iterations, default = 5000 for cross-validation
 #' @param plsimaniter the number of penalized likelihood simulated annealing 
 #' iterations, default = 5000
-#' @param seed Seed for random number generator
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
+#' @param nthreads Number of threads for treePL to use
+#' @param seed Seed for random number generator
 #' @param wd Working directory to run all treepl analyses
 #'
 run_treepl_cv <- function (
@@ -4308,9 +4309,10 @@ run_treepl_cv <- function (
   cvstart = "1000", cvstop = "0.1",
   cvsimaniter = "5000", 
   plsimaniter = "5000",
+  thorough = TRUE,
   nthreads = "1",
   seed,
-  thorough = TRUE, wd) {
+  wd) {
   
   # Check that all taxa are in tree
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>%
@@ -4320,6 +4322,11 @@ run_treepl_cv <- function (
                           msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
+  
+  # Check that tree is rooted
+  assertthat::assert_that(
+    ape::is.rooted(phy),
+    msg = "Tree is not rooted")
   
   # Write tree to wd
   phy_path <- "undated.tre"
@@ -4386,11 +4393,11 @@ run_treepl_cv <- function (
 #' iterations, default = 5000 for cross-validation
 #' @param plsimaniter the number of penalized likelihood simulated annealing 
 #' iterations, default = 5000
-#' @param seed Seed for random number generator
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
+#' @param nthreads Number of threads for treePL to use
+#' @param seed Seed for random number generator
 #' @param wd Working directory to run all treepl analyses
-#' @param echo Logical; should the output be printed to the screen?
 #'
 run_treepl_prime <- function (
   phy, alignment, calibration_dates, 
@@ -4398,9 +4405,10 @@ run_treepl_prime <- function (
   write_tree = FALSE,
   cvsimaniter = "5000", 
   plsimaniter = "5000",
+  thorough = TRUE,
   nthreads = "1",
   seed,
-  thorough = TRUE, wd, echo) {
+  wd) {
   
   # Check that all taxa are in tree
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
@@ -4409,6 +4417,11 @@ run_treepl_prime <- function (
                           msg = glue(
                             "Taxa in calibration dates not present in tree: 
                             {taxa[!taxa %in% phy$tip.label]}"))
+
+  # Check that tree is rooted
+  assertthat::assert_that(
+    ape::is.rooted(phy),
+    msg = "Tree is not rooted")
   
   # Write tree to wd
   phy_path <- "undated.tre"
@@ -4492,16 +4505,19 @@ run_treepl_prime <- function (
 #' iterations, default = 5000 for cross-validation
 #' @param plsimaniter the number of penalized likelihood simulated annealing
 #' iterations, default = 5000
-#' @param nthreads Number of threads for treePL to use
-#' @param seed Seed for random number generator
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
+#' @param nthreads Number of threads for treePL to use
+#' @param seed Seed for random number generator
 #' @param wd Working directory to run all treepl analyses. If not provided,
 #' a temporary one will be created automatically and deleted at the end of the
 #' run.
 #' The input tree will be written here as "undated.tre".
 #' The config fill will be written here as "treepl_config.txt".
-#' @param echo Logical; should the output be printed to the screen?
+#' @param rm_temp_dir_before Logical; if `wd` is `NULL` and the temporary
+#' working directory already exists, should it be deleted before the run?
+#' @param rm_temp_dir_after Logical; if `wd` is `NULL` should the temporary
+#' be after before the run?
 #'
 run_treepl <- function(
   phy,
@@ -4512,22 +4528,16 @@ run_treepl <- function(
   cv_results = NULL,
   cvsimaniter = 5000,
   plsimaniter = 5000,
+  thorough = TRUE,
   nthreads = 1,
   seed = 1,
   wd = NULL,
-  thorough = TRUE, echo = FALSE) {
+  rm_temp_dir_before = TRUE,
+  rm_temp_dir_after = FALSE
+  ) {
 
   # Save original arg input to wd for checking on this later
   wd_arg <- wd
-
-  # Set up temporary working directory: unique WD for each seed
-  if (is.null(wd_arg)) {
-    wd <- fs::path(tempdir(), glue::glue("treepl_{seed}"))
-    assertthat::assert_that(
-      !fs::dir_exists(wd),
-      msg = "Temporary treepl directory already exists")
-    fs::dir_create(wd)
-  }
 
   # Check that all taxa are in tree
   if(is.null(treepl_config)) {
@@ -4537,6 +4547,25 @@ run_treepl <- function(
       msg = glue(
         "Taxa in calibration dates not present in tree:
         {taxa[!taxa %in% phy$tip.label]}"))
+  }
+
+  # Check that tree is rooted
+  assertthat::assert_that(
+    ape::is.rooted(phy),
+    msg = "Tree is not rooted")
+
+  # If working dir not specified,
+  # set up temporary working directory: unique WD for each seed
+  if (is.null(wd_arg)) {
+    wd <- fs::path(tempdir(), glue::glue("treepl_{seed}"))
+    if (rm_temp_dir_before == FALSE) {
+    assertthat::assert_that(
+      !fs::dir_exists(wd),
+      msg = glue("Temporary treepl directory already exists: {wd}"))
+    } else {
+      if (fs::dir_exists(wd)) fs::dir_delete(wd)
+    }
+    fs::dir_create(wd)
   }
 
   # Write tree to wd
@@ -4587,13 +4616,13 @@ run_treepl <- function(
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
 
   # Run treePL
-  processx::run("treePL", config_file_name, wd = wd, echo = echo)
+  processx::run("treePL", config_file_name, wd = wd)
 
   # Read in tree
   dated_tree <- ape::read.tree(fs::path(wd, outfile_path))
 
-  # Delete any temporary wd
-  if (fs::dir_exists(wd) && is.null(wd_arg)) fs::dir_delete(wd)
+  # Delete temp wd if desired
+  if (is.null(wd_arg) && rm_temp_dir_after == TRUE) fs::dir_delete(wd)
 
   return(dated_tree)
 
@@ -4618,12 +4647,12 @@ run_treepl <- function(
 #' iterations.
 #' @param plsimaniter The number of penalized likelihood simulated annealing
 #' iterations.
+#' @param thorough Logical; should the "thorough" setting in
+#' treePL be used?
 #' @param nthreads Number of threads for treePL to use.
 #' @param seed Seed for random number generator.
 #' @param wd Working directory to run all treepl analyses. If not provided,
 #' a temporary one will be created automatically.
-#' @param thorough Logical; should the "thorough" setting in
-#' treePL be used?
 #' @param rm_temp_dir_before Logical; if `wd` is `NULL` and the temporary
 #' working directory already exists, should it be deleted before the run?
 #' @param rm_temp_dir_after Logical; if `wd` is `NULL` should the temporary
@@ -4653,12 +4682,12 @@ run_treepl_combined <- function(
   cvstop = 0.000001,
   cvsimaniter = 5000,
   plsimaniter = 200000,
+  thorough = TRUE,
   nthreads = 1,
   seed = 1,
   wd = NULL,
-  thorough = TRUE,
   rm_temp_dir_before = TRUE,
-  rm_temp_dir_after = TRUE
+  rm_temp_dir_after = FALSE
 ) {
 
   # Save original arg input to wd for checking on this later
