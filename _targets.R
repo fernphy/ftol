@@ -638,7 +638,7 @@ tar_plan(
     cvsimaniter = 5000,
     plsimaniter = 200000, # preliminary output suggested > 100000
     nthreads = 5,
-    seed = 7167,
+    seed = 7168,
     wd = path(int_dir, "treepl"),
     thorough = TRUE
   ),
@@ -671,14 +671,23 @@ tar_plan(
     thorough = TRUE
   ),
   # - Bootstrap ML trees, FernCal calibrations
+  # use settings from original ML tree
+  sanger_treepl_cv = read_lines_tar(
+    path(int_dir, "treepl/treepl_cv_out.txt"),
+    depends = sanger_tree_dated
+  ),
+  sanger_treepl_prime = read_lines_tar(
+    path(int_dir, "treepl/treepl_prime.stdout"),
+    depends = sanger_tree_dated
+  ),
   tar_target(
     bs_dated_trees,
-    run_treepl_combined(
+    run_treepl(
       phy = bs_trees_rooted,
       alignment = sanger_alignment,
       calibration_dates = fossil_calibrations_for_treepl,
-      cvstart = 1000,
-      cvstop = 0.000001,
+      cv_results = sanger_treepl_cv,
+      priming_results = sanger_treepl_prime,
       cvsimaniter = 5000,
       plsimaniter = 200000,
       nthreads = 2,
@@ -687,14 +696,22 @@ tar_plan(
     pattern = map(bs_trees_rooted, bs_tree_seeds),
     iteration = "list"),
   # - Bootstrap ML trees, Testo and Sundue calibrations
+  ts_treepl_cv = read_lines_tar(
+    path(int_dir, "treepl_ts/treepl_cv_out.txt"),
+    depends = ts_sanger_tree_dated
+  ),
+  ts_treepl_prime = read_lines_tar(
+    path(int_dir, "treepl_ts/treepl_prime.stdout"),
+    depends = ts_sanger_tree_dated
+  ),
   tar_target(
     ts_bs_dated_trees,
-    run_treepl_combined(
+    run_treepl(
       phy = bs_trees_rooted,
       alignment = sanger_alignment,
       calibration_dates = ts_fossil_calibrations_for_treepl,
-      cvstart = 1000,
-      cvstop = 0.000001,
+      cv_results = ts_treepl_cv,
+      priming_results = ts_treepl_prime,
       cvsimaniter = 5000,
       plsimaniter = 200000,
       nthreads = 2,
