@@ -6811,12 +6811,13 @@ root_fern_tree <- function(phy, workers) {
 #' Filters list to one point (oldest available fossil) per calibration
 #' node, excludes "Incertae sedis" and known non-monophyletic taxa
 #'
-#' @param fossil_dates_all Tibble; fossil data read in with
+#' @param fossil_ferns_all Tibble; fossil data read in with
 #' load_fossil_data()
 #'
 #' @return Tibble
-filter_fossil_calibration_points <- function(fossil_dates_all) {
-  fossil_dates_all %>%
+filter_fossil_calibration_points <- function(fossil_ferns_all) {
+  fossil_ferns_filtered <-
+    fossil_ferns_all %>%
     # Select needed columns
     select(
       n_fos, minimum_age, node_calibrated, fossil_taxon,
@@ -6847,6 +6848,32 @@ filter_fossil_calibration_points <- function(fossil_dates_all) {
     group_by(node_calibrated) %>%
     slice_max(n = 1, order_by = minimum_age, with_ties = FALSE) %>%
     ungroup()
+
+  # Drop any stem fossils if the crown for the same group is equal
+  # to or older than the stem fossil
+  older_crown <-
+  fossil_ferns_filtered %>%
+    # filter to affinities with both crown and stem
+    add_count(affinities) %>%
+    arrange(affinities, affinities_group) %>%
+    filter(n > 1) %>%
+    # compare crown and stem age
+    select(minimum_age, affinities_group, affinities) %>%
+    pivot_wider(names_from = affinities_group, values_from = minimum_age) %>%
+    mutate(crown_older_or_equal = crown >= stem) %>%
+    # make list of stem calibration points to drop
+    filter(crown_older_or_equal == TRUE) %>%
+    mutate(node_calibrated = paste("stem", affinities)) %>%
+    pull(node_calibrated)
+
+  if(length(older_crown) > 0) {
+    fossil_ferns_filtered <-
+    fossil_ferns_filtered %>%
+      filter(!node_calibrated %in% older_crown)
+  }
+
+  fossil_ferns_filtered
+
 }
 
 #' Make a tibble mapping fossil groups (affinities) to species
