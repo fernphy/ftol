@@ -6619,6 +6619,63 @@ extract_iqtree_mod <- function(iqtree_log) {
     magrittr::extract(,2)
 }
 
+#' Get the best sanger tree from a set of independent runs
+#'
+#' @param sanger_ml_log_rep Character vector: contents of IQ-TREE log
+#' files read in with read_lines().
+#' @param type What to return; choose "ml" for the maximum-
+#' likelihood tree, "con" for the consensus tree, or "log" for the log file.
+#'
+#' @return List of class "phylo"; the best tree, or the log file for the tree.
+#'
+get_best_tree <- function(
+  sanger_ml_log_rep, type) {
+
+  ml_scores <- sanger_ml_log_rep[
+    str_detect(sanger_ml_log_rep, "BEST SCORE FOUND")] %>%
+    parse_number()
+
+  con_scores <- sanger_ml_log_rep[
+    str_detect(sanger_ml_log_rep, "Log-likelihood of consensus tree")] %>%
+    str_remove_all("Log-likelihood of consensus tree: ") %>%
+    parse_number()
+
+  combined_scores <- ml_scores + con_scores
+
+  assertthat::assert_that(
+    length(ml_scores) == length(con_scores),
+    msg = "Length of ML and consensus scores don't match"
+  )
+
+  assertthat::assert_that(
+    !any(is.na(ml_scores))
+  )
+
+  assertthat::assert_that(
+    !any(is.na(con_scores))
+  )
+
+  best_index <- which(combined_scores == max(combined_scores))
+
+  ml_tree_files <- sanger_ml_log_rep[
+    str_detect(sanger_ml_log_rep, "Maximum-likelihood tree: +\\/")] %>%
+    str_remove_all("Maximum-likelihood tree: +") %>%
+    str_squish()
+
+  log_files <- sanger_ml_log_rep[
+    str_detect(sanger_ml_log_rep, "Screen log file: +\\/")] %>%
+    str_remove_all("Screen log file: +") %>%
+    str_squish()
+
+  switch(
+    type,
+    "ml" = ape::read.tree(ml_tree_files[best_index]),
+    "con" = ape::read.tree(ml_tree_files[best_index]),
+    "log" = readr::read_lines(log_files[best_index]),
+    "Must choose 'ml', 'con', or 'log' for 'type'"
+  )
+}
+
 # Monophyly ----
 
 #' Load data on Equisetum subgenera
