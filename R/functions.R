@@ -6523,7 +6523,10 @@ remove_node_labels <- function(phy) {
   phy
 }
 
-#' Make a single bootstrap tree with IQTREE
+#' Make a single "bootstrap tree" with IQTREE
+#' 
+#' Re-estimates branchlengths using original alignment. See:
+#' http://www.iqtree.org/doc/Frequently-Asked-Questions#how-do-i-save-time-for-standard-bootstrap # nolint
 #'
 #' For making trees with the same topology but different branchlengths
 #' so we can obtain a range of age estimates with treePL
@@ -6533,6 +6536,8 @@ remove_node_labels <- function(phy) {
 #' @param alignment Matrix; DNA alignment.
 #' @param aln_path Path to DNA alignment in phylip format.
 #' @param constraint_tree Constraint tree; list of class "DNA bin".
+#' @param rm_brln Logical; should the branch lengths of the constraint tree
+#' be removed prior to re-estimation?
 #' @param m Optional; specify model. If no model is given, ModelTest will be run
 #'   to identify the best model for the data.
 #' @param nt Optional; number of cores to use. Set to "AUTO" to determine
@@ -6547,11 +6552,14 @@ remove_node_labels <- function(phy) {
 #'
 iqtree_bs <- function(
   alignment = NULL, aln_path = NULL,
-  constraint_tree, m = NULL, nt = 1, seed = 1,
+  constraint_tree, 
+  rm_brln = FALSE,
+  m = NULL, nt = 1, seed = 1,
   echo = FALSE, other_args = NULL) {
 
   # Set up temporary working directory: unique WD for each seed
-  wd <- fs::path(tempdir(), glue::glue("iqtree_bs_{seed}"))
+  wd <- fs::path("temp/iqtree_bs/", glue::glue("iqtree_bs_{seed}")) %>%
+    fs::path_abs()
   if (fs::dir_exists(wd)) fs::dir_delete(wd)
   fs::dir_create(wd)
 
@@ -6560,17 +6568,16 @@ iqtree_bs <- function(
 
   # Write out alignment
   if (is.null(aln_path) && !is.null(alignment)) {
-  assertthat::assert_that(
-      is.matrix(alignment),
-      msg = "alignment must be a matrix (not a list of unaligned sequences)")
-
-  aln_path <- fs::path(wd, "alignment.phy")
-
-  phangorn::write.phyDat(alignment, aln_path, format = "phylip")
+    assertthat::assert_that(
+        is.matrix(alignment),
+        msg = "alignment must be a matrix (not a list of unaligned sequences)")
+    aln_path <- fs::path(wd, "alignment.phy")
+    phangorn::write.phyDat(alignment, aln_path, format = "phylip")
   }
 
   # Write out constraint tree
   const_tree_path <- fs::path(wd, "constraint.tre")
+  if (isTRUE(rm_brln)) constraint_tree$edge.length <- NULL
 
   ape::write.tree(constraint_tree, const_tree_path)
 
@@ -6580,27 +6587,17 @@ iqtree_bs <- function(
     if (!is.null(nt)) "-nt", nt,
     if (!is.null(m)) "-m", m,
     if (!is.null(seed)) "-seed", seed,
-    "-g", const_tree_path,
-    "-bo", 1,
-    "-pre", "boot",
+    "-te", const_tree_path,
+    "-pre", glue::glue("boot_{seed}"),
     other_args
   )
 
-    # Run iqtree command
+  # Run iqtree command
   processx::run(
     "iqtree2",
-    iqtree_arguments, wd = wd, echo = echo,
-    # Include env variable as workaround for initial parsimony analysis
-    # using all cores
-    # https://github.com/iqtree/iqtree2/issues/18
-    env = c("current", OMP_NUM_THREADS = "1"))
+    iqtree_arguments, wd = wd, echo = echo)
 
-  bs_tree <- ape::read.tree(fs::path(wd, "boot.boottrees"))
-
-  if (fs::dir_exists(wd)) fs::dir_delete(wd)
-
-  return(bs_tree)
-
+  ape::read.tree(fs::path(wd, glue::glue("boot_{seed}.treefile")))
 }
 
 # Wrapper around read_lines that can absorb additional dummy arguments
