@@ -6786,14 +6786,24 @@ assess_monophy <- function(
 
 # Dating prep ----
 
-#' Load fossil fern data
+#' Root the fern tree
 #'
-#' @param file Path to fossil fern data (CSV file)
+#' Roots a tree with bryophytes as the outgroup
 #'
-#' @return Tibble
-load_fossil_data <- function(file) {
-  read_csv(file) %>%
-    janitor::clean_names()
+#' @param phy List of class "phylo".
+#' @param workers  Number of CPUs to run in parallel during rooting
+#'
+#' @return List of class "phylo": the rooted tree
+#'
+root_fern_tree <- function(phy, workers) {
+  phytools::reroot(
+      phy,
+      ape::getMRCA(
+        phy,
+        c("Physcomitrium_patens", "Marchantia_polymorpha",
+          "Anthoceros_angustus")
+      )
+    )
 }
 
 #' Filter data on fossil calibration points
