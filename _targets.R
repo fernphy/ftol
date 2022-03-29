@@ -70,7 +70,7 @@ tar_plan(
   # Fossil calibration points
   tar_file(
     fossil_dates_path,
-    path(data_raw, "Fossils_Ferns.csv")
+    path(data_raw, "fern_fossils.csv")
   ),
   # Fossil calibration points from Testo and Sundue 2016 SI
   tar_files_input(
@@ -584,7 +584,10 @@ tar_plan(
   # Prepare fossil calibrations ----
   # Load fossil calibration points
   fossil_ferns_raw = read_csv(fossil_dates_path),
-  fossil_ferns_all = janitor::clean_names(fossil_ferns_raw),
+  # Drop MD formatting (asterisks) from data
+  fossil_ferns_all = mutate(
+    fossil_ferns_raw,
+    across(where(is.character), ~str_remove_all(., "\\*"))),
   # Filter fossil calibration points
   fossil_calibration_points = filter_fossil_calibration_points(
     fossil_ferns_all),
