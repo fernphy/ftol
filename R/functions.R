@@ -6678,7 +6678,7 @@ add_major_clade <- function(data) {
 #'
 #' @param plastome_metadata_renamed Plastome data with final (resolved) species
 #' names.
-#' @param sanger_tree Sanger ML tree.
+#' @param sanger_tree Sanger tree.
 #' @param ppgi_taxonomy PPGI taxonomy
 #'
 #' @return Tibble with columns "species",  "genus", "order", "suborder",
@@ -6924,7 +6924,7 @@ make_fossil_species_map <- function(
     equisetum_subgen %>%
     inner_join(select(tip_tbl, species), by = "species")
 
-  # Make tibble of deeper groups (Euphyllophytes and Tracheophytes)
+  # Make tibble of deep clades (Euphyllophytes and Tracheophytes)
   # Needs to include outgroup taxa
   bryo_genera <- c("Anthoceros", "Physcomitrium", "Marchantia")
   lyco_genera <- c("Isoetes", "Lycopodium", "Selaginella")
@@ -6956,7 +6956,19 @@ make_fossil_species_map <- function(
     verify(all(tip_tbl$species %in% species)) %>%
     verify(nrow(.) == nrow(tip_tbl))
 
-  # Make tibble of Aglaomorpha (subclade of Drynaria) to include
+  # Make tibble of Eupolypods taxa (for Eupolypods fossil)
+  eupolypods_taxa <-
+  tip_tbl %>%
+    left_join(
+      select(ppgi_taxonomy_in_tree, genus, suborder),
+      by = "genus"
+    ) %>%
+    filter(suborder %in% c("Aspleniineae", "Polypodiineae")) %>%
+    transmute(species, clade = "Eupolypods") %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, species)
+
+  # Make tibble of Aglaomorpha (subclade of Drynaria) for Aglaomorpha fossil
   if (include_algaomorpha == TRUE) {
     aglaomorpha_tbl <-
     ape::getMRCA(
@@ -6971,7 +6983,6 @@ make_fossil_species_map <- function(
     # *outside* Aglaomorpha are *not* included
     verify(!"Drynaria_mollis" %in% .$species) %>%
     verify(!"Drynaria_fortunei" %in% .$species)
-  
     tip_tbl <- bind_rows(tip_tbl, aglaomorpha_tbl)
   }
     
@@ -7026,7 +7037,12 @@ make_fossil_species_map <- function(
       select(deep_clades, species_4 = species, aff_split = clade_2),
       by = "aff_split"
     ) %>%
-    mutate(species = coalesce(species, species_2, species_3, species_4)) %>%
+    left_join(
+      select(eupolypods_taxa, species_5 = species, aff_split = clade),
+      by = "aff_split"
+    ) %>%
+    mutate(species = coalesce(
+      species, species_2, species_3, species_4, species_5)) %>%
     select(affinities, species) %>%
     unique() %>%
     assert(not_na, everything())
@@ -7304,6 +7320,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
     "this_study" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
+      "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
       "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"
       ),
