@@ -15,7 +15,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libzmq3-dev for R package rzmq -> clustermq
 # libmagick++-dev for R package magick -> phytools
 # python-dev-is-python3 for biopython -> superCRUNCH
-# git-lfs is for gittargets
+# git-lfs for gittargets
+# pandoc-citeproc for rendering Rmarkdown
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -48,6 +49,7 @@ RUN apt-get update \
     gawk \
     cd-hit \
     git-lfs \
+    pandoc-citeproc \
   && apt-get clean
 
 ########################

@@ -7876,3 +7876,23 @@ get_tips_in_ape_plot_order <- function (tree) {
   # Use this vector to extract the tips in the right order
   tree$tip.label[ordered_tips]
 }
+
+#' Create a tar archive
+#'
+#' @param tarfile The pathname of the tar file.
+#' @param files A character vector of filepaths to be archived.
+#' @param compression character string giving the type of compression to be used
+#' @param tar character string: the path to the command to be used.
+#' @param ... Extra arguments; not used by this function, but meant for tracking
+#' with {targets}.
+#'
+#' @return Externally, the file or folder will be compressed. Returns the
+#' path to the compressed file.
+#'
+archive_files <- function(
+  tarfile, files, compression = "gzip", tar = "tar", ...) {
+  # compress the file
+  tar(tarfile = tarfile, files = files, compression = compression, tar = tar)
+  # return the path to the compressed file
+  tarfile
+}

@@ -783,5 +783,16 @@ tar_plan(
   tar_file(
     sanger_parts_table_ftolr,
     write_csv_tar(sanger_parts_table, "results/ftolr/ftol_sanger_parts.csv")
-  )
+  ),
+  # Compress data for FigShare
+  tar_file(
+    ref_aln_archive,
+    archive_files(
+      tarfile = path(data_raw, "ref_aln.tar.gz"),
+      files = path(data_raw, "ref_aln"),
+      depends = ref_aln_files
+    )
+  ),
+  # Render FigShare data README
+  data_readme_tar
 )
