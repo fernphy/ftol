@@ -1,83 +1,49 @@
-# Raw Data README
+# Raw data README
 
-## Raw data files
+Raw data files used for Fern Tree of Life (FTOL) project
 
-Raw data files used in this analysis.
+- 1-s2.0-S1055790316302287-mmc2.xlsx: Supplemental information from 
+Testo and Sundue 2016 Mol. Phy. Evo. 105: 200-211. 
+Downloaded from https://doi.org/10.1016/j.ympev.2016.09.003
 
-- `goflag`: Folder containing raw reads of fern pilot samples for the
-  [GoFlag](http://flagellateplants.group.ufl.edu/) project (48 samples total).
-  Downloaded from [Globus](https://www.globus.org/) file transfer program on
-  2020-08-20. For a list of MD5 hashes for each raw data file (paired-end
-  fastq.gz files), see `md5_checksums.csv`. Includes one set of reads after target
-  enrichment (`pilot_raw_reads`), and one set of reads without enrichment
-  (`skimming_raw_reads`). For details on enrichment methods, see [GoFlag pilot
-  pre-print](https://doi.org/10.1101/2020.05.29.124081).
+- accs_exclude.csv: GenBank accessions to exclude from analysis.
 
-- `genbank_names_with_mult_syns_select.csv`: List of manually selected names for
-  taxa with Sanger sequences downloaded from GenBank that had multiple synonyms
-  detected during taxonomic name resolution that could not be determined
-  automatically. Column `query` indicates the queried (original) name;
-  `name_resolved_manual` is the manually selected name to use for analysis.
-  Comma-separated text file.
+- equisetum_subgenera.csv: Table with Equisetum species and their subgenera. Used
+for molecular dating analysis.
 
-- `Pilot_Ferns_TargetCapture_Skimming.txt`: Metadata of fern [pilot
-  samples](https://doi.org/10.1101/2020.05.29.124081) for the
-  [GoFlag](http://flagellateplants.group.ufl.edu/) project. Columns: `Taxon`
-  (taxon name), `Herbarium` (acronym of herbarium where voucher specimen is
-  lodged), `Voucher` (voucher specimen), `NCBI Accession - Targeted Capture`
-  (NCBI accession number for target capture data), `Targeted Capture ID` (ID for
-  target capture reads), `Genome Skimming ID` (ID for genome skimming reads).
-  Tab-separated text file.
+- fern_fossils.csv: Ages of fern fossils used for molecular dating analysis.
 
-- `plastid_targets.RDS`: Temporary R data file with plastid gene sequences used as
-  targets for [HybPiper](https://github.com/mossmatters/HybPiper). This will be
-  generated as part of the main analysis workflow.
+- plastome_outgroups.csv: Spreadsheet of plastome accessions used as outgroups in
+plastid phylogenetic analysis. Columns: group name, species, acccession.
 
-- `plastome_outgroups.csv`: Plastome accessions used as outgroups in plastid
-  phylogenetic analysis. Columns: `group name` (major plant group), `species`
-  (species name), `acccession` (GenBank accession number). Comma-separated text 
-  file.
+- ppgi_taxonomy_mod.csv: Spreadsheet of taxonomic system for ferns and lycophytes
+at genus level and higher following Pteridophyte Phylogeny Group (PPG) I 2016,
+modified with new genera added since that time and additional genera used in the
+World Ferns list but not included in PPG I.
 
-- `ppgi_taxonomy_mod.csv`: Taxonomic system for ferns and lycophytes at genus
-  level and higher following Pteridophyte Phylogeny Group (PPG) I 2016, modified
-  with new genera added since that time and additional genera used in the World
-  Ferns list but not included in PPG I. Comma-separated text file.
+- ref_aln: Folder containing reference FASTA files for extracting sequences with 
+SuperCrunch. Each FASTA file is named after the target locus (gene or spacer
+region). Sequences within each FASTA file named by species and GenBank accession
+number separated by an underscore. All reference FASTA files produced by
+prep_ref_seqs_plan.R
 
-- `taxa.txt`: Taxonomic data of tracheophytes from the Species 2000 & ITIS
-  Catalogue of Life, 2019 edition. Tab-separated file including 1,168,025
-  observations of 31 variables, mostly taxonomic ranks and names in the Darwin
-  Core Archive format. Originally included in a zip file downloaded from
-  http://www.catalogueoflife.org/DCA_Export/zip/archive-kingdom-plantae-phylum-tracheophyta-bl3.zip
-  on 2019-05-19. Data have been subset to tracheophytes by selecting "Plantae"
-  for "Top level group" and "Tracheophyta" for "Phylum" at
-  http://www.catalogueoflife.org/DCA_Export/index.php. Names of pteridophytes in
-  this file come from the [World Ferns
-  list](https://worldplants.webarchiv.kit.edu/ferns/) Nov 2018 version by
-  Michael Hassler.
+- ref_aln.tar.gz: Same as ref_aln, but compressed and archived.
 
-- `testo_sundue_2016_calibrations.csv`: Calibration dates for dating fern
-  phylogeny based on Testo and Sundue (2016). Columns: `Clade` (name of clade),
-  `Stem_Crown` (status of clade as stem group or crown group), `Fossil` (name of
-  fossil), `Age` (fossil age in millions of years before present), `Age_type`
-  (age type used by treepl), `Citation` (reference for the fossil), `taxon_1`
-  and `taxon_2` are names of tips in the tree that have a most recent common
-  ancestor corresponding to that clade. Comma-separated text file.
+- target_coding_genes.txt: List of 77 coding genes to extract from plastome
+sequences. Based on list from Wei et al 2017 Genome Bio. Evol. 1647-1657,
+excluding genes with multiple copies.
 
-- `wei_2017_coding_genes.txt`: List of coding genes (83 gene set) used in Wei et 
-  al. (2017).
+- taxdmp_2022-02-01.zip: NCBI taxonomy database. Downloaded from
+https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip
 
-## Additional documentation
-
-These files are not used in analysis, but provide additional documentation.
-
-- `md5_checksums.csv`: List of MD5 checksums for each raw data file. Columns:
-  `target` (name of target corresponding to the file path in the drake plan),
-  `file` (file name), `path` (path to the file), `copy` (TRUE/FALSE indicating
-  whether the file should be copied when creating versioned data archives),
-  `hash` (MD5 checksum). Only raw data files that are subject to change are
-  copied into versioned data archives. Comma-separated text file.
+For a list of hashes generated with md5sum, see hash.txt
 
 ## References
+
+Portik, Daniel M., and John J. Wiens. "SuperCRUNCH: A Bioinformatics
+toolkit for creating and manipulating supermatrices and other large phylogenetic
+datasets". Methods in Ecology and Evolution 11 (2020): 763–72.
+https://doi.org/ggx588.
 
 Testo, Weston, and Michael Sundue. "A 4000-species dataset provides new insight
 into the evolution of ferns." Molecular Phylogenetics and Evolution 105 (2016):
