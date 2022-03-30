@@ -1,8 +1,0 @@
-name: bbmap
-channels:
-  - bioconda
-  - defaults
-dependencies:
-  - bbmap=38.18=0
-  - openjdk=8.0.152=h7b6447c_3
-
