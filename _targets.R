@@ -3,11 +3,14 @@ library(tarchetypes)
 source("R/packages.R")
 source("R/functions.R")
 
-# Specify path to folder with raw data
+# Specify location of raw data
 data_raw <- "_targets/user/data_raw"
 
 # Specify location of intermediate results file
 int_dir <- "_targets/user/intermediates"
+
+# Specify location of final results file
+results_dir <- "_targets/user/results"
 
 # Set parallel back-end
 plan(callr)
@@ -25,7 +28,7 @@ tar_option_set(
 data_readme_tar <- tar_render(
     data_readme,
     "reports/data_readme/data_readme.Rmd",
-    output_dir = "results",
+    output_dir = results_dir,
     output_format = "readmedown::plain_document",
     knit_root_dir = "reports/data_readme"
   )
@@ -721,68 +724,96 @@ tar_plan(
   # - Accessions
   tar_file(
     acc_table_long_ftolr,
-    write_csv_tar(acc_table_long, "results/ftolr/ftol_acc_table_long.csv")
+    write_csv_tar(
+      acc_table_long,
+      path(results_dir, "ftolr/ftol_acc_table_long.csv")
+    )
   ),
   tar_file(
     acc_table_wide_ftolr,
     write_csv_tar(
       acc_table_wide,
-      "results/ftolr/ftol_acc_table_wide.csv")
+      path(results_dir, "ftolr/ftol_acc_table_wide.csv")
+    )
   ),
   # - Taxonomy
   tar_file(
     sanger_sampling_ftolr,
-    write_csv_tar(sanger_sampling, "results/ftolr/ftol_sanger_sampling.csv")
+    write_csv_tar(
+      sanger_sampling,
+      path(results_dir, "ftolr/ftol_sanger_sampling.csv")
+    )
   ),
   # - Trees (all trees should be rooted)
   # -- plastome consensus
   tar_file(
     plastome_tree_ftolr,
     write_tree_tar(
-      plastome_tree_rooted, "results/ftolr/ftol_plastome_con.tre")
+      plastome_tree_rooted,
+      path(results_dir, "ftolr/ftol_plastome_con.tre")
+    )
   ),
   # -- sanger ML
   tar_file(
     sanger_tree_ftolr,
-    write_tree_tar(sanger_mlr_tree_rooted, "results/ftolr/ftol_sanger_ml.tre")
+    write_tree_tar(
+      sanger_mlr_tree_rooted,
+      path(results_dir, "ftolr/ftol_sanger_ml.tre")
+    )
   ),
   # -- sanger ML dated
   tar_file(
     sanger_tree_dated_ftolr,
-    write_tree_tar(sanger_mlr_tree_dated, "results/ftolr/ftol_sanger_ml_dated.tre") # nolint
+    write_tree_tar(
+      sanger_mlr_tree_dated,
+      path(results_dir, "ftolr/ftol_sanger_ml_dated.tre")
+      )
   ),
   # -- sanger consensus
   tar_file(
     sanger_con_tree_ftolr,
     write_tree_tar(
-      sanger_con_tree_rooted, "results/ftolr/ftol_sanger_con.tre")
+      sanger_con_tree_rooted,
+      path(results_dir, "ftolr/ftol_sanger_con.tre")
+    )
   ),
   # -- sanger consensus dated
   tar_file(
     sanger_con_tree_dated_ftolr,
     write_tree_tar(
-      sanger_con_tree_dated, "results/ftolr/ftol_sanger_con_dated.tre"
+      sanger_con_tree_dated,
+      path(results_dir, "ftolr/ftol_sanger_con_dated.tre")
     )
   ),
   # - Alignments
   tar_file(
     sanger_alignment_ftolr,
-    write_fasta_gz_tar(sanger_alignment,
-      "results/ftolr/ftol_sanger_alignment.fasta.gz")
+    write_fasta_gz_tar(
+      sanger_alignment,
+      path(results_dir, "ftolr/ftol_sanger_alignment.fasta.gz")
+    )
   ),
   tar_file(
     plastome_alignment_ftolr,
     write_fasta_gz_tar(
-      plastome_alignment, "results/ftolr/ftol_plastome_alignment.fasta.gz")
+      plastome_alignment,
+      path(results_dir, "ftolr/ftol_plastome_alignment.fasta.gz")
+    )
   ),
   # - Alignment parts
   tar_file(
     plastome_parts_table_ftolr,
-    write_csv_tar(plastome_parts_table, "results/ftolr/ftol_plastome_parts.csv")
+    write_csv_tar(
+      plastome_parts_table,
+      path(results_dir, "ftolr/ftol_plastome_parts.csv")
+    )
   ),
   tar_file(
     sanger_parts_table_ftolr,
-    write_csv_tar(sanger_parts_table, "results/ftolr/ftol_sanger_parts.csv")
+    write_csv_tar(
+      sanger_parts_table,
+      path(results_dir, "ftolr/ftol_sanger_parts.csv")
+    )
   ),
   # Compress data for FigShare
   tar_file(
