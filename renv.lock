@@ -434,6 +434,13 @@
       "Repository": "CRAN",
       "Hash": "754fdb4d17d4ae871343ff2909728ca3"
     },
+    "bslib": {
+      "Package": "bslib",
+      "Version": "0.3.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "56ae7e1987b340186a8a5a157c2ec358"
+    },
     "callr": {
       "Package": "callr",
       "Version": "3.7.0",
@@ -700,10 +707,10 @@
     },
     "fastmap": {
       "Package": "fastmap",
-      "Version": "1.0.1",
+      "Version": "1.1.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "83ab58a0518afe3d17e41da01af13b60"
+      "Hash": "77bd60a6157420d4ffa93b27cf6a58b8"
     },
     "fastmatch": {
       "Package": "fastmatch",
@@ -914,10 +921,10 @@
     },
     "htmltools": {
       "Package": "htmltools",
-      "Version": "0.5.0",
+      "Version": "0.5.2",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "7d651b7131794fe007b1ad6f21aaa401"
+      "Hash": "526c484233f42522278ab06fb185cb26"
     },
     "htmlwidgets": {
       "Package": "htmlwidgets",
@@ -988,6 +995,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "7eb42c3bb09e2019b97de69d2ea9dfff"
+    },
+    "jquerylib": {
+      "Package": "jquerylib",
+      "Version": "0.1.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "5aab57a3bd297eee1c1d862735972182"
     },
     "jsonlite": {
       "Package": "jsonlite",
@@ -1311,6 +1325,18 @@
       "Repository": "CRAN",
       "Hash": "425d938eb9c02906a8ac98c0c2a306b5"
     },
+    "pteridocat": {
+      "Package": "pteridocat",
+      "Version": "0.0.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "fernphy",
+      "RemoteRepo": "pteridocat",
+      "RemoteRef": "main",
+      "RemoteSha": "ab2c8a172402ad88832568ac03b6766460e515f4",
+      "Hash": "aad14580a43d44cc81164eede1e0db1c"
+    },
     "purrr": {
       "Package": "purrr",
       "Version": "0.3.4",
@@ -1345,6 +1371,18 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "71ac7b3d6d9c384c775f9ddee4680d98"
+    },
+    "readmedown": {
+      "Package": "readmedown",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "joelnitta",
+      "RemoteRepo": "readmedown",
+      "RemoteRef": "main",
+      "RemoteSha": "93c74e729acc98d285e5433912829bccb7ad9e1c",
+      "Hash": "7ddcb8212ef4993fe8eef9931e3e8b9b"
     },
     "readr": {
       "Package": "readr",
@@ -1467,10 +1505,10 @@
     },
     "rmarkdown": {
       "Package": "rmarkdown",
-      "Version": "2.3",
+      "Version": "2.13",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "202260e1b2c410edc086d5b8f1ed946e"
+      "Hash": "ac78f4d2e0289d4cba73b88af567b8b1"
     },
     "rncl": {
       "Package": "rncl",
@@ -1533,6 +1571,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "19feb38a48f30f0eadd56c1b06c58d92"
+    },
+    "sass": {
+      "Package": "sass",
+      "Version": "0.4.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "f37c0028d720bab3c513fd65d28c7234"
     },
     "scales": {
       "Package": "scales",
@@ -1756,10 +1801,10 @@
     },
     "tinytex": {
       "Package": "tinytex",
-      "Version": "0.24",
+      "Version": "0.38",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "8f24b65b86f4d6d7b1e2d8a4ce2c02fb"
+      "Hash": "759d047596ac173433985deddf313450"
     },
     "tmvnsim": {
       "Package": "tmvnsim",
@@ -1894,10 +1939,10 @@
     },
     "xfun": {
       "Package": "xfun",
-      "Version": "0.28",
+      "Version": "0.30",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "f7f3a61ab62cd046d307577a8ae12999"
+      "Hash": "e83f48136b041845e50a6658feffb197"
     },
     "xml2": {
       "Package": "xml2",

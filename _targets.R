@@ -17,16 +17,23 @@ plan(callr)
 # - Track dependencies in some packages
 tar_option_set(
   workspace_on_error = TRUE,
-  # FIXME: add {pteridocat} as import when it is live
-  imports = c("taxastand")
+  imports = c("taxastand", "pteridocat")
+  )
+
+# Define Rmd targets outside of main workflow
+# to avoid meaningless warnings
+data_readme_tar <- tar_render(
+    data_readme,
+    "reports/data_readme/data_readme.Rmd",
+    output_dir = "results",
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/data_readme"
   )
 
 tar_plan(
   # Load data ----
-  # FIXME: temporary work-around for loading pteridocat data
-  # until {pteridocat} package is live
-  tar_file(pteridocat_file, path(data_raw, "pteridocat.RDS")),
-  pteridocat = readRDS(pteridocat_file),
+  # Pteridocat taxonomic database
+  pteridocat = pteridocat::pteridocat,
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file(
