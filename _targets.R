@@ -875,7 +875,7 @@ tar_plan(
           # fossils
           con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr,
           # README
-          ftolr_readme,
+          ftolr_readme[[1]],
           # CC0 license
           cc0
         ),
