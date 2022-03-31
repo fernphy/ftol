@@ -30,7 +30,7 @@ If `setup.R` was run successfully, it will have already downloaded and unzipped 
 
 Alternatively, you can do so manually following these instructions:
 
-Download all of the files contained in the [FTOL input data on FigShare](https://doi.org/10.6084/m9.figshare.19474316.v1) into `_targets/user/data_raw` by clicking on the "Download All" button.
+Download all of the files contained in the [FTOL input data on FigShare](https://doi.org/10.6084/m9.figshare.19474316.v1) by clicking on the "Download All" button.
 
 Unzip the files and place them in the `_targets/user/data_raw` folder. You will also need to unzip the `ref_aln.tar.gz` archive that is contained within the zip folder.
 
@@ -39,7 +39,7 @@ Unzip the files and place them in the `_targets/user/data_raw` folder. You will 
 Two other data files need to be manually downloaded and placed in `_targets/user/data_raw`:
 
 - Supplemental Data 1  (1-s2.0-S1055790316302287-mmc2.xlsx) from [Testo and Sundue (2016) Mol. Phylogenetics Evol.](https://doi.org/10.1016/j.ympev.2016.09.003)
-- NCBI taxonomy database dump 2022-02-01 (taxdmp_2022-02-01.zip). This can be downloaded from the [NCBI FTP server](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip)
+- NCBI taxonomy database dump 2022-02-01 (taxdmp_2022-02-01.zip). This can be downloaded from the [NCBI FTP server](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip).
 ## Running the code
 
 To run the analysis, run `targets::tar_make()` from the root of the repo.
