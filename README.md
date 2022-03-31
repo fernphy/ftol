@@ -36,10 +36,11 @@ Unzip the files and place them in the `_targets/user/data_raw` folder. You will 
 
 ### Other data files
 
-Two other data files need to be manually downloaded and placed in `_targets/user/data_raw`:
+The following additional data files need to be downloaded and placed in `_targets/user/data_raw`:
 
-- Supplemental Data 1  (1-s2.0-S1055790316302287-mmc2.xlsx) from [Testo and Sundue (2016) Mol. Phylogenetics Evol.](https://doi.org/10.1016/j.ympev.2016.09.003)
-- NCBI taxonomy database dump 2022-02-01 (taxdmp_2022-02-01.zip). This can be downloaded from the [NCBI FTP server](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip).
+- Supplemental Data 1 (1-s2.0-S1055790316302287-mmc2.xlsx) from [Testo and Sundue (2016) Mol. Phylogenetics Evol.](https://doi.org/10.1016/j.ympev.2016.09.003)
+- NCBI taxonomy database dump 2022-02-01 (taxdmp_2022-02-01.zip) can be downloaded from the [NCBI FTP server](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip).
+- [ferncal](https://github.com/fernphy/ferncal) fern fossils database v1.0.0 (fern_fossils.csv) can be downloaded from [here](https://github.com/fernphy/ferncal/archive/refs/tags/v1.0.0.zip).
 ## Running the code
 
 To run the analysis, run `targets::tar_make()` from the root of the repo.
