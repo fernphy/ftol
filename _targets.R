@@ -33,6 +33,15 @@ data_readme_tar <- tar_render(
     knit_root_dir = "reports/data_readme"
   )
 
+ftolr_readme_tar <- tar_render(
+    ftolr_readme,
+    "reports/ftolr_readme/ftolr_readme.Rmd",
+    output_dir = path(results_dir, "ftolr"),
+    output_file = "README.txt",
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/ftolr_readme"
+  )
+
 tar_plan(
   # Load data ----
   # Pteridocat taxonomic database
@@ -830,28 +839,6 @@ tar_plan(
       path(results_dir, "ftolr/ftol_sanger_ml_fossils.csv")
     )
   ),
-  # Archive data for ftolr
-  tar_file(
-    ftolr_data_archive,
-    zip::zip(
-      zipfile = path(results_dir, "ftol.zip"),
-      files = c(
-        # accessions
-        acc_table_long_ftolr, acc_table_wide_ftolr,
-        # taxonomy
-        sanger_sampling_ftolr,
-        # trees
-        plastome_tree_ftolr,
-        sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
-        sanger_con_tree_ftolr, sanger_con_tree_dated_ftolr,
-        # alignments
-        sanger_alignment_ftolr, plastome_alignment_ftolr,
-        plastome_parts_table_ftolr, sanger_parts_table_ftolr,
-        # fossils
-        con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr),
-      mode = "cherry-pick"
-    )
-  ),
   # Compress data for FigShare
   tar_file(
     ref_aln_archive,
@@ -863,6 +850,39 @@ tar_plan(
       depends = ref_aln_files
     )
   ),
-  # Render FigShare data README
-  data_readme_tar
+  # Render READMEs
+  data_readme_tar,
+  ftolr_readme_tar,
+  # Archive data for ftolr
+  tar_file(
+    ftolr_data_archive,
+    { # Write a temporary CC0 license to include in data archive. # no lint
+      cc0 <- write_cc0()
+      zip::zip(
+        zipfile = path(results_dir, "ftol.zip"),
+        files = c(
+          # accessions
+          acc_table_long_ftolr, acc_table_wide_ftolr,
+          # taxonomy
+          sanger_sampling_ftolr,
+          # trees
+          plastome_tree_ftolr,
+          sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
+          sanger_con_tree_ftolr, sanger_con_tree_dated_ftolr,
+          # alignments
+          sanger_alignment_ftolr, plastome_alignment_ftolr,
+          plastome_parts_table_ftolr, sanger_parts_table_ftolr,
+          # fossils
+          con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr,
+          # README
+          ftolr_readme,
+          # CC0 license
+          cc0
+        ),
+        mode = "cherry-pick"
+      )
+      fs::file_delete(cc0)
+      path(results_dir, "ftol.zip")
+    }
+  )
 )

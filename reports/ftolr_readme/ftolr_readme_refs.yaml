@@ -1,0 +1,136 @@
+references:
+- id: Altschul1997
+  author:
+  - family: Altschul
+    given: Stephen F.
+  - family: Madden
+    given: Thomas L.
+  - family: Schäffer
+    given: Alejandro A.
+  - family: Zhang
+    given: Jinghui
+  - family: Zhang
+    given: Zheng
+  - family: Miller
+    given: Webb
+  - family: Lipman
+    given: David J.
+  citation-key: Altschul1997
+  container-title: Nucleic Acids Research
+  DOI: 10.1093/nar/25.17.3389
+  issued:
+  - year: 1997
+  page: 3389-3402
+  title: 'Gapped BLAST and PSI-BLAST: A new generation of protein database search
+    programs'
+  type: article-journal
+  URL: papers://ebd7d3df-d8f1-4be8-bcf7-4fb07ababf30/Paper/p449
+  volume: '25'
+- id: Katoh2002
+  author:
+  - family: Katoh
+    given: Kazutaka
+  - family: Misawa
+    given: Kazuharu
+  - family: Kuma
+    given: Keiichi
+  - family: Miyata
+    given: Takashi
+  citation-key: Katoh2002
+  container-title: Nucleic Acids Research
+  DOI: 10.1093/nar/gkf436
+  ISSN: 1362-4962
+  issue: '14'
+  issued:
+  - year: 2002
+  page: 3059-3066
+  PMID: '12136088'
+  title: 'MAFFT: A novel method for rapid multiple sequence alignment based on fast
+    Fourier transform'
+  type: article-journal
+  volume: '30'
+- id: Nguyen2015
+  author:
+  - family: Nguyen
+    given: Lam-Tung
+  - family: Schmidt
+    given: Heiko A.
+  - family: Haeseler
+    given: Arndt
+    non-dropping-particle: von
+  - family: Minh
+    given: Bui Quang
+  citation-key: Nguyen2015
+  container-title: Molecular Biology and Evolution
+  container-title-short: Mol. Biol. Evol.
+  DOI: 10.1093/molbev/msu300
+  ISSN: '15371719'
+  issue: '1'
+  issued:
+  - year: 2015
+  page: 268-274
+  title: 'IQ-TREE: A fast and effective stochastic algorithm for estimating maximum-likelihood
+    phylogenies'
+  type: article-journal
+  volume: '32'
+- id: Portik2020
+  accessed:
+  - year: 2021
+    month: 10
+    day: 18
+  author:
+  - family: Portik
+    given: Daniel M.
+  - family: Wiens
+    given: John J.
+  citation-key: Portik2020
+  container-title: Methods in Ecology and Evolution
+  container-title-short: Methods Ecol Evol
+  DOI: 10/ggx588
+  editor:
+  - family: Orme
+    given: David
+  ISSN: 2041-210X, 2041-210X
+  issue: '6'
+  issued:
+  - year: 2020
+    month: 6
+  language: en
+  page: 763-772
+  source: DOI.org (Crossref)
+  title: 'SuperCRUNCH: A bioinformatics toolkit for creating and manipulating supermatrices
+    and other large phylogenetic datasets'
+  title-short: SuperCRUNCH
+  type: article-journal
+  URL: https://onlinelibrary.wiley.com/doi/10.1111/2041-210X.13392
+  volume: '11'
+- id: Wei2017a
+  author:
+  - family: Wei
+    given: Ran
+  - family: Yan
+    given: Yue-Hong
+  - family: Harris
+    given: AJ
+  - family: Kang
+    given: Jong-Soo
+  - family: Shen
+    given: Hui
+  - family: Xiang
+    given: Qiao-Ping
+  - family: Zhang
+    given: Xian-Chun
+  citation-key: Wei2017a
+  container-title: Genome Biology and Evolution
+  DOI: 10.1093/gbe/evx107
+  ISSN: 1759-6653
+  issue: '6'
+  issued:
+  - year: 2017
+  page: 1646-1657
+  PMID: '28854625'
+  title: Plastid phylogenomics resolve deep relationships among Eupolypod II ferns
+    with rapid radiation and rate heterogeneity
+  type: article-journal
+  URL: https://academic.oup.com/gbe/article-lookup/doi/10.1093/gbe/evx107
+  volume: '9'

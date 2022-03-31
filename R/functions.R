@@ -7929,3 +7929,53 @@ archive_dir <- function(
   )  
   archive
 }
+
+#' Convert a data description in Roxygen format to one used for readmedown
+#' 
+#' Have to remove backslashes ('\') first though
+#'
+#' @param metadat Character string 
+#' @return Tibble
+#' @examples
+#'metadat <- 
+#'  "item{species}{Species name; matches names of tips in tree}
+#'  item{locus}{Name of locus (gene or intergenic spacer region)}
+#'  item{accession}{GenBank accession number}
+#'  item{seq_len}{Sequence length (bp), excluding any missing or ambiguous bases}
+#'  item{sci_name}{Scientific name used in FTOL}
+#'  item{ncbi_name}{Scientific name used in the NCBI taxonomic database}
+#'  item{ncbi_taxid}{NCBI taxonomy database unique identifier}
+#'  item{outgroup}{Logical; TRUE for outgroup taxa, FALSE for ingroup taxa (ferns)}"
+#'
+#'  roxy_to_tbl(metadat)
+#' 
+roxy_to_tbl <- function(metadat) {
+  assertthat::assert_that(assertthat::is.string(metadat))
+  metadat %>% 
+    stringr::str_split(fixed("\n")) %>%
+    magrittr::extract2(1) %>%
+    stringr::str_squish() %>%
+    tibble::tibble(raw = .) %>%
+    dplyr::mutate(raw = stringr::str_remove_all(raw, "item\\{|\\}$")) %>%
+    # to avoid "Syntax error in regexp pattern. (U_REGEX_RULE_SYNTAX)"
+    # can't split on '{' or '}' (even in fixed())
+    mutate(raw = stringr::str_replace_all(raw, fixed("}{"), "_SPLIT_HERE_")) %>%
+    tidyr::separate(raw, c("col", "desc"), sep = "_SPLIT_HERE_")
+}
+
+#' Write out the CC0 license to a temporary file
+#' @return Path to the file with the CC0 license
+write_cc0 <- function() {
+  # Load CC0 license from fernphy/ferncal repo
+  cc0 <- read_lines("https://raw.githubusercontent.com/fernphy/ferncal/main/LICENSE")
+  # Check it is (probably) what we expect
+  assertthat::assert_that(
+    cc0[[3]] == "CC0 1.0 Universal",
+    msg = "Probably not CC0 license"
+  )
+  tempdir <- tempdir()
+  temp_file <- path(tempdir, "LICENSE")
+  if (!fs::dir_exists(tempdir)) fs::dir_create(tempdir)
+  write_lines(cc0, temp_file)
+  temp_file
+}

@@ -1,0 +1,570 @@
+---
+output: 
+  readmedown::plain_document:
+    columns: 80
+bibliography: ftolr_readme_refs.yaml
+---
+
+```{r manual, include = FALSE, evaluate = FALSE}
+# Run these lines if rendering outside of targets plan
+library(targets)
+library(tarchetypes)
+library(readmedown)
+source(here::here("R/packages.R"))
+source(here::here("R/functions.R"))
+```
+
+```{r setup, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, message = FALSE,
+  warning = FALSE, results = "hide", cache = FALSE)
+
+# Load objects from targets workflow (all paths to data files)
+tar_load(
+  c(
+    # accessions
+    acc_table_long_ftolr, acc_table_wide_ftolr,
+    # taxonomy
+    sanger_sampling_ftolr,
+    # trees
+    plastome_tree_ftolr,
+    sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
+    sanger_con_tree_ftolr, sanger_con_tree_dated_ftolr,
+    # alignments
+    sanger_alignment_ftolr, plastome_alignment_ftolr,
+    plastome_parts_table_ftolr, sanger_parts_table_ftolr,
+    # fossils
+    con_fossil_calibration_tips_ftolr,
+    ml_fossil_calibration_tips_ftolr,
+    # other
+    plastome_alignment,
+    plastome_parts_table,
+    plastome_tree_rooted,
+    sanger_alignment,
+    sanger_parts_table,
+    sanger_con_tree_dated,
+    sanger_con_tree_rooted,
+    sanger_mlr_tree_dated,
+    sanger_mlr_tree_rooted
+  )
+)
+```
+
+This README.txt file was generated on `r Sys.Date()` by Joel Nitta
+
+-------------------- 
+
+GENERAL INFORMATION 
+
+------------------
+
+Title of Dataset: Fern Tree of Life (FTOL) and associated data
+
+Principal Investigator: Joel H. Nitta
+
+Department of Biological Sciences, Graduate School of Science, The University of
+Tokyo, 2-11-16 Yayoi, Bunkyo-ku, Tokyo 113-0032, Japan joelnitta@gmail.com
+
+Associate or Co-investigators: Eric Schuettpelz, Santiago Ramírez-Barahona,
+Wataru Iwasaki
+
+Date of data collection: 1990 - 2021
+
+Geographic location of data collection: Global
+
+Information about funding sources that supported the collection of the data:
+Funding provided in part by the Japan Society for the Promotion of Science
+(Kakenhi) Grant Number 16H06279 and the Smithsonian National Museum of Natural
+History Peter Buck Fellowship (JHN).
+
+--------------------------
+
+SHARING/ACCESS INFORMATION
+
+--------------------------
+
+Licenses/restrictions placed on the data: CC0 v1.0 license
+
+Links to publications that cite or use the data:
+
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
+continuously updated fern tree of life (FTOL). FIXME: add DOI when available.
+
+Links to other publicly accessible locations of the data: none.
+
+Links/relationships to ancillary data sets:
+
+- ferncal (https://github.com/fernphy/ferncal)
+- pteridocat (https://github.com/fernphy/pteridocat)
+- FTOL input data (https://doi.org/10.6084/m9.figshare.19474316.v1)
+
+Was data derived from another source? Yes, in part from GenBank (https://www.ncbi.nlm.nih.gov/genbank/),
+which places no restrictions on its use or distribution.
+
+Recommended citation for this dataset: 
+
+FTOL Working Group (2022). Fern Tree of Life (FTOL) input data. FIXME: add DOI when available
+
+--------------------
+
+DATA & FILE OVERVIEW
+
+--------------------
+
+File List:
+
+- ftol_acc_table_long.csv: GenBank accessions used in the FTOL, long format.
+- ftol_acc_table_wide.csv: GenBank accessions used in FTOL, wide format.
+- ftol_plastome_alignment.fasta.gz: Aligned plastome DNA sequences used to build FTOL.
+- ftol_plastome_con.tre: FTOL backbone phylogeny.
+- ftol_plastome_parts.csv: Start and end positions of loci in plastome DNA sequence alignment.
+- ftol_sanger_alignment.fasta.gz: Aligned (mostly) Sanger DNA sequences used to build FTOL.
+- ftol_sanger_con_dated.tre: FTOL dated consensus phylogeny.
+- ftol_sanger_con_fossils.csv: Fossil calibration points used for dating FTOL consensus phylogeny.
+- ftol_sanger_con.tre: FTOL consensus phylogeny.
+- ftol_sanger_ml_dated.tre: FTOL dated maximum-likelihood phylogeny.
+- ftol_sanger_ml_fossils.csv: Fossil calibration points used for dating FTOL ML phylogeny.
+- ftol_sanger_ml.tre: FTOL maximum-likelihood phylogeny.
+- ftol_sanger_parts.csv: Start and end positions of loci in Sanger DNA sequence alignment.
+- ftol_sanger_sampling.csv: Taxonomic data of species in FTOL.
+
+--------------------------
+
+METHODOLOGICAL INFORMATION
+
+--------------------------
+
+The data included are the results of a pipeline that (mostly) automatically
+generates a maximally sampled fern phylogenetic tree based on plastid sequences
+in GenBank (https://github.com/fernphy/ftol).
+
+The first step is to generate a set of reference FASTA files for 79 target loci
+(one per locus). These include 77 protein-coding genes based on a list of 83
+genes [@Wei2017a] that was filtered to only genes that show no evidence of
+duplication, plus two spacer regions (trnL-trnF and rps4-trnS). This is done
+with custom R scripts contained in https://github.com/fernphy/ftol, in
+particular prep_ref_seqs_plan.R
+(https://github.com/fernphy/ftol/blob/main/prep_ref_seqs_plan.R).
+
+Next, all available fern accessions for seven target "Sanger loci" (plastid
+regions typically sequenced using Sanger technology) and all available fern
+plastomes (accessions >7000 bp) were downloaded from GenBank. Selected non-fern
+accessions (outgroups) were downloaded as well. Sequences matching the target
+loci were then extracted from each accesion using the reference FASTA files
+with the "Reference_Blast_Extract.py" script of superCRUNCH [@Portik2020].
+Putative rogues (i.e., misidentifications or contaminations) were identified and
+removed after sequence extraction either by manual inspection or all-by-all
+BLAST [@Altschul1997].
+
+The extracted sequences were aligned with MAFFT [@Katoh2002]. Phylogenetic
+analysis was done in two steps with maximum-likelihood in IQ-TREE [@Nguyen2015].
+First, a backbone phylogeny (ftol_plastome_con.tre) was inferred using a matrix
+from whole plastome sequences (ftol_plastome_alignment.fasta.gz). Next, the
+backbone tree was used as a constraint tree in ML analysis of the "Sanger"
+dataset (loci commonly obtained by Sanger sequencing;
+ftol_sanger_alignment.fasta.gz); this resulted in a ML tree (ftol_sanger_ml.tre)
+and the extended majority-rule consenus of 1,000 bootstrap trees
+(ftol_sanger_con.tre). Molecular dating analysis was carried out separately on
+the ML tree and consensus tree each using a set of fossil calibration points
+(ftol_sanger_ml_fossils.csv and ftol_sanger_con_fossils.csv, respectively),
+resulting in ultrametric trees (ftol_sanger_ml_dated.tre and
+ftol_sanger_con_dated.tre, respectively).
+
+For additional methodological details, see:
+
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and
+continuously updated fern tree of life (FTOL). FIXME: add DOI when available.
+
+--------------------------
+
+DATA-SPECIFIC INFORMATION
+
+--------------------------
+
+```{r acc-table-long}
+acc_table_long <- read_csv(acc_table_long_ftolr)
+# Check that no data are missing
+assert(acc_table_long,
+  not_na, everything(), success_fun = success_logical)
+```
+
+`r path_file(acc_table_long_ftolr)`: GenBank accessions used in the FTOL, long
+format.
+
+Number of variables: `r ncol(acc_table_long)`
+
+Number of cases/rows: `r nrow(acc_table_long)`
+
+Variable list:
+
+```{r acc-table-long-vars, results = "asis"}
+
+metadat <- "item{species}{Species name; matches names of tips in tree}
+item{locus}{Name of locus (gene or intergenic spacer region)}
+item{accession}{GenBank accession number}
+item{seq_len}{Sequence length (bp), excluding any missing or ambiguous bases}
+item{sci_name}{Scientific name used in FTOL}
+item{ncbi_name}{Scientific name used in the NCBI taxonomic database}
+item{ncbi_taxid}{NCBI taxonomy database unique identifier}
+item{outgroup}{Logical; TRUE for outgroup taxa, FALSE for ingroup taxa (ferns)}"
+
+desc_data(
+  acc_table_long,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: No missing data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(acc_table_long_ftolr)`
+
+--------------------------
+
+```{r acc-table-wide}
+acc_table_wide <- read_csv(acc_table_wide_ftolr)
+```
+
+`r path_file(acc_table_wide_ftolr)`: GenBank accessions used in FTOL, wide
+format.
+
+Number of variables: `r ncol(acc_table_wide)`
+
+Number of cases/rows: `r nrow(acc_table_wide)`
+
+Variable list:
+
+```{r acc-table-wide-vars, results = "asis"}
+
+metadat <- "item{species}{Species name; matches names of tips in tree}
+item{atpA}{GenBank accession number for atpA}
+item{atpB}{GenBank accession number for atpB}
+item{matK}{GenBank accession number for matK}
+item{rbcL}{GenBank accession number for rbcL}
+item{rps4}{GenBank accession number for rps4}
+item{rps4-trnS}{GenBank accession number for rps4-trnS}
+item{trnL-trnF}{GenBank accession number for trnL-trnF}
+item{plastome}{GenBank accession number for plastomes}
+item{join_by}{Method used to join loci}
+item{specimen_voucher}{Specimen voucher}
+item{publication}{Publication}
+item{outgroup}{Logical; TRUE for outgroup taxa, FALSE for ingroup taxa (ferns)}"
+
+desc_data(
+  acc_table_wide,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: 'NA' for missing or inapplicable data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(acc_table_wide_ftolr)`
+
+--------------------------
+
+`r path_file(plastome_alignment_ftolr)`: Aligned plastome DNA sequences used to
+build FTOL. In compressed (tar.gz) FASTA format. Includes 
+`r n_distinct(plastome_parts_table$locus)` concatenated loci. The start and end
+position (column) of each locus is given in ftol_plastome_parts.csv.
+
+Number of bases (columns): `r ncol(plastome_alignment)`
+
+Number of rows (taxa): `r nrow(plastome_alignment)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(plastome_alignment_ftolr)`
+
+--------------------------
+
+`r path_file(plastome_tree_ftolr)`: FTOL backbone phylogeny. Inferred using
+maximum-likelihood from DNA sequences in ftol_plastome_alignment.fasta.gz.
+Extended majority-rule consensus of 1000 bootstrap trees. Rooted on bryophytes. 
+In newick format.
+
+Number of tips: `r ape::Ntip(plastome_tree_rooted)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(plastome_tree_ftolr)`
+
+--------------------------
+
+```{r plastome-parts-table}
+plastome_parts_table <- read_csv(plastome_parts_table_ftolr)
+# Check that no data are missing
+assert(plastome_parts_table,
+  not_na, everything(), success_fun = success_logical)
+```
+
+`r path_file(plastome_parts_table_ftolr)`: Start and end positions of loci in
+plastome DNA sequence alignment.
+
+Number of variables: `r ncol(plastome_parts_table)`
+
+Number of cases/rows: `r nrow(plastome_parts_table)`
+
+Variable list:
+
+```{r plastome-parts-table-vars, results = "asis"}
+
+metadat <- "item{locus}{Name of locus (gene or intergenic spacer region)}
+item{start}{Start position (column number) of locus in concatenated DNA alignment}
+item{end}{End position (column number) of locus in concatenated DNA alignment}"
+
+desc_data(
+  plastome_parts_table,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: None.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(plastome_parts_table_ftolr)`
+
+--------------------------
+
+`r path_file(sanger_alignment_ftolr)`: Aligned (mostly) Sanger DNA sequences
+used to build FTOL. In compressed (tar.gz) FASTA format. Includes 
+`r n_distinct(sanger_parts_table$locus)` concatenated loci. The start and end
+position (column) of each locus is given in ftol_sanger_parts.csv.
+
+Number of bases (columns): `r ncol(sanger_alignment)`
+
+Number of rows (taxa): `r nrow(sanger_alignment)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_alignment_ftolr)`
+
+--------------------------
+
+`r path_file(sanger_con_tree_dated_ftolr)`: FTOL dated consensus phylogeny.
+Inferred using maximum-likelihood from DNA sequences in
+ftol_plastome_alignment.fasta.gz. Extended majority-rule consensus of 1000
+bootstrap trees. Rooted on bryophytes. Divergence times estimated with fossil
+calibration points (ftol_sanger_con_fossils.csv) using treePL. In newick format.
+
+Number of tips: `r ape::Ntip(sanger_con_tree_dated)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_con_tree_dated_ftolr)`
+
+--------------------------
+
+```{r con-fossil-calibration-tips}
+con_fossil_calibration_tips <- read_csv(con_fossil_calibration_tips_ftolr)
+ml_fossil_calibration_tips <- read_csv(ml_fossil_calibration_tips_ftolr)
+# Check that fossil data are the same between con and ml
+assertthat::assert_that(
+  all.equal(
+    sort(ml_fossil_calibration_tips$n_fos),
+    sort(con_fossil_calibration_tips$n_fos))
+)
+```
+
+`r path_file(con_fossil_calibration_tips_ftolr)`: Fossil calibration points used 
+for dating FTOL consensus phylogeny. A subset of fossil data contained in the
+'ferncal' fossil database, v.1.0.0 (https://doi.org/10.5281/zenodo.6395323).
+
+The fossils in 'ftol_sanger_con_fossils.csv' and 'ftol_sanger_ml_fossils.csv'
+are the same, but the node each calibrates may differ between the trees because
+of differences in topology. 
+
+The node corresponding to the fossil constraint is defined as the most recent
+common ancestor (MRCA, column 'mrca') of two tips columns ('tip_1' and
+'tip_2') for crown affinities, or its parent node (column 'stem_mrca') for
+stem affinities. The two tips are identified automatically for monophyletic
+clades, or by hand for non-monophyletic clades. 'mrca' is not defined for
+monotypic groups (only 'stem_mrca').
+
+Does not include the constraint on the root of the tree (landplants; 475 Ma).
+
+Number of variables: `r ncol(con_fossil_calibration_tips)`
+
+Number of cases/rows: `r nrow(con_fossil_calibration_tips)`
+
+Variable list:
+
+```{r con-fossil-calibration-tips-vars, results = "asis"}
+metadat <- "item{n_fos}{Unique ID number for fossil}
+item{minimum_age}{Minimum age to apply to fossil constraint}
+item{node_calibrated}{Node calibrated by fossil constraint. Combination of 'affinities' and 'affinities_group'}
+item{fossil_taxon}{Taxonomic name of fossil (without author)}
+item{affinities_group}{Type of group the fossil belongs to (crown or stem)}
+item{affinities}{Narrowest clade the fossil belongs to; the clade whose date is constrained by the fossil}
+item{monophyly}{Are the affinities monophyletic? 'Yes', 'No', or 'Monotypic'}
+item{number_tips}{Number of tips in the clade constrained by the fossil}
+item{mrca}{Node number of MRCA for the clade constrained by the fossil}
+item{stem_mrca}{Node number of the parent node of the MRCA for the clade constrained by the fossil}
+item{tip_1}{Name of one taxon that defines the clade constrained by the fossil}
+item{tip_2}{Name of another taxon that defines the clade constrained by the fossil}"
+
+desc_data(
+  con_fossil_calibration_tips,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: 'NA' for missing or inapplicable data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(con_fossil_calibration_tips_ftolr)`
+
+--------------------------
+
+`r path_file(sanger_con_tree_ftolr)`: FTOL consensus phylogeny. Inferred using
+maximum-likelihood from DNA sequences in ftol_plastome_alignment.fasta.gz.
+Extended majority-rule consensus of 1000 bootstrap trees. Rooted on bryophytes. In newick format.
+
+
+Number of tips: `r ape::Ntip(sanger_con_tree_rooted)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_con_tree_ftolr)`
+
+--------------------------
+
+`r path_file(sanger_ml_tree_dated_ftolr)`: FTOL dated maximum-likelihood phylogeny.
+Inferred using maximum-likelihood from DNA sequences in
+ftol_plastome_alignment.fasta.gz. Rooted on bryophytes. Divergence times
+estimated with fossil calibration points (ftol_sanger_con_fossils.csv) using
+treePL. In newick format.
+
+Number of tips: `r ape::Ntip(sanger_mlr_tree_dated)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_ml_tree_dated_ftolr)`
+
+--------------------------
+
+`r path_file(ml_fossil_calibration_tips_ftolr)`: Fossil calibration points used 
+for dating FTOL maximum-likelihood phylogeny. A subset of fossil data contained in the
+'ferncal' fossil database, v.1.0.0 (https://doi.org/10.5281/zenodo.6395323).
+
+The fossils in 'ftol_sanger_con_fossils.csv' and 'ftol_sanger_ml_fossils.csv'
+are the same, but the node each calibrates may differ between the trees because
+of differences in topology. 
+
+For more details, see entry for ftol_sanger_con_fossils.csv. 
+
+Does not include the constraint on the root of the tree (landplants; 475 Ma).
+
+Number of variables: `r ncol(ml_fossil_calibration_tips)`
+
+Number of cases/rows: `r nrow(ml_fossil_calibration_tips)`
+
+Variable list: See entry for ftol_sanger_con_fossils.csv
+
+Missing data codes: 'NA' for missing or inapplicable data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(ml_fossil_calibration_tips_ftolr)`
+
+--------------------------
+
+`r path_file(sanger_ml_tree_ftolr)`: FTOL maximum-likelihood phylogeny.
+Inferred using maximum-likelihood from DNA sequences in
+ftol_plastome_alignment.fasta.gz. Rooted on bryophytes. In newick format.
+
+Number of tips: `r ape::Ntip(sanger_mlr_tree_rooted)`
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_ml_tree_ftolr)`
+
+--------------------------
+
+```{r sanger-parts-table}
+sanger_parts_table <- read_csv(sanger_parts_table_ftolr)
+# Check that no data are missing
+assert(sanger_parts_table,
+  not_na, everything(), success_fun = success_logical)
+```
+
+`r path_file(sanger_parts_table_ftolr)`: Start and end positions of loci in
+plastome DNA sequence alignment.
+
+Number of variables: `r ncol(sanger_parts_table)`
+
+Number of cases/rows: `r nrow(sanger_parts_table)`
+
+Variable list:
+
+```{r sanger-parts-table-vars, results = "asis"}
+
+metadat <- "item{locus}{Name of locus (gene or intergenic spacer region)}
+item{start}{Start position (column number) of locus in concatenated DNA alignment}
+item{end}{End position (column number) of locus in concatenated DNA alignment}"
+
+desc_data(
+  sanger_parts_table,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: None.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_parts_table_ftolr)`
+
+--------------------------
+
+```{r sanger-sampling}
+sanger_sampling <- read_csv(sanger_sampling_ftolr)
+```
+
+`r path_file(sanger_sampling_ftolr)`: Taxonomic data of species in FTOL.
+
+Number of variables: `r ncol(sanger_sampling)`
+
+Number of cases/rows: `r nrow(sanger_sampling)`
+
+Variable list:
+
+```{r sanger-sampling-vars, results = "asis"}
+
+metadat <- "item{species}{Species name}
+item{genus}{Genus name}
+item{order}{Order name}
+item{suborder}{Suborder name}
+item{family}{Family name}
+item{subfamily}{Subfamily name}
+item{major_clade}{Informal higher level clade name, either order or suborder}
+item{outgroup}{Logical; TRUE for outgroup taxa, FALSE for ingroup taxa (ferns)}
+item{subgenus}{Subgenus name (only provided if used for molecular dating)}"
+
+desc_data(
+  sanger_sampling,
+  roxy_to_tbl(metadat)
+  )
+```
+
+Missing data codes: 'NA' for missing or inapplicable data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(sanger_sampling_ftolr)`
+
+--------------------------
+
+CHANGE LOG
+
+2022-03-31
+
+- Generate this README file.
+
+--------------------------
+
+REFERENCES
