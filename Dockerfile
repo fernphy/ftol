@@ -17,6 +17,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # python-dev-is-python3 for biopython -> superCRUNCH
 # git-lfs for gittargets
 # pandoc-citeproc for rendering Rmarkdown
+# libarchive-dev for archive
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -50,6 +51,7 @@ RUN apt-get update \
     cd-hit \
     git-lfs \
     pandoc-citeproc \
+    libarchive-dev \
   && apt-get clean
 
 ########################

@@ -755,7 +755,7 @@ tar_plan(
   ),
   # -- sanger ML
   tar_file(
-    sanger_tree_ftolr,
+    sanger_ml_tree_ftolr,
     write_tree_tar(
       sanger_mlr_tree_rooted,
       path(results_dir, "ftolr/ftol_sanger_ml.tre")
@@ -763,7 +763,7 @@ tar_plan(
   ),
   # -- sanger ML dated
   tar_file(
-    sanger_tree_dated_ftolr,
+    sanger_ml_tree_dated_ftolr,
     write_tree_tar(
       sanger_mlr_tree_dated,
       path(results_dir, "ftolr/ftol_sanger_ml_dated.tre")
@@ -815,12 +815,51 @@ tar_plan(
       path(results_dir, "ftolr/ftol_sanger_parts.csv")
     )
   ),
+  # - Calibration points
+  tar_file(
+    con_fossil_calibration_tips_ftolr,
+    write_csv_tar(
+      con_fossil_calibration_tips,
+      path(results_dir, "ftolr/ftol_sanger_con_fossils.csv")
+    )
+  ),
+  tar_file(
+    ml_fossil_calibration_tips_ftolr,
+    write_csv_tar(
+      ml_fossil_calibration_tips,
+      path(results_dir, "ftolr/ftol_sanger_ml_fossils.csv")
+    )
+  ),
+  # Archive data for ftolr
+  tar_file(
+    ftolr_data_archive,
+    zip::zip(
+      zipfile = path(results_dir, "ftol.zip"),
+      files = c(
+        # accessions
+        acc_table_long_ftolr, acc_table_wide_ftolr,
+        # taxonomy
+        sanger_sampling_ftolr,
+        # trees
+        plastome_tree_ftolr,
+        sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
+        sanger_con_tree_ftolr, sanger_con_tree_dated_ftolr,
+        # alignments
+        sanger_alignment_ftolr, plastome_alignment_ftolr,
+        plastome_parts_table_ftolr, sanger_parts_table_ftolr,
+        # fossils
+        con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr),
+      mode = "cherry-pick"
+    )
+  ),
   # Compress data for FigShare
   tar_file(
     ref_aln_archive,
-    archive_files(
-      tarfile = path(data_raw, "ref_aln.tar.gz"),
-      files = path(data_raw, "ref_aln"),
+    archive_dir(
+      archive = path(data_raw, "ref_aln.tar.gz"),
+      dir = path(data_raw, "ref_aln"),
+      format = "tar",
+      filter = "gzip",
       depends = ref_aln_files
     )
   ),

@@ -7878,11 +7878,16 @@ get_tips_in_ape_plot_order <- function (tree) {
 }
 
 #' Create a tar archive
+#' 
+#' See https://archive.r-lib.org/reference/archive_write_files.html
 #'
-#' @param tarfile The pathname of the tar file.
-#' @param files A character vector of filepaths to be archived.
-#' @param compression character string giving the type of compression to be used
-#' @param tar character string: the path to the command to be used.
+#' @param archive  The archive filename or an archive object.
+#' @param files One or more files to add to the archive.
+#' @param format default: NULL The archive format, one of ‘7zip’, ‘cab’, ‘cpio’,
+#' ‘iso9660’, ‘lha’, ‘mtree’, ‘shar’, ‘rar’, ‘raw’, ‘tar’, ‘xar’, ‘zip’, ‘warc’
+#' @param filter The archive filter, one of ‘none’, ‘gzip’, ‘bzip2’, ‘compress’,
+#' ‘lzma’, ‘xz’, ‘uuencode’, ‘lzip’, ‘lrzip’, ‘lzop’, ‘grzip’, ‘lz4’, ‘zstd’ .
+#' @param options  Options to pass to the filter or format.
 #' @param ... Extra arguments; not used by this function, but meant for tracking
 #' with {targets}.
 #'
@@ -7890,9 +7895,37 @@ get_tips_in_ape_plot_order <- function (tree) {
 #' path to the compressed file.
 #'
 archive_files <- function(
-  tarfile, files, compression = "gzip", tar = "tar", ...) {
-  # compress the file
-  tar(tarfile = tarfile, files = files, compression = compression, tar = tar)
-  # return the path to the compressed file
-  tarfile
+  archive, files, format = NULL, filter = NULL, options = character(), ...) {
+ 
+  archive::archive_write_files(
+    archive = archive,
+    files = files,
+    format = format,
+    filter = filter,
+    options = options
+  )  
+  archive
+}
+
+#' Wrapper around archive::archive_write_dir() that returns the path to the
+#' archive
+#'
+#' @param ... Extra arguments; not used by this function, but meant for tracking
+#' with {targets}.
+#' @return Externally, the file or folder will be compressed. Returns the
+#' path to the compressed file.
+archive_dir <- function(
+  archive, dir, format = NULL, filter = NULL, options = character(), 
+  recursive = TRUE, full.names = FALSE, ...) {
+ 
+  archive::archive_write_dir(
+    archive = archive,
+    dir = dir,
+    format = format,
+    filter = filter,
+    options = options,
+    recursive = recursive,
+    full.names = full.names
+  )  
+  archive
 }
