@@ -7,3 +7,4 @@ library(vscDebugger) # for R in VS-Code
 library(docthis) # for documenting functions
 library(gittargets) # for tracking targes cache with git
 library(BiocManager) # for installing Bioconductor packages
+library(here) # used in reports
