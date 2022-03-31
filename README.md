@@ -43,3 +43,7 @@ Two other data files need to be manually downloaded and placed in `_targets/user
 ## Running the code
 
 To run the analysis, run `targets::tar_make()` from the root of the repo.
+
+## License
+
+- code: [MIT](LICENSE)
