@@ -72,7 +72,15 @@ The following additional data files need to be downloaded and placed in `_target
 - [ferncal](https://github.com/fernphy/ferncal) fern fossils database v1.0.0 (fern_fossils.csv) can be downloaded from [here](https://github.com/fernphy/ferncal/archive/refs/tags/v1.0.0.zip).
 ## Running the code
 
-To run the analysis, run `targets::tar_make()` from the root of the repo.
+There are actually two `targets` plans:
+
+- [prep_ref_seqs_plan.R](prep_ref_seqs_plan.R) generates a set of reference FASTA files for extracting target gene regions. These have been made available in the [FigShare data]((https://doi.org/10.6084/m9.figshare.19474316.v1), so this generally shouldn't need to be run. But if you want to, it can be run with `tar_make(script = "prep_ref_seqs_plan.R", store = "prep_ref_seqs_store")`.
+
+- [_targets.R](_targets.R) is the main workflow to generate FTOL. This can be run with `targets::tar_make()`.
+
+Note that this code was designed to be run on a multi-core machine, so the number of cores specified may need to be changed.
+
+The complete workflow takes 1-2 weeks to complete, with phylogenetic analysis taking up by far most of the time.
 
 ## License
 
