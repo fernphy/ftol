@@ -1,5 +1,7 @@
 # FTOL
 
+[![DOI](https://zenodo.org/badge/475787005.svg)](https://zenodo.org/badge/latestdoi/475787005)
+
 Code repository to generate an automatically updated **Fern Tree of Life**.
 
 Please see the accompanying paper: Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. An open and continuously updated fern tree of life (FTOL)
