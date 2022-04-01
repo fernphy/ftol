@@ -455,7 +455,9 @@ tar_plan(
     iqtree(
       plastome_alignment,
       m = "MFP", # test model followed by ML analysis
-      bb = 1000, nt = 12, seed = 20220123,
+      bb = 1000,
+      nt = 12, # run 12 cores in parallel
+      seed = 20220123,
       redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
       other_args = c(
         "-mset", "GTR", # only test GTR models
@@ -527,7 +529,8 @@ tar_plan(
       # "-mset", "GTR", "-mrate", "E,I,G,I+G"
       # to test models directly
       m = "GTR+F+I+G4",
-      bb = 1000, nt = 6,
+      bb = 1000, 
+      nt = 6, # Run 6 cores in parallel
       seed = iqtree_sanger_seeds,
       redo = FALSE, # change to TRUE when starting pipeline from new data
       wd = iqtree_sanger_dirs,
