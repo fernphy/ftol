@@ -59,9 +59,8 @@ If `setup.R` was run successfully, it will have already downloaded and unzipped 
 
 Alternatively, you can do so manually following these instructions:
 
-Download all of the files contained in the [FTOL input data on FigShare](https://doi.org/10.6084/m9.figshare.19474316.v1) by clicking on the "Download All" button.
-
-Unzip the files and place them in the `_targets/user/data_raw` folder. You will also need to unzip the `ref_aln.tar.gz` archive that is contained within the zip folder.
+1. Download all of the files contained in the [FTOL input data on FigShare](https://doi.org/10.6084/m9.figshare.19474316.v1) by clicking on the "Download All" button.
+2. Unzip the files and place them in the `_targets/user/data_raw` folder. You will also need to unzip the `ref_aln.tar.gz` archive that is contained within the zip folder.
 
 ### Other data files
 
