@@ -12,14 +12,43 @@ A [docker image](https://hub.docker.com/r/joelnitta/ftol) is available to run th
 
 ## Setup
 
-First run `targets::tar_make()` from the root of the repo. This won't finish (since there's no data yet!) but it will set up the folders needed for storing various files.
-
-You should now have a folder called `_targets` present in the repo.
-
-Next, run the [setup.R](R/setup.R) script to create all the subfolders needed to store external files in `_targets`. It also downloads most of the needed data files automatically.
+Run the [setup.R](R/setup.R) script to create the folder structure needed to store external files and downloaded most of the data files automatically.
 
 ```
 source("R/setup.R")
+```
+
+You should see a new folder called `_targets` appear in the project root. The data files are in `_targets/user/data_raw`.
+
+Alternatively, you can manually create the following folder hierachy yourself:
+
+```
+_targets
+└── user
+    ├── data_raw
+    │   └── ref_aln
+    ├── intermediates
+    │   ├── blast_sanger
+    │   ├── iqtree
+    │   │   ├── plastome
+    │   │   ├── sanger
+    │   │   ├── sanger_1
+    │   │   ├── sanger_10
+    │   │   ├── sanger_2
+    │   │   ├── sanger_3
+    │   │   ├── sanger_4
+    │   │   ├── sanger_5
+    │   │   ├── sanger_6
+    │   │   ├── sanger_7
+    │   │   ├── sanger_8
+    │   │   ├── sanger_9
+    │   │   └── sanger_fast
+    │   └── treepl
+    │       ├── con
+    │       ├── ml
+    │       └── ts
+    └── results
+        └── ftolr
 ```
 
 ## Data
