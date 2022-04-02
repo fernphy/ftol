@@ -4,7 +4,8 @@
 
 Code repository to generate an automatically updated **Fern Tree of Life**.
 
-Please see the accompanying paper: Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. An open and continuously updated fern tree of life (FTOL)
+Please see the accompanying paper:
+- Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. An open and continuously updated fern tree of life (FTOL) https://doi.org/10.1101/2022.03.31.486640 
 
 All code is in **R**, and workflow is controlled with the [targets](https://github.com/ropensci/targets) package.
 
