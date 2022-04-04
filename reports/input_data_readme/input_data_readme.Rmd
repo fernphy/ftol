@@ -2,7 +2,7 @@
 output: 
   readmedown::plain_document:
     columns: 80
-bibliography: data_readme_refs.yaml
+bibliography: input_data_readme_refs.yaml
 ---
 
 ```{r manual, include = FALSE, evaluate = FALSE}

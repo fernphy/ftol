@@ -2,7 +2,7 @@
 output: 
   readmedown::plain_document:
     columns: 80
-bibliography: ftolr_readme_refs.yaml
+bibliography: ftol_data_readme_refs.yaml
 ---
 
 ```{r manual, include = FALSE, evaluate = FALSE}
