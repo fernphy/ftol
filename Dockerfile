@@ -71,6 +71,15 @@ ENV APPS_HOME=/apps
 RUN mkdir $APPS_HOME
 WORKDIR $APPS_HOME
 
+### git-lfs ###
+# apt-get version is too old
+RUN wget https://github.com/git-lfs/git-lfs/releases/download/v3.1.2/git-lfs-linux-386-v3.1.2.tar.gz \
+  && mkdir git-lfs \
+  && tar xzf git-lfs-linux-386-v3.1.2.tar.gz --directory git-lfs \
+  && rm git-lfs-linux-386-v3.1.2.tar.gz \
+  && cd git-lfs \
+  && bash install.sh
+
 ### treePL ###
 RUN git clone https://github.com/blackrim/treePL.git \
   && cd $APPS_HOME/treePL/deps/ \
@@ -88,7 +97,6 @@ RUN git clone https://github.com/blackrim/treePL.git \
   && cp treePL /usr/local/bin
 
 ### gnparser ###
-WORKDIR $APPS_HOME
 ENV APP_NAME=gnparser
 ENV VERSION=1.4.0
 ENV DEST=$APPS_HOME/$APP_NAME/$VERSION
@@ -98,7 +106,6 @@ RUN wget https://github.com/gnames/gnparser/releases/download/v$VERSION/gnparser
   && mv "$APP_NAME" /usr/local/bin/
 
 ### IQ Tree v2 ###
-WORKDIR $APPS_HOME
 ENV APP_NAME=iqtree
 ENV VERSION=2.1.3
 RUN wget https://github.com/iqtree/iqtree2/releases/download/v$VERSION/iqtree-$VERSION-Linux.tar.gz \
@@ -107,7 +114,6 @@ RUN wget https://github.com/iqtree/iqtree2/releases/download/v$VERSION/iqtree-$V
   && mv $APP_NAME-$VERSION-Linux/bin/iqtree2 /usr/local/bin/
 
 ### trimAL ###
-WORKDIR $APPS_HOME
 ENV APP_NAME=trimal
 RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	cd $APP_NAME/source && \
@@ -115,7 +121,6 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	cp trimal /usr/local/bin
 
 ### taxon-tools ###
-WORKDIR $APPS_HOME
 ENV APP_NAME=taxon-tools
 RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 	cd $APP_NAME && \
