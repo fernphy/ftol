@@ -9,7 +9,8 @@ data_raw <- "_targets/user/data_raw"
 # Specify location of intermediate results file
 int_dir <- "_targets/user/intermediates"
 
-# Specify location of final results file
+# Specify location of results files
+# other than those put in ftol_data/
 results_dir <- "_targets/user/results"
 
 # Set parallel back-end
@@ -25,19 +26,19 @@ tar_option_set(
 
 # Define Rmd targets outside of main workflow
 # to avoid meaningless warnings
-data_readme_tar <- tar_render(
-    data_readme,
-    "reports/data_readme/data_readme.Rmd",
+input_data_readme_tar <- tar_render(
+    input_data_readme,
+    "reports/input_data_readme/input_data_readme.Rmd",
     output_dir = results_dir,
     output_format = "readmedown::plain_document",
-    knit_root_dir = "reports/data_readme"
+    knit_root_dir = "reports/input_data_readme"
   )
 
-ftolr_readme_tar <- tar_render(
-    ftolr_readme,
-    "reports/ftolr_readme/ftolr_readme.Rmd",
-    output_dir = path(results_dir, "ftolr"),
-    output_file = "README.txt",
+ftol_data_readme_tar <- tar_render(
+    ftol_data_readme,
+    "reports/ftol_data_readme/ftol_data_readme.Rmd",
+    output_dir = "ftol_data",
+    output_file = "ftol_data_README.txt",
     output_format = "readmedown::plain_document",
     knit_root_dir = "reports/ftolr_readme"
   )
@@ -738,14 +739,14 @@ tar_plan(
     acc_table_long_ftolr,
     write_csv_tar(
       acc_table_long,
-      path(results_dir, "ftolr/ftol_acc_table_long.csv")
+      "ftol_data/ftol_acc_table_long.csv"
     )
   ),
   tar_file(
     acc_table_wide_ftolr,
     write_csv_tar(
       acc_table_wide,
-      path(results_dir, "ftolr/ftol_acc_table_wide.csv")
+      "ftol_data/ftol_acc_table_wide.csv"
     )
   ),
   # - Taxonomy
@@ -753,7 +754,7 @@ tar_plan(
     sanger_sampling_ftolr,
     write_csv_tar(
       sanger_sampling,
-      path(results_dir, "ftolr/ftol_sanger_sampling.csv")
+      "ftol_data/ftol_sanger_sampling.csv"
     )
   ),
   # - Trees (all trees should be rooted)
@@ -762,7 +763,7 @@ tar_plan(
     plastome_tree_ftolr,
     write_tree_tar(
       plastome_tree_rooted,
-      path(results_dir, "ftolr/ftol_plastome_con.tre")
+      "ftol_data/ftol_plastome_con.tre"
     )
   ),
   # -- sanger ML
@@ -770,7 +771,7 @@ tar_plan(
     sanger_ml_tree_ftolr,
     write_tree_tar(
       sanger_mlr_tree_rooted,
-      path(results_dir, "ftolr/ftol_sanger_ml.tre")
+      "ftol_data/ftol_sanger_ml.tre"
     )
   ),
   # -- sanger ML dated
@@ -778,7 +779,7 @@ tar_plan(
     sanger_ml_tree_dated_ftolr,
     write_tree_tar(
       sanger_mlr_tree_dated,
-      path(results_dir, "ftolr/ftol_sanger_ml_dated.tre")
+      "ftol_data/ftol_sanger_ml_dated.tre"
       )
   ),
   # -- sanger consensus
@@ -786,7 +787,7 @@ tar_plan(
     sanger_con_tree_ftolr,
     write_tree_tar(
       sanger_con_tree_rooted,
-      path(results_dir, "ftolr/ftol_sanger_con.tre")
+      "ftol_data/ftol_sanger_con.tre"
     )
   ),
   # -- sanger consensus dated
@@ -794,7 +795,7 @@ tar_plan(
     sanger_con_tree_dated_ftolr,
     write_tree_tar(
       sanger_con_tree_dated,
-      path(results_dir, "ftolr/ftol_sanger_con_dated.tre")
+      "ftol_data/ftol_sanger_con_dated.tre"
     )
   ),
   # - Alignments
@@ -802,14 +803,14 @@ tar_plan(
     sanger_alignment_ftolr,
     write_fasta_gz_tar(
       sanger_alignment,
-      path(results_dir, "ftolr/ftol_sanger_alignment.fasta.gz")
+      "ftol_data/ftol_sanger_alignment.fasta.gz"
     )
   ),
   tar_file(
     plastome_alignment_ftolr,
     write_fasta_gz_tar(
       plastome_alignment,
-      path(results_dir, "ftolr/ftol_plastome_alignment.fasta.gz")
+      "ftol_data/ftol_plastome_alignment.fasta.gz"
     )
   ),
   # - Alignment parts
@@ -817,14 +818,14 @@ tar_plan(
     plastome_parts_table_ftolr,
     write_csv_tar(
       plastome_parts_table,
-      path(results_dir, "ftolr/ftol_plastome_parts.csv")
+      "ftol_data/ftol_plastome_parts.csv"
     )
   ),
   tar_file(
     sanger_parts_table_ftolr,
     write_csv_tar(
       sanger_parts_table,
-      path(results_dir, "ftolr/ftol_sanger_parts.csv")
+      "ftol_data/ftol_sanger_parts.csv"
     )
   ),
   # - Calibration points
@@ -832,15 +833,20 @@ tar_plan(
     con_fossil_calibration_tips_ftolr,
     write_csv_tar(
       con_fossil_calibration_tips,
-      path(results_dir, "ftolr/ftol_sanger_con_fossils.csv")
+      "ftol_data/ftol_sanger_con_fossils.csv"
     )
   ),
   tar_file(
     ml_fossil_calibration_tips_ftolr,
     write_csv_tar(
       ml_fossil_calibration_tips,
-      path(results_dir, "ftolr/ftol_sanger_ml_fossils.csv")
+      "ftol_data/ftol_sanger_ml_fossils.csv"
     )
+  ),
+  # - CC0 license for data
+  tar_file(
+    ftol_data_cc0,
+    write_cc0("ftol_data/LICENSE")
   ),
   # Compress data for FigShare
   tar_file(
@@ -854,38 +860,6 @@ tar_plan(
     )
   ),
   # Render READMEs
-  data_readme_tar,
-  ftolr_readme_tar,
-  # Archive data for ftolr
-  tar_file(
-    ftolr_data_archive,
-    { # Write a temporary CC0 license to include in data archive. # no lint
-      cc0 <- write_cc0()
-      zip::zip(
-        zipfile = path(results_dir, "ftol.zip"),
-        files = c(
-          # accessions
-          acc_table_long_ftolr, acc_table_wide_ftolr,
-          # taxonomy
-          sanger_sampling_ftolr,
-          # trees
-          plastome_tree_ftolr,
-          sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
-          sanger_con_tree_ftolr, sanger_con_tree_dated_ftolr,
-          # alignments
-          sanger_alignment_ftolr, plastome_alignment_ftolr,
-          plastome_parts_table_ftolr, sanger_parts_table_ftolr,
-          # fossils
-          con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr,
-          # README
-          ftolr_readme[[1]],
-          # CC0 license
-          cc0
-        ),
-        mode = "cherry-pick"
-      )
-      fs::file_delete(cc0)
-      path(results_dir, "ftol.zip")
-    }
-  )
+  input_data_readme_tar,
+  ftol_data_readme_tar
 )
