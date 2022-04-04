@@ -50,7 +50,7 @@ tar_load(
 )
 ```
 
-This README.txt file was generated on `r Sys.Date()` by Joel Nitta
+This ftol_data_README.txt file was generated on `r Sys.Date()` by Joel Nitta
 
 -------------------- 
 
@@ -88,7 +88,7 @@ Licenses/restrictions placed on the data: CC0 v1.0 license
 Links to publications that cite or use the data:
 
 Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
-continuously updated fern tree of life (FTOL). FIXME: add DOI when available.
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
 
 Links to other publicly accessible locations of the data: none.
 
