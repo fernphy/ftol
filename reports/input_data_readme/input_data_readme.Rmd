@@ -70,7 +70,7 @@ Licenses/restrictions placed on the data: CC0 v1.0 license
 Links to publications that cite or use the data:
 
 Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
-continuously updated fern tree of life (FTOL). FIXME: add DOI when available.
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
 
 Links to other publicly accessible locations of the data: none.
 
@@ -82,9 +82,9 @@ Links/relationships to ancillary data sets:
 Was data derived from another source? Yes, in part from GenBank (https://www.ncbi.nlm.nih.gov/genbank/),
 which places no restrictions on its use or distribution.
 
-Recommended citation for this dataset: 
+Recommended citation for this dataset (click FigShare "Cite" button for specific DOI version): 
 
-FTOL Working Group (2022). Fern Tree of Life (FTOL) input data. FIXME: add DOI when available
+FTOL Working Group (2022). Fern Tree of Life (FTOL) input data. https://doi.org/10.6084/m9.figshare.19474316
 
 --------------------
 
@@ -140,7 +140,7 @@ order, etc.) to species (tips of the phylogeny).
 For additional methodological details, see:
 
 Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and
-continuously updated fern tree of life (FTOL). FIXME: add DOI when available.
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
 
 --------------------------
 
@@ -302,6 +302,10 @@ MD5 checksum: `r tools::md5sum(ref_aln_archive)`
 --------------------------
 
 CHANGE LOG
+
+2022-04-04
+
+- Update DOIs.
 
 2022-03-31
 
