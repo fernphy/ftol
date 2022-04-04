@@ -28,11 +28,6 @@ assert_that(
   nrow(code_status) == 0,
   msg = "Code repo not clean. Fix, then run tar_git_snapshot()")
 
-# Write out cc0 license
-readr::write_lines(
-  cc0(),
-  file = "ftol_data/LICENSE")
-
 # Add all files in ftol_data
 ftol_data_files <- list.files("ftol_data")
 
@@ -45,7 +40,7 @@ git_add(
 # commit hash of code repo
 # plus comment of code repo
 msg <- glue::glue("code={git_commit_info()$id}
-({git_commit_info()$message})")
+comment={git_commit_info()$message}")
 
 # Commit
 git_commit(
@@ -54,3 +49,4 @@ git_commit(
 )
 
 # Push
+git_push(remote = "origin", repo = "ftol_data")
