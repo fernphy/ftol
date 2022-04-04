@@ -561,6 +561,11 @@ MD5 checksum: `r tools::md5sum(sanger_sampling_ftolr)`
 
 CHANGE LOG
 
+2022-04-04
+
+- Add DOI for Nitta et al. 2022 preprint
+- Change name of README file from README.txt to ftol_data_README.txt
+
 2022-03-31
 
 - Generate this README file.
