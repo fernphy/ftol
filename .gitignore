@@ -21,3 +21,4 @@ dockerd.pid
 make.o*
 _targets
 trash
+ftol_data
