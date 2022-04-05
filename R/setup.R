@@ -15,7 +15,6 @@ dir_create("_targets/user/intermediates/treepl/con")
 dir_create("_targets/user/intermediates/treepl/ml")
 dir_create("_targets/user/intermediates/treepl/ts")
 dir_create("_targets/user/results")
-dir_create("ftol_data")
 
 # Download data from FigShare ----
 

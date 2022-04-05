@@ -7962,17 +7962,3 @@ roxy_to_tbl <- function(metadat) {
     mutate(raw = stringr::str_replace_all(raw, fixed("}{"), "_SPLIT_HERE_")) %>%
     tidyr::separate(raw, c("col", "desc"), sep = "_SPLIT_HERE_")
 }
-
-#' Write out the CC0 license to a temporary file
-#' @return Path to the file with the CC0 license
-write_cc0 <- function(path) {
-  # Load CC0 license from fernphy/ferncal repo
-  cc0 <- read_lines("https://raw.githubusercontent.com/fernphy/ferncal/main/LICENSE")
-  # Check it is (probably) what we expect
-  assertthat::assert_that(
-    cc0[[3]] == "CC0 1.0 Universal",
-    msg = "Probably not CC0 license"
-  )
-  write_lines(cc0, path)
-  path
-}

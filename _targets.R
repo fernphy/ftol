@@ -9,8 +9,7 @@ data_raw <- "_targets/user/data_raw"
 # Specify location of intermediate results file
 int_dir <- "_targets/user/intermediates"
 
-# Specify location of results files
-# other than those put in ftol_data/
+# Specify location of final results file
 results_dir <- "_targets/user/results"
 
 # Set parallel back-end
@@ -40,7 +39,7 @@ ftol_data_readme_tar <- tar_render(
     output_dir = "ftol_data",
     output_file = "ftol_data_README.txt",
     output_format = "readmedown::plain_document",
-    knit_root_dir = "reports/ftolr_readme"
+    knit_root_dir = "reports/ftol_data_readme"
   )
 
 tar_plan(
@@ -530,7 +529,7 @@ tar_plan(
       # "-mset", "GTR", "-mrate", "E,I,G,I+G"
       # to test models directly
       m = "GTR+F+I+G4",
-      bb = 1000, 
+      bb = 1000,
       nt = 6, # Run 6 cores in parallel
       seed = iqtree_sanger_seeds,
       redo = FALSE, # change to TRUE when starting pipeline from new data
@@ -843,11 +842,6 @@ tar_plan(
       "ftol_data/ftol_sanger_ml_fossils.csv"
     )
   ),
-  # - CC0 license for data
-  tar_file(
-    ftol_data_cc0,
-    write_cc0("ftol_data/LICENSE")
-  ),
   # Compress data for FigShare
   tar_file(
     ref_aln_archive,
@@ -860,6 +854,8 @@ tar_plan(
     )
   ),
   # Render READMEs
+  # - input data
   input_data_readme_tar,
+  # - FTOL (output) data
   ftol_data_readme_tar
 )
