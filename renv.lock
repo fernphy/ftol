@@ -574,6 +574,18 @@
       "Repository": "CRAN",
       "Hash": "43c5107cc96f47043a56736768ecc59d"
     },
+    "contentid": {
+      "Package": "contentid",
+      "Version": "0.0.15",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "cboettig",
+      "RemoteRepo": "contentid",
+      "RemoteRef": "master",
+      "RemoteSha": "665f0e9e8fb240d2629b21efc7c74ac8e83a11eb",
+      "Hash": "b8d566ab04c3e1b926920c8e642f69c9"
+    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.4.0",
@@ -1194,10 +1206,10 @@
     },
     "openssl": {
       "Package": "openssl",
-      "Version": "1.4.1",
+      "Version": "2.0.0",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "49f7258fd86ebeaea1df24d9ded00478"
+      "Hash": "cf4329aac12c2c44089974559c18e446"
     },
     "parallelly": {
       "Package": "parallelly",
