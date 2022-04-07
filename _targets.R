@@ -853,6 +853,10 @@ tar_plan(
       depends = ref_aln_files
     )
   ),
+  # Fetch docker image tag
+  # This only works if plan is made with run.sh
+  # otherwise, will be empty string ("")
+  image_tag = Sys.getenv("IMAGE_TAG"),
   # Render READMEs
   # - input data
   input_data_readme_tar,
