@@ -81,14 +81,14 @@ tar_load(
 
 # Pre-commit checks ----
 
-# - Check targets status
+# - Check targets status (no targets should be outdated)
 targets_status <- tar_git_status_targets()
 
 assert_that(
   nrow(targets_status) == 0,
   msg = "One or more outdated targets detected.")
 
-# - Check code status
+# - Check code status (no uncommited changes should be present)
 code_status <- tar_git_status_code()
 
 assert_that(
@@ -108,6 +108,12 @@ assert_that(content_id(ppgi_taxonomy_path) == hashes$ppgi_taxonomy_mod)
 assert_that(
   content_id(target_plastome_genes_path) == hashes$target_coding_genes)
 assert_that(content_id(ref_aln_archive) == hashes$ref_aln_tar_gz)
+
+# - Check renv status (lock file is synchronized with library)
+assert_that(
+  isTRUE(renv::status()$synchronized),
+  msg = "Renv lock file not in sync with library"
+)
 
 # Pull from origin ----
 git_pull(repo = "ftol_data")
@@ -160,7 +166,7 @@ if (nrow(added) > 0) {
     message = msg
   )
   # Push
-  git_push(remote = "origin", repo = "ftol_data")
+  git_push(remote = "origin", repo = "ftol_data", verbose = TRUE)
 } else {
   print("No changes to add; nothing committed or pushed")
 }
