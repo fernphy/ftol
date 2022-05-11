@@ -8,4 +8,4 @@
 #PBS -M joelnitta@gmail.com
 #PBS -V
 cd ftol
-docker run --rm -v /home/joelnitta/ftol:/wd -v /nfs_share/joelnitta/project_data/pacific_ferns_biogeo/data_raw/:/data_raw -w /wd joelnitta/ftol:latest Rscript -e "targets::tar_make()"
+docker run --rm -v /home/joelnitta/ftol:/wd -v /mnt/synology2/joelnitta/project_data/ftol:/data_raw -w /wd joelnitta/ftol:latest Rscript -e "targets::tar_make()"
