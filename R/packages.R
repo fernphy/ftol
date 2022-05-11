@@ -5,7 +5,7 @@ library(ape)
 library(fs)
 library(future)
 library(future.callr)
-# library(pteridocat) # FIXME: uncomment when {pteridocat} is live
+library(pteridocat)
 library(taxastand)
 library(tflow)
 library(tidyverse)
