@@ -8,3 +8,5 @@ library(docthis) # for documenting functions
 library(gittargets) # for tracking targes cache with git
 library(BiocManager) # for installing Bioconductor packages
 library(here) # used in reports
+library(devtools) # used by restrez
+library(MonetDBLite)  # used by restrez
