@@ -169,7 +169,7 @@ RUN conda update --name base --channel defaults conda && \
 # - Make shell script to run conda app
 # this makes it so superCRUNCH scripts can be run e.g. `supercrunch Parse_Loci.py`
 RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
-  echo "source /miniconda3/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
+  echo "source $CONDA_DIR/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
   echo "python /apps/SuperCRUNCH-$VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
