@@ -293,6 +293,38 @@ tar_plan(
     deployment = "main"
   ),
 
+  # Format custom inclusion list for Sanger sequences ----
+  # Any species with accessions (sequences) in this data.frame
+  # will be preferentially used over other sources.
+
+  # Process Thelypteridaceae from Patel el al. (2019)
+  # Use sequences already in sanger_seqs_combined_filtered when possible
+  # Also makes a list of "missing" seqs in sanger_seqs_combined_filtered
+  # that need to be downloaded separately
+  patel_inclusion_list_full = create_patel_inclusion_list(
+    path_to_patel_data = contentid::resolve(
+      "hash://sha256/b8320b3ea7e59eb0c9e7da3b7163d375e1fd4511d53ffbb6f1c7c3c38858929a", # nolint
+       registries = "utils/local.tsv"),
+    pteridocat = pteridocat,
+    sanger_seqs_combined_filtered = sanger_seqs_combined_filtered
+  ),
+
+  # Download missing Patel et al. 2019 seqs
+  patel_seqs_raw = fetch_missing_patel_seqs(patel_inclusion_list_full$missing),
+  patel_seqs_raw_genes = unique(patel_seqs_raw$gene),
+  # Extract target genes and spacers with superCRUNCH
+  tar_target(
+    patel_seqs_extract_res,
+    extract_from_ref_blast(
+      query_seqtbl = patel_seqs_raw,
+      ref_seqtbl = fern_ref_seqs,
+      target = patel_seqs_raw_genes,
+      blast_flavor = "dc-megablast",
+      other_args = c("-m", "span", "--threads", "4")
+    ),
+    pattern = map(patel_seqs_raw_genes)
+  ),
+
   # Select final Sanger sequences ----
   # First parse specimen voucher data
   sanger_seqs_with_voucher_data = parse_voucher(sanger_seqs_rogues_removed),
@@ -302,12 +334,13 @@ tar_plan(
   # - all sequences for that species are from the same voucher, or
   # - all sequences for that species are from same publication
   # Criteria for selecting final set of sequences for each species (in order):
-  # - 1: specimens with longest rbcL + any other gene
-  # - 2: specimens with longest rbcL
-  # - 3: specimens with longest combined non-rbcL genes
-  # - 4: specimens with longest non-combined non-rbcL genes
+  # - 1. species with manually specified sequences
+  # - 2. species with longest combined rbcL + other genes
+  # - 3. species with longest rbcL (lacking other genes)
+  # - 4. species with the greatest combined length of other genes
   sanger_accessions_selection = select_genbank_genes(
-    sanger_seqs_with_voucher_data, mpcheck_monophy),
+    sanger_seqs_with_voucher_data, mpcheck_monophy,
+    manually_selected_seqs = patel_inclusion_list),
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)

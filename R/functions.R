@@ -90,6 +90,221 @@ load_ref_aln <- function(ref_aln_files) {
     assert(is_uniq, target)
 }
 
+#' Create an inclusion list of accessions to preferentially include
+#' based on Patel et al. (2019) data for Thelypteridaceae
+#'
+#' Patel et al. (2019). Evolution of Perine Morphology in the Thelypteridaceae.
+#' Int. J. Plant Sci. 180, 1016-1035. DOI:10.1086/705588
+#'
+#' @param path_to_patel_data Path to Supplementary Information file (.xlsx
+#' format) from Path et al. (2019).
+#' @param pteridocat pteridocat taxonomic database.
+#' @param sanger_seqs_combined_filtered Sanger sequences with names resolved
+#' to ptreidocat and filtered to remove rogue accessions based on mismatched
+#' families.
+#'
+#' @return Dataframe in wide format: one row per species, with columns for
+#' accession name (e.g., `accession_rbcL`), sequence length (e.g.,
+#' `seq_len_rbcL`), and join method (`join_by`). Join method is "manual".
+create_patel_inclusion_list <- function(
+  path_to_patel_data, pteridocat, sanger_seqs_combined_filtered) {
+
+  # Read in existing GenBank accessions from Patel et al 2019
+  patel_gb_accs <-
+  readxl::read_excel(
+      path_to_patel_data, # nolint
+      sheet = 3,
+      na = c("-", "")
+    ) %>%
+    janitor::clean_names() %>%
+    select(
+      synonym,
+      raw_name = accepted_name,
+      atpA = atp_a_10,
+      atpB = atp_b_5,
+      matK = mat_k_3,
+      rbcL = rbc_l_4,
+      rps4 = rps4_7,
+      trnL_trnF = trn_l_trn_f_8,
+      rps4_trnS = rps4_7
+    ) %>%
+    # Some species (`raw_name`) are duplicated because they
+    # have different synonyms.
+    # choose the one with the most accessions.
+    pivot_longer(
+      names_to = "gene", values_to = "acc", -c(raw_name, synonym)) %>%
+    filter(!is.na(acc)) %>%
+    group_by(synonym, raw_name) %>%
+    add_count() %>%
+    group_by(raw_name) %>%
+    slice_max(order_by = n) %>%
+    ungroup() %>%
+    select(-synonym) %>%
+    pivot_wider(names_from = gene, values_from = acc) %>%
+    assert(is_uniq, raw_name) %>%
+    select(-n)
+
+  # Read in newly sequenced accessions from Patel et al 2019
+  patel_new_accs <-
+  readxl::read_excel(
+      path_to_patel_data, # nolint
+      sheet = 4,
+      na = c("-", "")
+    ) %>%
+    janitor::clean_names() %>%
+    select(
+      raw_name = accepted_name,
+      matK_new = mat_k_3,
+      rbcL_new = rbc_l_4
+    )
+
+  # Join exisiting and 'new' GenBank accessions from Patel 2019
+  patel_accs <-
+    patel_gb_accs %>%
+    left_join(patel_new_accs, by = "raw_name") %>%
+    mutate(
+      rbcL = coalesce(rbcL, rbcL_new),
+      matK = coalesce(matK, matK_new)) %>%
+    select(-contains("new"))  %>%
+    mutate(raw_name = str_replace_all(raw_name, "_", " ")) %>%
+    # Repair some names
+    mutate(raw_name = case_when(
+      raw_name == "Christella procurrens" ~ "Cyclosorus procurrens (Mett.) Ching", # nolint
+      raw_name == "Goniopteris liebmanii" ~ "Goniopteris liebmannii",
+      raw_name == "Meniscium falcata" ~ "Meniscium falcatum",
+      raw_name == "Phegopteris decursivipinnata" ~ "Phegopteris decursivepinnata", # nolint
+      raw_name == "Pronephrium liukiuensis" ~ "Pronephrium liukiuense",
+      raw_name == "Stegnogramma centrochinensis" ~ "Leptogramma centrochinensis Ching ex Y. X. Lin", # nolint
+      raw_name == "Goniopteris tetragona" ~ "Goniopteris tetragona (Sw.) C. Presl", # nolint
+      raw_name == "Goniopteris vivipara" ~ "Goniopteris vivipara (Raddi) C.F.Reed", # nolint
+      TRUE ~ raw_name
+    )) %>%
+    assert(is_uniq, raw_name) %>%
+    assert(not_na, raw_name) %>%
+    pivot_longer(names_to = "target", values_to = "accession", -raw_name) %>%
+    filter(!is.na(accession)) %>%
+    # Format target (gene) names with dashes, not underscore
+    mutate(target = str_replace_all(target, "_", "-")) %>%
+    # Format accession names for joining: no version number or spaces
+    mutate(
+      accession = str_remove_all(accession, "\\.[0-9]") %>%
+      str_squish) %>%
+    # Remove a non-existant GenBank accession
+    filter(accession != "XX000000") %>%
+    pivot_wider(names_from = target, values_from = accession)
+
+  # FIXME: fix errors in pteridocat entry
+  # mutiple sci name "Christella acuminata"
+  # even though there is already Christella acuminata with author
+  pteridocat <- filter(
+    pteridocat,
+    scientificName != "Christella acuminata")
+
+  # Resolve names
+  patel_name_resolve_res <- ts_resolve_names(
+      query = patel_accs$raw_name,
+      ref_taxonomy = pteridocat,
+      max_dist = 5, match_no_auth = TRUE,
+      match_canon = TRUE, collapse_infra = TRUE,
+      tbl_out = TRUE)
+
+  patel_name_match_parsed <-
+  patel_name_resolve_res %>%
+    assert(not_na, matched_name) %>%
+    select(-match_type) %>%
+    mutate(
+        rgnparser::gn_parse_tidy(resolved_name) %>%
+          select(taxon = canonicalsimple)
+    ) %>%
+    mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
+    separate(
+      taxon,
+      into = c("genus", "sp_epithet", "infrasp_epithet"),
+      sep = "_", remove = FALSE, fill = "right") %>%
+    assert(not_na, genus, sp_epithet) %>%
+    mutate(species = paste(genus, sp_epithet, sep = "_"))
+
+  patel_all <-
+    # Join resolved names to original accs, select synonyms based on
+    # that with most sequences, filter to only accessions in superCRUNCH data
+    patel_accs %>%
+      # add resolved names
+      left_join(
+        select(patel_name_match_parsed, raw_name = query, taxon),
+        by = "raw_name"
+      ) %>%
+      assert(not_na, taxon) %>%
+      assert(is_uniq, raw_name) %>%
+      # count number of genes per raw name
+      pivot_longer(
+        names_to = "gene", values_to = "acc", -c(raw_name, taxon)
+      ) %>%
+      filter(!is.na(acc)) %>%
+      group_by(raw_name, taxon) %>%
+      mutate(n_genes = n_distinct(gene)) %>%
+      ungroup() %>%
+      # For synonyms, select raw name with most genes
+      pivot_wider(names_from = gene, values_from = acc) %>%
+      group_by(taxon) %>%
+      slice_max(order_by = n_genes, with_ties = FALSE) %>%
+      ungroup() %>%
+      select(-raw_name) %>%
+      rename(species = taxon) %>%
+      select(-n_genes) %>%
+      # FIXME: filter out one name that conflicts with an accepted name
+      # in pteridocat:
+      # patel name = Grypothrix parishii
+      # pteridocat name = Pronephrium × pseudoliukiuense (Seriz.) Nakaike
+      # both have accession AB575046.
+      # Need to update pteridocat to use only Grypothrix parishii
+      # as accepted name
+      filter(species != "Grypothrix_parishii")
+
+  patel_filt <- patel_all %>%
+    # Filter to only those with seq data already availble from superCRUNCH,
+    # format names like other sanger genes ('accession_gene')
+    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
+    filter(!is.na(accession)) %>%
+    inner_join(
+      unique(select(sanger_seqs_combined_filtered, accession, target, seq_len)),
+      by = c("target", "accession")
+    ) %>%
+    pivot_wider(names_from = target, values_from = c(accession, seq_len)) %>%
+    mutate(join_by = "manual")
+
+  patel_missing <-
+    patel_all %>%
+    anti_join(patel_filt, by = "species") %>%
+    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
+    filter(!is.na(accession))
+
+  list(
+    with_sanger_seq = patel_filt,
+    missing = patel_missing
+  )
+}
+
+#' Download a set of fern sequences Patel et al. 2019 data
+#'
+#' @param patel_missing_df Dataframe of Patel et al. 2019 samples
+#' that are not already included in Sanger seq data extracted with
+#' superCRUNCH
+#' @return Dataframe with one row per sequence
+#' 
+fetch_missing_patel_seqs <- function(patel_missing_df) {
+  # Compose query: all Patel et al. 2019 accessions not already
+  # in Sanger data
+  patel_query <- patel_missing_df$accession %>%
+    paste(collapse = " OR ")
+  # Fetch raw sequences as FASTA
+  seqs <- fetch_gb_raw(patel_query, ret_type = "fasta")
+  # Convert to tibble
+  tibble::tibble(
+    seq = split(seqs, seq_along(seqs)), accession = names(seqs)) %>%
+    right_join(patel_missing_df, by = "accession") %>%
+    rename(gene = target)
+}
+
 # Download Sanger sequences from GenBank----
 
 #' Format a query string to download fern sequences from GenBank
@@ -2009,22 +2224,22 @@ parse_voucher <- function(genbank_seqs_tibble) {
 #'
 #' After joining accessions, filter to only one set of sequences per species
 #' (species), prioritizing in order:
-#' - 1. those with rbcL + other genes
-#' - 2. those with rbcL
-#' - 3. those with the greatest combined length of other genes
+#' - 1. species with manually specified sequences
+#' - 2. species with longest combined rbcL + other genes
+#' - 3. species with longest rbcL (lacking other genes)
+#' - 4. species with the greatest combined length of other genes
 #'
 #' @param sanger_seqs_with_voucher_data Tibble; metadata for GenBank sequences
 #' including columns for `gene`, `species`, `specimen_voucher`,
 #' `accession` (GenBank accession), and `length` (gene length in bp)
 #' @param mpcheck_monophy Results of species monophyly check
+#' @param manually_selected_seqs Tibble of manually specified sequences to
+#' preferentially include in final selection.
 #
 #' @return Tibble in wide format joining genes based on species + voucher
 #'
 select_genbank_genes <- function(sanger_seqs_with_voucher_data,
-  mpcheck_monophy) {
-
-  # Check that input names match arguments
-  check_args(match.call())
+  mpcheck_monophy, manually_selected_seqs) {
 
   ### Some pre-processing ###
   # Check overall monophyly by species:
@@ -2198,20 +2413,56 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
 
   ### Final sequence selection ###
 
-  # 1. Filter to best joined sequences per species with rbcL and another gene
+  # define helper function to exclude accessions based on accession
+  # number if that accession number is already in the manual_selection
+  anti_join_by_acc <- function(df_1) {
+    df_1 %>%
+    anti_join(manual_selection, by = "accession_atpA", na_matches = "never") %>%
+    anti_join(manual_selection, by = "accession_atpB", na_matches = "never") %>%
+    anti_join(manual_selection, by = "accession_matK", na_matches = "never") %>%
+    anti_join(manual_selection, by = "accession_rbcL", na_matches = "never") %>%
+    anti_join(manual_selection, by = "accession_rps4", na_matches = "never") %>%
+    anti_join(manual_selection,
+      by = "accession_rps4-trnS", na_matches = "never") %>%
+    anti_join(manual_selection,
+      by = "accession_trnL-trnF", na_matches = "never")
+  }
+
+  # 1. First use any accessions in manual inclusion list
+  # Filter to species that are also in list of unjoined genes
+  manual_selection <- 
+    manually_selected_seqs %>%
+    verify(nrow(.) > 0) %>%
+    assert(is_uniq, species) %>%
+    inner_join(
+      unique(select(genbank_seqs_tibble_with_specimen_dat, species)),
+      by = "species"
+    ) %>%
+    verify(nrow(.) > 0) %>%
+    assert(is_uniq, species)
+
+  # 2. Filter to best joined sequences per species with rbcL and another gene
   rbcl_joined <- joined_all %>%
+    # Exclude species in manual selection list
+    anti_join(manual_selection, by = "species") %>%
+    anti_join_by_acc() %>%
+    # Filter to only those with rbcL and another gene
     filter(rbcL_and_other == TRUE) %>%
     # Slice to longest total seq per species
     group_by(species) %>%
     slice_max(n = 1, order_by = total_seq_len, with_ties = FALSE) %>%
     ungroup()
 
-  # 2. Of the remainder, take the best unjoined rbcL sequence per species
+  # 3. Of the remainder, take the best unjoined rbcL sequence per species
   rbcl_unjoined <-
     # Start with all seqs in long format
     genbank_seqs_tibble_with_specimen_dat %>%
     # Filter to rbcL
     filter(target == "rbcL", seq_len > 0, !is.na(seq_len)) %>%
+    # Exclude species in manual selection list
+    anti_join(manual_selection, by = "species") %>%
+    anti_join(manual_selection,
+      by = c(accession = "accession_rbcL"), na_matches = "never") %>%
     # Exclude species with joined rbcL
     anti_join(rbcl_joined, by = "species") %>%
     # Slice to longest rbcL per species
@@ -2230,6 +2481,9 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
   # - Select best species for "other" joined genes
   other_joined <-
     joined_all %>%
+    # Exclude species in manual selection list
+    anti_join(manual_selection, by = "species") %>%
+    anti_join_by_acc() %>%
     # Exclude species that have rbcL
     anti_join(rbcl_unjoined, by = "species") %>%
     anti_join(rbcl_joined, by = "species") %>%
@@ -2242,6 +2496,10 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
   # (will overlap in species with other_joined)
   other_unjoined <-
     genbank_seqs_tibble_with_specimen_dat %>%
+    # Exclude species in manual selection list
+    anti_join(manual_selection, by = "species") %>%
+    anti_join(manual_selection,
+      by = c(accession = "accession_rbcL"), na_matches = "never") %>%
     # Exclude species that have rbcL
     anti_join(rbcl_unjoined, by = "species") %>%
     anti_join(rbcl_joined, by = "species") %>%
@@ -2274,7 +2532,7 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
     mutate(total_seq_len = pmap_dbl(select(., contains("seq_len")), sum)) %>%
     assert(is_uniq, species)
 
-  # 3. Make final selection by total sequence length from unjoined and joined
+  # 4. Make final selection by total sequence length from unjoined and joined
   # "other" genes
   # (since the joined sequence may be shorter than an unjoined sequence for a
   # given species: e.g., sp1 unjoined atpA 1200 bp vs. sp1 joined trnlF + rps4 500 bp) #nolint
@@ -2291,7 +2549,8 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
     ungroup()
 
   # Combine final selected sequences
-  rbcl_joined %>%
+  manual_selection %>%
+    bind_rows(rbcl_joined) %>%
     bind_rows(rbcl_unjoined) %>%
     bind_rows(other_genes) %>%
     select(-rbcL_and_other, -accession_other) %>%
