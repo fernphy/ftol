@@ -8,4 +8,4 @@ db_download(preselection = 1)
 
 # Create database
 restez_connect()
-db_create(min_length = 10)
+db_create(min_length = 10, max_length = 200000)
