@@ -1272,6 +1272,16 @@ fetch_metadata <- function(
     chunk_size <- 200
     r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
     genbank_ids_list <- split(genbank_ids, r) %>% magrittr::set_names(NULL)
+
+    # Will get error if there is only one ID in last chunk,
+    # so if that is the case, combine with previous chunk
+    n_chunks <- length(genbank_ids_list)
+    if (length(genbank_ids_list[[n_chunks]]) == 1) {
+      genbank_ids_list[[n_chunks - 1]] <- c(
+        genbank_ids_list[[n_chunks - 1]], genbank_ids_list[[n_chunks]])
+        genbank_ids_list[n_chunks] <- NULL
+    }
+
     # Download results for each chunk
     rentrez_results <- map_df(genbank_ids_list, ~entrez_summary_gb(., col_select = col_select))
   }
