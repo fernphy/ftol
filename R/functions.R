@@ -835,19 +835,22 @@ fetch_fern_sanger_seqs <- function(
 #' Wrapper for supercrunch Reference_Blast_Extract.py module
 #'
 #' @param query_seqtbl DNA sequences to extract, formatted as sqtbl
-#' @param ref_seqtbl DNA sequences to use as a BLAST reference database, formatted as
-#' tibble with list-column containing reference alignments called "align_trimmed"
+#' @param ref_seqtbl DNA sequences to use as a BLAST reference database,
+#' formatted as tibble with list-column containing reference alignments called
+#' "align_trimmed"
 #' @param target Name of target locus
 #' @param blast_flavor Name of BLAST algorithm to use
-#' @param other_args Additional arguments formatted as a character vector to send
-#' to superCRUNCH Reference_Blast_Extract.py
-#' @param echo Logical; should the output of Reference_Blast_Extract.py be printed to the screen?
+#' @param other_args Additional arguments formatted as a character vector to
+#' send to superCRUNCH Reference_Blast_Extract.py
+#' @param echo Logical; should the output of Reference_Blast_Extract.py be
+#' printed to the screen?
 #' @param blast_res Logical; should the BLAST output be included in the results?
 #'
 #' @return Tibble
 
-extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
-  
+extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
+  blast_flavor, other_args = NULL, echo = FALSE, blast_res = FALSE) {
+
   # To avoid confusion with columns named 'target'
   target_select <- target
 
@@ -856,39 +859,43 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
   query_seqs <- query_seqtbl %>%
     filter(gene == target_select) %>%
     unique() %>%
-    verify(nrow(.) > 0, error_fun = err_msg("No query sequences matching target")) %>%
+    verify(
+      nrow(.) > 0,
+      error_fun = err_msg("No query sequences matching target")) %>%
     seqtbl_to_dnabin(name_col = "accession", seq_col = "seq") %>%
     # remove gaps
     ape::del.gaps()
-  
+
   # - reference (filter on target, and optionally by feature)
   ref_seqs <- ref_seqtbl %>%
     filter(target == target_select) %>%
-    verify(nrow(.) > 0, error_fun = err_msg("No reference sequences matching target")) %>%
+    verify(
+      nrow(.) > 0,
+      error_fun = err_msg("No reference sequences matching target")) %>%
     # Assuming sequences are in list-col "align_trimmed"
     pull(align_trimmed) %>%
     magrittr::extract2(1) %>%
     # remove gaps (important for ref database)
     ape::del.gaps()
-  
+
   # Create temporary input and output folders
   sha <- digest::digest(c(query_seqs, ref_seqs))
   in_folder <- tempfile(glue("{sha}_in"))
   out_folder <- tempfile(glue("{sha}_out"))
-  
+
   if(fs::dir_exists(in_folder)) fs::dir_delete(in_folder)
   if(fs::dir_exists(out_folder)) fs::dir_delete(out_folder)
-  
+
   fs::dir_create(in_folder)
   fs::dir_create(out_folder)
-  
+
   # Write out sequences
   query_file <- fs::path_ext_set(target, "fasta")
   ref_file <- paste0(target, "_ref") %>% fs::path_ext_set("fasta")
-  
+
   ape::write.FASTA(query_seqs, fs::path(in_folder, query_file))
   ape::write.FASTA(ref_seqs, fs::path(in_folder, ref_file))
-  
+
   # Set up super-crunch arguments
   args <- c(
     "Reference_Blast_Extract.py",
@@ -899,27 +906,27 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
     "-b", blast_flavor,
     other_args
   )
-  
+
   # Run supercrunch
   sc_res <- processx::run("supercrunch", args, echo = echo)
-  
+
   # Read in output files, return as list
   out_files <- list.files(out_folder, full.names = TRUE, recursive = TRUE)
-  
+
   blast_file <- out_files[str_detect(out_files, "blast_results.txt")]
   log_file <- out_files[str_detect(out_files, "Log_File_")]
   bad_seqs_file <- out_files[str_detect(out_files, "Log_BadSeqs_")]
   extracted_seqs_file <- out_files[str_detect(out_files, "_extracted.fasta")]
-  
+
   blast_res <- NULL
   log_res <- NULL
   bad_seqs_res <- NULL
   extracted_seqs_res <- NULL
-  
+
   fmt6_cols <- c("qseqid", "sseqid", "pident", "length", "mismatch",
-                 "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
-  
-  
+                 "gapopen", "qstart", "qend", "sstart", "send", "evalue", 
+                 "bitscore")
+
   if(length(blast_file) > 0 && isTRUE(blast_res)) blast_res <- suppressMessages(
     {read_tsv(blast_file, col_names = fmt6_cols, col_types = "ccdddddddddd")})
   if(length(log_file) > 0) log_res <- suppressMessages(read_tsv(log_file))
@@ -928,7 +935,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
   
   fs::dir_delete(in_folder)
   fs::dir_delete(out_folder)
-  
+
   tibble::tibble(
     blast = list(blast_res),
     log = list(log_res),
@@ -939,7 +946,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target, blast_flavo
     stdout = list(sc_res$stdout),
     stderr = list(sc_res$stderr)
   )
-  
+
 }
 
 # Helper function to make tibble including custom error message,
