@@ -180,6 +180,7 @@
       "Requirements": [
         "BiocGenerics",
         "IRanges",
+        "Matrix",
         "MatrixGenerics",
         "S4Vectors"
       ]
@@ -290,13 +291,19 @@
       "Requirements": [
         "Formula",
         "base64enc",
+        "cluster",
         "data.table",
+        "foreign",
         "ggplot2",
         "gridExtra",
         "gtable",
         "htmlTable",
         "htmltools",
+        "lattice",
         "latticeExtra",
+        "nnet",
+        "rpart",
+        "survival",
         "viridis"
       ]
     },
@@ -337,6 +344,16 @@
       "Hash": "71476c1d88d1ebdf31580e5a257d5d31",
       "Requirements": []
     },
+    "Matrix": {
+      "Package": "Matrix",
+      "Version": "1.4-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "699c47c606293bdfbc9fd78a93c9c8fe",
+      "Requirements": [
+        "lattice"
+      ]
+    },
     "MatrixGenerics": {
       "Package": "MatrixGenerics",
       "Version": "1.8.0",
@@ -348,6 +365,23 @@
       "Hash": "68a6ed57fd9a1d0d6beea73507b3ff59",
       "Requirements": [
         "matrixStats"
+      ]
+    },
+    "MonetDBLite": {
+      "Package": "MonetDBLite",
+      "Version": "0.6.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "MonetDB",
+      "RemoteRepo": "MonetDBLite-R",
+      "RemoteRef": "master",
+      "RemoteSha": "3fa31575efd66c673b67c9ddb24e5668a397a047",
+      "Hash": "d815b6a1bbf3d8a8777562848696354a",
+      "Requirements": [
+        "DBI",
+        "codetools",
+        "digest"
       ]
     },
     "MonoPhy": {
@@ -521,6 +555,7 @@
         "GenomeInfoDb",
         "GenomicRanges",
         "IRanges",
+        "Matrix",
         "MatrixGenerics",
         "S4Vectors"
       ]
@@ -650,6 +685,7 @@
         "MASS",
         "ade4",
         "ape",
+        "boot",
         "dplyr",
         "ggplot2",
         "igraph",
@@ -666,7 +702,9 @@
       "Repository": "CRAN",
       "Hash": "894108412a7ec23d5de85cdcce871c8b",
       "Requirements": [
-        "Rcpp"
+        "Rcpp",
+        "lattice",
+        "nlme"
       ]
     },
     "apex": {
@@ -724,6 +762,21 @@
       "Repository": "CRAN",
       "Hash": "50c838a310445e954bc13f26f26a6ecf",
       "Requirements": []
+    },
+    "atcursor": {
+      "Package": "atcursor",
+      "Version": "0.0.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "milesmcbain",
+      "RemoteRepo": "atcursor",
+      "RemoteRef": "main",
+      "RemoteSha": "b9860f12a31d25cf823bf1f374088a99fc9f219c",
+      "Hash": "da50c59527bd71bffef561d0088c42ce",
+      "Requirements": [
+        "rstudioapi"
+      ]
     },
     "backports": {
       "Package": "backports",
@@ -825,6 +878,14 @@
         "tibble",
         "xml2"
       ]
+    },
+    "boot": {
+      "Package": "boot",
+      "Version": "1.3-28",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "0baa960e3b49c6176a4f42addcbacc59",
+      "Requirements": []
     },
     "brew": {
       "Package": "brew",
@@ -937,6 +998,14 @@
       "Hash": "3f038e5ac7f41d4ac41ce658c85e3042",
       "Requirements": []
     },
+    "cluster": {
+      "Package": "cluster",
+      "Version": "2.1.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "c5f8447373ec2a0f593c694024e5b7ee",
+      "Requirements": []
+    },
     "clusterGeneration": {
       "Package": "clusterGeneration",
       "Version": "1.3.7",
@@ -967,6 +1036,16 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "24b6d006b8b2343876cf230687546932",
+      "Requirements": [
+        "lattice"
+      ]
+    },
+    "codetools": {
+      "Package": "codetools",
+      "Version": "0.2-18",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "019388fc48e48b3da0d3a76ff94608a8",
       "Requirements": []
     },
     "collections": {
@@ -1194,6 +1273,21 @@
       "Hash": "cf6b206a045a684728c3267ef7596190",
       "Requirements": []
     },
+    "docthis": {
+      "Package": "docthis",
+      "Version": "0.1.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "mdlincoln",
+      "RemoteRepo": "docthis",
+      "RemoteRef": "master",
+      "RemoteSha": "0f2463491d9d79d724a3c87a464abd6586572ebe",
+      "Hash": "d2699afd2fb86a5fb981d086b18f909b",
+      "Requirements": [
+        "rstudioapi"
+      ]
+    },
     "dplyr": {
       "Package": "dplyr",
       "Version": "1.0.9",
@@ -1256,7 +1350,9 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "1bb0f92b6125ea03dd7142f8eaf36bf5",
-      "Requirements": []
+      "Requirements": [
+        "Matrix"
+      ]
     },
     "fansi": {
       "Package": "fansi",
@@ -1298,6 +1394,27 @@
       "Hash": "38ec653c2613bed60052ba3787bd8a2c",
       "Requirements": []
     },
+    "fnmate": {
+      "Package": "fnmate",
+      "Version": "0.0.5",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "milesmcbain",
+      "RemoteRepo": "fnmate",
+      "RemoteRef": "master",
+      "RemoteSha": "de1fd0c5a81008bf05c5166a45c471d47d203417",
+      "Hash": "892390d120383995b895a5edea425e2a",
+      "Requirements": [
+        "clipr",
+        "glue",
+        "magrittr",
+        "purrr",
+        "readr",
+        "rlang",
+        "rstudioapi"
+      ]
+    },
     "fontawesome": {
       "Package": "fontawesome",
       "Version": "0.2.2",
@@ -1329,8 +1446,17 @@
       "Repository": "CRAN",
       "Hash": "618609b42c9406731ead03adf5379850",
       "Requirements": [
+        "codetools",
         "iterators"
       ]
+    },
+    "foreign": {
+      "Package": "foreign",
+      "Version": "0.8-82",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "32b25c97ce306a760c4d9f787991b5d9",
+      "Requirements": []
     },
     "formatR": {
       "Package": "formatR",
@@ -1481,6 +1607,7 @@
         "glue",
         "gtable",
         "isoband",
+        "mgcv",
         "rlang",
         "scales",
         "tibble",
@@ -1531,7 +1658,9 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "ace993e2dad5e64ed46391302b79e94f",
-      "Requirements": []
+      "Requirements": [
+        "codetools"
+      ]
     },
     "glue": {
       "Package": "glue",
@@ -1752,6 +1881,7 @@
       "Repository": "CRAN",
       "Hash": "820595efd173f9bac4ea76c1be007299",
       "Requirements": [
+        "Matrix",
         "magrittr",
         "pkgconfig"
       ]
@@ -1903,6 +2033,14 @@
         "rlang"
       ]
     },
+    "lattice": {
+      "Package": "lattice",
+      "Version": "0.20-45",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b64cdbb2b340437c4ee047a1f4c4377b",
+      "Requirements": []
+    },
     "latticeExtra": {
       "Package": "latticeExtra",
       "Version": "0.6-29",
@@ -1912,6 +2050,7 @@
       "Requirements": [
         "RColorBrewer",
         "jpeg",
+        "lattice",
         "png"
       ]
     },
@@ -1941,6 +2080,7 @@
       "Repository": "CRAN",
       "Hash": "023cecbdc0a32f86ad3cb1734c018d2e",
       "Requirements": [
+        "codetools",
         "crayon",
         "cyclocomp",
         "digest",
@@ -2006,6 +2146,17 @@
       "Requirements": [
         "cachem",
         "rlang"
+      ]
+    },
+    "mgcv": {
+      "Package": "mgcv",
+      "Version": "1.8-40",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "c6b2fdb18cf68ab613bd564363e1ba0d",
+      "Requirements": [
+        "Matrix",
+        "nlme"
       ]
     },
     "mime": {
@@ -2076,6 +2227,24 @@
         "tibble"
       ]
     },
+    "nlme": {
+      "Package": "nlme",
+      "Version": "3.1-157",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "dbca60742be0c9eddc5205e5c7ca1f44",
+      "Requirements": [
+        "lattice"
+      ]
+    },
+    "nnet": {
+      "Package": "nnet",
+      "Version": "7.3-17",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "cb1d8d9f300a7e536b89c8a88c53f610",
+      "Requirements": []
+    },
     "numDeriv": {
       "Package": "numDeriv",
       "Version": "2016.8-1.1",
@@ -2125,6 +2294,7 @@
       "Repository": "CRAN",
       "Hash": "ffb0779579a24fc4d26c89fb2e6077bb",
       "Requirements": [
+        "Matrix",
         "Rcpp",
         "ape",
         "fastmatch",
@@ -2147,6 +2317,7 @@
         "expm",
         "maps",
         "mnormt",
+        "nlme",
         "numDeriv",
         "phangorn",
         "plotrix",
@@ -2316,6 +2487,19 @@
       "Hash": "eef74b13f32cae6bb0d495e53317c44c",
       "Requirements": []
     },
+    "pteridocat": {
+      "Package": "pteridocat",
+      "Version": "0.0.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "fernphy",
+      "RemoteRepo": "pteridocat",
+      "RemoteRef": "main",
+      "RemoteSha": "ab2c8a172402ad88832568ac03b6766460e515f4",
+      "Hash": "aad14580a43d44cc81164eede1e0db1c",
+      "Requirements": []
+    },
     "purrr": {
       "Package": "purrr",
       "Version": "0.3.4",
@@ -2382,6 +2566,23 @@
       "Hash": "71ac7b3d6d9c384c775f9ddee4680d98",
       "Requirements": [
         "rentrez"
+      ]
+    },
+    "readmedown": {
+      "Package": "readmedown",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "joelnitta",
+      "RemoteRepo": "readmedown",
+      "RemoteRef": "main",
+      "RemoteSha": "93c74e729acc98d285e5433912829bccb7ad9e1c",
+      "Hash": "7ddcb8212ef4993fe8eef9931e3e8b9b",
+      "Requirements": [
+        "assertthat",
+        "glue",
+        "rmarkdown"
       ]
     },
     "readr": {
@@ -2459,7 +2660,7 @@
       "Package": "renv",
       "Version": "0.15.4",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Hash": "c1078316e1d4f70275fc1ea60c0bc431",
       "Requirements": []
     },
@@ -2502,6 +2703,27 @@
         "Rcpp",
         "plyr",
         "stringr"
+      ]
+    },
+    "restez": {
+      "Package": "restez",
+      "Version": "1.0.3",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "ropensci",
+      "RemoteRepo": "restez",
+      "RemoteRef": "master",
+      "RemoteSha": "7b58c4993496f9691b38557daa5f4718b1cb12f6",
+      "Remotes": "hannesmuehleisen/MonetDBLite-R",
+      "Hash": "0a2042f60c649ce871b71642e66aed05",
+      "Requirements": [
+        "DBI",
+        "cli",
+        "crayon",
+        "curl",
+        "rentrez",
+        "stringi"
       ]
     },
     "restfulr": {
@@ -2653,6 +2875,14 @@
         "withr",
         "xml2"
       ]
+    },
+    "rpart": {
+      "Package": "rpart",
+      "Version": "4.1.16",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "ea3ca1d9473daabb3cd0f1b4f974c1ed",
+      "Requirements": []
     },
     "rprojroot": {
       "Package": "rprojroot",
@@ -2893,7 +3123,9 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "c5dad1d43440f0c426a6d29b30b333fa",
-      "Requirements": []
+      "Requirements": [
+        "lattice"
+      ]
     },
     "strex": {
       "Package": "strex",
@@ -2947,6 +3179,16 @@
         "withr"
       ]
     },
+    "survival": {
+      "Package": "survival",
+      "Version": "3.3-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "f6189c70451d3d68e0d571235576e833",
+      "Requirements": [
+        "Matrix"
+      ]
+    },
     "sys": {
       "Package": "sys",
       "Version": "3.4",
@@ -2984,6 +3226,7 @@
         "base64url",
         "callr",
         "cli",
+        "codetools",
         "data.table",
         "digest",
         "igraph",
@@ -2994,6 +3237,31 @@
         "vctrs",
         "withr",
         "yaml"
+      ]
+    },
+    "taxastand": {
+      "Package": "taxastand",
+      "Version": "0.0.0.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "joelnitta",
+      "RemoteRepo": "taxastand",
+      "RemoteRef": "main",
+      "RemoteSha": "ad8cd07dd3cd568ee9fb2c894a0674fadd97af44",
+      "Remotes": "anthonynorth/roxyglobals",
+      "Hash": "5cce16ca5c331d87e2750a83f312eb89",
+      "Requirements": [
+        "assertr",
+        "assertthat",
+        "digest",
+        "dplyr",
+        "fs",
+        "glue",
+        "magrittr",
+        "processx",
+        "tibble",
+        "tidyr"
       ]
     },
     "taxize": {
@@ -3051,6 +3319,31 @@
         "rlang",
         "waldo",
         "withr"
+      ]
+    },
+    "tflow": {
+      "Package": "tflow",
+      "Version": "0.3.6",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "MilesMcBain",
+      "RemoteRepo": "tflow",
+      "RemoteRef": "master",
+      "RemoteSha": "23be655c8d5ffd7c5bc6a7eda1cd225b618e94a1",
+      "Remotes": "milesmcbain/fnmate, milesmcbain/capsule, milesmcbain/atcursor",
+      "Hash": "d1d2917a53ef23609f46c4eaf7a827f7",
+      "Requirements": [
+        "atcursor",
+        "cli",
+        "fnmate",
+        "fs",
+        "glue",
+        "readr",
+        "rstudioapi",
+        "sourcetools",
+        "usethis",
+        "yaml"
       ]
     },
     "tibble": {
@@ -3255,6 +3548,9 @@
       "Hash": "97bfb04067dc125eb0f00fda67801898",
       "Requirements": [
         "MASS",
+        "cluster",
+        "lattice",
+        "mgcv",
         "permute"
       ]
     },
@@ -3312,6 +3608,22 @@
         "tzdb",
         "vctrs",
         "withr"
+      ]
+    },
+    "vscDebugger": {
+      "Package": "vscDebugger",
+      "Version": "0.4.7",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "ManuelHentschel",
+      "RemoteRepo": "vscDebugger",
+      "RemoteRef": "master",
+      "RemoteSha": "31ec9fb4ef71131f84ba54c982f370f562efa573",
+      "Hash": "98c69c7ebcb14b6fc19e9eb9f05e8fdc",
+      "Requirements": [
+        "R6",
+        "jsonlite"
       ]
     },
     "waldo": {
@@ -3450,7 +3762,9 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "277b8b4c5b7b47e664aebfe024a2092e",
-      "Requirements": []
+      "Requirements": [
+        "lattice"
+      ]
     }
   }
 }
