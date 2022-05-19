@@ -111,16 +111,26 @@ tar_plan(
   date_cutoff = "2021/12/31",
 
   # Download and extract Sanger sequences ----
-  # Download raw fasta files
+
+  # Load tibble of all accessions in local GenBank database.
+  # (requires setting up database first; see R/setup_gb.R)
+  accs_in_local_db = gb_get_all_ids(),
+  # Fetch metadata
   tar_target(
-    fern_sanger_seqs_raw,
-    fetch_fern_sanger_seqs(
+    raw_meta_all,
+    fetch_fern_metadata(
       target_loci,
       end_date = date_cutoff),
     pattern = map(target_loci),
-    # don't run in parallel, or will get HTTP status 429 errors
     deployment = "main"
   ),
+  raw_meta = unique(raw_meta_all) %>%
+    # Drop excluded sequences from metadata
+    anti_join(accs_exclude, by = "accession") %>%
+    # Limit to accession in local GenBank database
+    inner_join(accs_in_local_db, by = "accession"),
+  # Fetch sequences from local GenBank database
+  fern_sanger_seqs_raw = load_seqs_from_local_db(raw_meta),
   # Extract target regions with superCRUNCH
   tar_target(
     fern_sanger_extract_res,
@@ -136,18 +146,6 @@ tar_plan(
   raw_fasta_all = clean_extract_res(fern_sanger_extract_res, "dc-megablast"),
   # Drop excluded sequences
   raw_fasta = anti_join(raw_fasta_all, accs_exclude, by = "accession"),
-  # Fetch metadata
-  tar_target(
-    raw_meta_all,
-    fetch_fern_metadata(
-      target_loci,
-      end_date = date_cutoff),
-    pattern = map(target_loci),
-    deployment = "main"
-  ),
-  raw_meta = unique(raw_meta_all) %>%
-    # Drop excluded sequences from metadata
-    anti_join(accs_exclude, by = "accession"),
 
   # Resolve taxonomic names for Sanger sequences ----
   # Specify varieties to exclude from collapsing

@@ -1136,6 +1136,78 @@ clean_extract_res <- function(extract_from_ref_blast_res, blast_flavor_select) {
   unnest(extracted_seqs)
 }
 
+# Load GenBank sequences from local database ----
+
+#' Load a tibble of all accession numbers in local GenBank database
+#' 
+#' Database must be created using {restez}. See ./R/setup_gb.R
+#'
+#' @param restez_path Path to directory containing restez database.
+#'
+#' @return Tibble with column 'accession': GenBank accession (id) of all
+#' sequences in database
+#'
+gb_get_all_ids <- function(restez_path = "/data_raw") {
+  # Connect to restez database
+  suppressMessages(restez::restez_path_set(restez_path))
+  suppressMessages(restez::restez_connect())
+  # Disconnect from restez database when done
+  on.exit(restez::restez_disconnect())
+
+  # Output ids (accessions) as tibble
+  restez::list_db_ids(n = NULL) %>%
+    tibble(accession = .) %>%
+    assert(not_na, accession) %>%
+    assert(is_uniq, accession)
+}
+
+#' Extract DNA sequences from a local GenBank database
+#'
+#' Database must be created using {restez}. See ./R/setup_gb.R
+#'
+#' @param id Character vector of genbank accession numbers.
+#' @param restez_path Path to directory containing restez database.
+#' @param name_col Name of column to use for sequence name
+#' @param seq_col Name of column to use for sequences (list-column)
+#'
+#' @return Tibble with one row per sequence
+#'
+gb_dnabin_get <- function(
+  id, restez_path = "/data_raw",
+  name_col = "accession", seq_col = "seq") {
+  # Connect to restez database
+  suppressMessages(restez::restez_path_set(restez_path))
+  suppressMessages(restez::restez_connect())
+  # Disconnect from restez database when done
+  on.exit(restez::restez_disconnect())
+
+  # Extract sequences as character
+  seqs <- restez::gb_sequence_get(id)
+
+  # Convert to seqtbl
+  ape::as.DNAbin(stringr::str_split(seqs, "")) %>%
+    set_names(names(seqs)) %>%
+    dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col)
+}
+
+#' Load sequences from local GenBank database using raw metadata
+#'
+#' @param raw_meta Tibble; metadata of Sanger sequences including NCBI
+#' taxonomic ID (taxid) and GenBank accession number.
+#'
+#' @return Tibble with three columns: sequence, accession, and gene
+#'
+load_seqs_from_local_db <- function(raw_meta) {
+  # Load all DNA sequences as seqtbl
+  dna_seqs <- gb_dnabin_get(unique(raw_meta$accession))
+  # Add gene names from metadata
+  raw_meta %>%
+    select(gene = target, accession) %>%
+    inner_join(dna_seqs, by = "accession") %>%
+    assert(not_na, everything()) %>%
+    select(seq, accession, gene)
+}
+
 # Download metadata for Sanger sequences from GenBank ----
 
 #' Fetch metadata from GenBank
