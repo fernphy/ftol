@@ -108,7 +108,7 @@ tar_plan(
   # - Target plastome loci (full set of plastome genes plus spacers)
   target_plastome_loci = c(target_plastome_genes, target_spacers),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2021/12/31",
+  date_cutoff = "2022/04/15",
 
   # Download and extract Sanger sequences ----
 
