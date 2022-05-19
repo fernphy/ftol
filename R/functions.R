@@ -927,12 +927,19 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
                  "gapopen", "qstart", "qend", "sstart", "send", "evalue", 
                  "bitscore")
 
-  if(length(blast_file) > 0 && isTRUE(blast_res)) blast_res <- suppressMessages(
-    {read_tsv(blast_file, col_names = fmt6_cols, col_types = "ccdddddddddd")})
-  if(length(log_file) > 0) log_res <- suppressMessages(read_tsv(log_file))
-  if(length(bad_seqs_file) > 0) bad_seqs_res <- ape::read.FASTA(bad_seqs_file) %>% dnabin_to_seqtbl()
-  if(length(extracted_seqs_file) > 0) extracted_seqs_res <- ape::read.FASTA(extracted_seqs_file) %>% dnabin_to_seqtbl()
-  
+  if (length(blast_file) > 0 && isTRUE(blast_res)) 
+    blast_res <- suppressMessages(
+      {read_tsv(blast_file, col_names = fmt6_cols, col_types = "ccdddddddddd")})
+  if (length(log_file) > 0) log_res <- suppressMessages(read_tsv(log_file))
+  if (length(bad_seqs_file) > 0)
+    bad_seqs_res <- ape::read.FASTA(bad_seqs_file) %>% dnabin_to_seqtbl()
+  if (length(extracted_seqs_file) > 0) {
+    if (length(readLines(extracted_seqs_file)) > 0) {
+      extracted_seqs_res <- ape::read.FASTA(extracted_seqs_file) %>%
+      dnabin_to_seqtbl()
+    }
+  }
+    
   fs::dir_delete(in_folder)
   fs::dir_delete(out_folder)
 
