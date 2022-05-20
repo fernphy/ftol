@@ -84,8 +84,8 @@ tar_plan(
   fern_ref_seqs = load_ref_aln(ref_aln_files),
   # NCBI taxonomic database
   # downloaded from
-  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip #nolint
-  tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-02-01.zip")),
+  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-05-01.zip #nolint
+  tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-05-01.zip")),
   # Fossil calibration points
   tar_file(
     fossil_dates_path,
