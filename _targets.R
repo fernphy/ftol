@@ -366,12 +366,12 @@ tar_plan(
   # (drops accession if name could not be resolved)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
-    pc_ref_names, pteridocat
+    ref_names_parsed = pc_ref_names, ref_names_data = pteridocat
   ),
   # Download plastome sequences
   # FASTA files for each accession in seqtbl format
   target_plastome_accessions = unique(plastome_metadata_renamed$accession),
-  plastome_fasta = read_genbank(target_plastome_accessions),
+  plastome_fasta = gb_dnabin_get(target_plastome_accessions),
   # Extract target genes and spacers with superCRUNCH
   tar_target(
     fern_plastome_loci_extract_res,
