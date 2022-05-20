@@ -284,25 +284,32 @@ create_patel_inclusion_list <- function(
   )
 }
 
-#' Download a set of fern sequences Patel et al. 2019 data
+#' Add Patel el at. 2019 sequences that were missing from
+#' other Sanger seq data
 #'
-#' @param patel_missing_df Dataframe of Patel et al. 2019 samples
-#' that are not already included in Sanger seq data extracted with
-#' superCRUNCH
-#' @return Dataframe with one row per sequence
-#' 
-fetch_missing_patel_seqs <- function(patel_missing_df) {
-  # Compose query: all Patel et al. 2019 accessions not already
-  # in Sanger data
-  patel_query <- patel_missing_df$accession %>%
-    paste(collapse = " OR ")
-  # Fetch raw sequences as FASTA
-  seqs <- fetch_gb_raw(patel_query, ret_type = "fasta")
-  # Convert to tibble
-  tibble::tibble(
-    seq = split(seqs, seq_along(seqs)), accession = names(seqs)) %>%
-    right_join(patel_missing_df, by = "accession") %>%
-    rename(gene = target)
+#' @param patel_inclusion_list_full List with two dataframes,
+#' first is patel et al 2019 sequences that are in extracted
+#' Sange seq data, other is accessions that were missing.
+#' @param patel_seqs_missing The missing sequences, extracted
+#' separately from other Sanger sequences.
+#'
+#' @return Tibble in format that can be used by
+#'   select_genbank_genes
+add_missing_patel_seqs <- function(
+  patel_inclusion_list_full,
+  patel_seqs_missing
+) {
+  patel_inclusion_list_full$missing %>%
+    inner_join(
+      select(patel_seqs_missing, -target),
+      by = "accession") %>%
+      mutate(seq_len = map_dbl(seq, ~length(.[[1]]))
+      ) %>%
+    select(-seq) %>%
+    pivot_wider(names_from = target, values_from = c(accession, seq_len)) %>%
+    mutate(join_by = "manual") %>%
+    bind_rows(patel_inclusion_list_full$with_sanger_seq, .) %>%
+    assert(is_uniq, species)
 }
 
 # Download Sanger sequences from GenBank----

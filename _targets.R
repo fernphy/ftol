@@ -298,7 +298,7 @@ tar_plan(
   # Process Thelypteridaceae from Patel el al. (2019)
   # Use sequences already in sanger_seqs_combined_filtered when possible
   # Also makes a list of "missing" seqs in sanger_seqs_combined_filtered
-  # that need to be downloaded separately
+  # that need to be loaded separately
   patel_inclusion_list_full = create_patel_inclusion_list(
     path_to_patel_data = contentid::resolve(
       "hash://sha256/b8320b3ea7e59eb0c9e7da3b7163d375e1fd4511d53ffbb6f1c7c3c38858929a", # nolint
@@ -307,20 +307,27 @@ tar_plan(
     sanger_seqs_combined_filtered = sanger_seqs_combined_filtered
   ),
 
-  # Download missing Patel et al. 2019 seqs
-  patel_seqs_raw = fetch_missing_patel_seqs(patel_inclusion_list_full$missing),
-  patel_seqs_raw_genes = unique(patel_seqs_raw$gene),
+  # Load missing Patel et al. 2019 seqs from local db
+  patel_seqs_missing_raw = load_seqs_from_local_db(
+    patel_inclusion_list_full$missing),
+  patel_genes_missing = unique(patel_seqs_missing_raw$gene),
   # Extract target genes and spacers with superCRUNCH
   tar_target(
-    patel_seqs_extract_res,
+    patel_seqs_missing_extract_res,
     extract_from_ref_blast(
-      query_seqtbl = patel_seqs_raw,
+      query_seqtbl = patel_seqs_missing_raw,
       ref_seqtbl = fern_ref_seqs,
-      target = patel_seqs_raw_genes,
+      target = patel_genes_missing,
       blast_flavor = "dc-megablast",
       other_args = c("-m", "span", "--threads", "4")
     ),
-    pattern = map(patel_seqs_raw_genes)
+    pattern = map(patel_genes_missing)
+  ),
+  patel_seqs_missing = clean_extract_res(
+    patel_seqs_missing_extract_res, "dc-megablast"),
+  patel_inclusion_list = add_missing_patel_seqs(
+    patel_inclusion_list_full,
+    patel_seqs_missing
   ),
 
   # Select final Sanger sequences ----
