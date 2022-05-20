@@ -6205,6 +6205,16 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
    # Delete temporary unzipped file
    fs::file_delete(fs::path(temp_dir, "names.dmp"))
 
+  # Identify taxids not in NCBI data
+  missing_taxid <-
+    taxid_keep$taxid[!(taxid_keep$taxid %in% ncbi_raw$X1)] %>% 
+      unique() %>%
+      sort()
+  if (length(missing_taxid) > 0) {
+    msg <- glue("One or more taxid missing from NCBI data: {paste(missing_taxid, collapse = ', ')}") # nolint
+    warning(msg)
+  }
+
    # Prune raw NBCI names to names in metadata
    ncbi_names <-
       ncbi_raw %>%
@@ -6213,8 +6223,6 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
          taxid = as.character(X1),
          name = X2,
          class = X4) %>%
-      # Make sure all taxids from metadata are in NCBI data
-      verify(all(taxid_keep$taxid %in% taxid)) %>%
       # Filter to only taxids in metadata
       inner_join(
          unique(select(taxid_keep, taxid)),
