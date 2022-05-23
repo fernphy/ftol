@@ -384,11 +384,12 @@ tar_plan(
     ),
     pattern = map(target_plastome_loci)
   ),
+  plastome_genes_raw = clean_extract_res(
+    fern_plastome_loci_extract_res, "dc-megablast"),
   # Combine plastome metadata and sequences, filter to best accession per taxon
   plastome_seqs_combined_filtered = select_plastome_seqs(
     plastome_genes_raw,
-    plastome_metadata_renamed,
-    fern_plastome_loci_extract_res),
+    plastome_metadata_renamed),
 
   # Align spacers ----
   # Assign taxonomic clusters (by family) for aligning spacer regions
