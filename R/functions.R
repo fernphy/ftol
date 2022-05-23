@@ -8144,37 +8144,6 @@ count_actg <- function(seqs) {
   sum(count_all[names(count_all) %in% c("a", "c", "t", "g")])
 }
 
-#' Download sequences from GenBank by accession number
-#'
-#' Wrapper for ape::read.GenBank() that can handle large numbers of accessions
-#'
-#' @param accessions Vector of GenBank accessions (e.g., "AY178864")
-#' @param return_seqtbl Logical; should the results be returned as a DNA-sequence tibble (seqtbl)?
-#' If FALSE, will return as list of class 'DNAbin'.
-#'
-#' @return Tibble (seqtbl) or list of class DNAbin
-read_genbank <- function(accessions, return_seqtbl = TRUE) {
-
-   # Split accessions into chunks
-  chunk_size <- 50
-  n <- length(accessions)
-  r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
-  accessions_list <- split(accessions, r) %>% 
-    magrittr::set_names(NULL)
-
-  # Download sequences in each chunk
-  seqs_list <- purrr::map(accessions_list, ~ape::read.GenBank(., species.names = FALSE))
-
-  # Combine results
-  results <- do.call(c, seqs_list)
-
-  # Optionally convert to seqtbl
-  if(isTRUE(return_seqtbl)) results <- dnabin_to_seqtbl(results)
-
-  results
-
-}
-
 # Vectorized check for NULL in a list
 not_null <- function(x) {
   assertthat::assert_that(is.list(x))
