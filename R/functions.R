@@ -3214,10 +3214,8 @@ filter_majority_missing <- function (
 #' @param plastome_genes_raw Dataframe of plastid genes. Each row is
 #' a sequence for a gene for a plastome accession.
 #' @param plastome_metadata_renamed Associated plastome metadata (species names)
-#' @param fern_plastome_loci_extract_res Output of extract_from_ref_blast(); spacer sequences
-#' in plastomes
 #'
-select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed, fern_plastome_loci_extract_res) {
+select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed) {
   
   # Check that input names match arguments
   check_args(match.call())
@@ -3231,8 +3229,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed,
 
   # Extract sequences from superCRUNCH results
   plastome_genes_raw <-
-  fern_plastome_loci_extract_res %>%
-    clean_extract_res("dc-megablast") %>%
+  plastome_genes_raw %>%
     left_join(
       select(plastome_metadata_renamed, accession, species),
       by = "accession"
@@ -3314,7 +3311,6 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed,
         by = c("accession", "gene")) %>%
       assert(not_na, everything()) %>%
       rename(target = gene)
-
 }
 
 #' Trim aligned plastome genes
