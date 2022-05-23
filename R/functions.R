@@ -3414,8 +3414,8 @@ combine_sanger_plastome <- function(
     pivot_longer(names_to = "target", values_to = "accession", -species) %>%
     mutate(target = str_remove_all(target, "accession_")) %>%
     filter(!is.na(accession)) %>%
-    # Add DNA sequences
-    left_join(select(sanger_seqs_combined_filtered, accession, seq, target), by = c("accession", "target")) %>%
+    # Add DNA sequences: inner join drops anything missing a DNA sequence
+    inner_join(select(sanger_seqs_combined_filtered, accession, seq, target), by = c("accession", "target")) %>%
     # Add plastome sequences
     bind_rows(plastome_seqs_combined_filtered) %>%
     assert(not_na, everything()) %>%
