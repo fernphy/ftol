@@ -2086,11 +2086,11 @@ blast_seqtbl <- function (
 #' from GenBank (column "seqs") and associated metadata (at least "accession"
 #' and "species").
 #' @param blast_results Output of running blast_rogues()
-#' @param ppgi Tibble; genus-level and higher taxonomic system for pteridophytes,
+#' @param ppgi_taxonomy Tibble; genus-level and higher taxonomic system for pteridophytes,
 #' according to PPGI 2016.
 #' 
 #' @return Tibble; list of rogue sequences showing which families were matched
-detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
+detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
   
   ### Detect rogues ###
   
@@ -2100,7 +2100,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
   exclude_from_rogues <-
     metadata_with_seqs %>% 
     dplyr::left_join(
-      select(ppgi, genus, family), 
+      select(ppgi_taxonomy, genus, family), 
       by = "genus") %>%
     assert(not_na, genus, family) %>%
     dplyr::add_count(family, target) %>%
@@ -2112,7 +2112,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
   
   # Group small families by order
   # to avoid false-positives
-  ppgi <- mutate(ppgi, family = case_when(
+  ppgi_taxonomy <- mutate(ppgi_taxonomy, family = case_when(
     order == "Cyatheales" ~ "Cyatheales",
     suborder == "Saccolomatineae" ~ "Saccolomatineae",
     TRUE ~ family
@@ -2137,11 +2137,11 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi) {
     ) %>%
     # Add columns for query family and hit family (look up from PPGI taxonomy)
     dplyr::left_join(
-      select(ppgi, q_genus = genus, q_family = family),
+      select(ppgi_taxonomy, q_genus = genus, q_family = family),
       by = "q_genus"
     ) %>% 
     dplyr::left_join(
-      select(ppgi, s_genus = genus, s_family = family),
+      select(ppgi_taxonomy, s_genus = genus, s_family = family),
       by = "s_genus"
     ) %>%
     # Consider rogue to be when top 3 hit families all the same and
@@ -2686,7 +2686,15 @@ inspect_rogues <- function(
 
   # Check that input names match arguments
   check_args(match.call())
-	
+
+  # Group small families by order
+  # to avoid false-positives
+  ppgi_taxonomy <- mutate(ppgi_taxonomy, family = case_when(
+    order == "Cyatheales" ~ "Cyatheales",
+    suborder == "Saccolomatineae" ~ "Saccolomatineae",
+    TRUE ~ family
+  ))
+
 	# Filter original GenBank names to accepted name
 	gb_names <-
 		ncbi_names_query %>%
@@ -2721,10 +2729,14 @@ inspect_rogues <- function(
 		# the query family and genbank family agree
 		mutate(
 			real_rogue = case_when(
-				q_family == gb_family ~ 1,
-				TRUE ~ 0
+				q_family == gb_family ~ TRUE,
+				TRUE ~ FALSE
 			)
-		)
+		) %>%
+    # Do any manual fixes needed to remove mistaken rogues
+    # Then make sure all rogues are real
+    assert(isTRUE, real_rogue) %>%
+    select(species, accession, gene, q_family, s_family)
 	
 }
 
