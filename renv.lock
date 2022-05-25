@@ -2496,8 +2496,8 @@
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "ab2c8a172402ad88832568ac03b6766460e515f4",
-      "Hash": "aad14580a43d44cc81164eede1e0db1c",
+      "RemoteSha": "a336216ed304236a6b0a4eaef716f7ae8a7b95bf",
+      "Hash": "d34b80cc14db9c6f46d5e19d8416398d",
       "Requirements": []
     },
     "purrr": {
@@ -2716,7 +2716,7 @@
       "RemoteRef": "master",
       "RemoteSha": "7b58c4993496f9691b38557daa5f4718b1cb12f6",
       "Remotes": "hannesmuehleisen/MonetDBLite-R",
-      "Hash": "0a2042f60c649ce871b71642e66aed05",
+      "Hash": "119002f5c3081d2bffcc7618ac0283c0",
       "Requirements": [
         "DBI",
         "cli",
@@ -3250,7 +3250,7 @@
       "RemoteRef": "main",
       "RemoteSha": "ad8cd07dd3cd568ee9fb2c894a0674fadd97af44",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "5cce16ca5c331d87e2750a83f312eb89",
+      "Hash": "cc99efa08fe64d95d3b4c5dbc6af781e",
       "Requirements": [
         "assertr",
         "assertthat",
@@ -3332,7 +3332,7 @@
       "RemoteRef": "master",
       "RemoteSha": "23be655c8d5ffd7c5bc6a7eda1cd225b618e94a1",
       "Remotes": "milesmcbain/fnmate, milesmcbain/capsule, milesmcbain/atcursor",
-      "Hash": "d1d2917a53ef23609f46c4eaf7a827f7",
+      "Hash": "f390c5411d1afb5bec8e4ce0b87fd463",
       "Requirements": [
         "atcursor",
         "cli",
