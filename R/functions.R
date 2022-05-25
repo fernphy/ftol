@@ -99,15 +99,12 @@ load_ref_aln <- function(ref_aln_files) {
 #' @param path_to_patel_data Path to Supplementary Information file (.xlsx
 #' format) from Path et al. (2019).
 #' @param pteridocat pteridocat taxonomic database.
-#' @param sanger_seqs_combined_filtered Sanger sequences with names resolved
-#' to ptreidocat and filtered to remove rogue accessions based on mismatched
-#' families.
 #'
 #' @return Dataframe in wide format: one row per species, with columns for
 #' accession name (e.g., `accession_rbcL`), sequence length (e.g.,
 #' `seq_len_rbcL`), and join method (`join_by`). Join method is "manual".
 create_patel_inclusion_list <- function(
-  path_to_patel_data, pteridocat, sanger_seqs_combined_filtered) {
+  path_to_patel_data, pteridocat) {
 
   # Read in existing GenBank accessions from Patel et al 2019
   patel_gb_accs <-
@@ -161,6 +158,7 @@ create_patel_inclusion_list <- function(
   # Join exisiting and 'new' GenBank accessions from Patel 2019
   patel_accs <-
     patel_gb_accs %>%
+    # Manually select some accessions
     left_join(patel_new_accs, by = "raw_name") %>%
     mutate(
       rbcL = coalesce(rbcL, rbcL_new),
@@ -193,13 +191,6 @@ create_patel_inclusion_list <- function(
     filter(accession != "XX000000") %>%
     pivot_wider(names_from = target, values_from = accession)
 
-  # FIXME: fix errors in pteridocat entry
-  # mutiple sci name "Christella acuminata"
-  # even though there is already Christella acuminata with author
-  pteridocat <- filter(
-    pteridocat,
-    scientificName != "Christella acuminata")
-
   # Resolve names
   patel_name_resolve_res <- ts_resolve_names(
       query = patel_accs$raw_name,
@@ -224,92 +215,54 @@ create_patel_inclusion_list <- function(
     assert(not_na, genus, sp_epithet) %>%
     mutate(species = paste(genus, sp_epithet, sep = "_"))
 
-  patel_all <-
-    # Join resolved names to original accs, select synonyms based on
-    # that with most sequences, filter to only accessions in superCRUNCH data
-    patel_accs %>%
-      # add resolved names
-      left_join(
-        select(patel_name_match_parsed, raw_name = query, taxon),
-        by = "raw_name"
-      ) %>%
-      assert(not_na, taxon) %>%
-      assert(is_uniq, raw_name) %>%
-      # count number of genes per raw name
-      pivot_longer(
-        names_to = "gene", values_to = "acc", -c(raw_name, taxon)
-      ) %>%
-      filter(!is.na(acc)) %>%
-      group_by(raw_name, taxon) %>%
-      mutate(n_genes = n_distinct(gene)) %>%
-      ungroup() %>%
-      # For synonyms, select raw name with most genes
-      pivot_wider(names_from = gene, values_from = acc) %>%
-      group_by(taxon) %>%
-      slice_max(order_by = n_genes, with_ties = FALSE) %>%
-      ungroup() %>%
-      select(-raw_name) %>%
-      rename(species = taxon) %>%
-      select(-n_genes) %>%
-      # FIXME: filter out one name that conflicts with an accepted name
-      # in pteridocat:
-      # patel name = Grypothrix parishii
-      # pteridocat name = Pronephrium × pseudoliukiuense (Seriz.) Nakaike
-      # both have accession AB575046.
-      # Need to update pteridocat to use only Grypothrix parishii
-      # as accepted name
-      filter(species != "Grypothrix_parishii")
-
-  patel_filt <- patel_all %>%
-    # Filter to only those with seq data already availble from superCRUNCH,
-    # format names like other sanger genes ('accession_gene')
-    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
-    filter(!is.na(accession)) %>%
-    inner_join(
-      unique(select(sanger_seqs_combined_filtered, accession, target, seq_len)),
-      by = c("target", "accession")
+  # Join resolved names to original accs, select synonyms based on
+  # that with most sequences, filter to only accessions in superCRUNCH data
+  patel_accs %>%
+    # add resolved names
+    left_join(
+      select(patel_name_match_parsed, raw_name = query, taxon),
+      by = "raw_name"
     ) %>%
-    pivot_wider(names_from = target, values_from = c(accession, seq_len)) %>%
-    mutate(join_by = "manual")
-
-  patel_missing <-
-    patel_all %>%
-    anti_join(patel_filt, by = "species") %>%
-    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
-    filter(!is.na(accession))
-
-  list(
-    with_sanger_seq = patel_filt,
-    missing = patel_missing
-  )
+    assert(not_na, taxon) %>%
+    assert(is_uniq, raw_name) %>%
+    # count number of genes per raw name
+    pivot_longer(
+      names_to = "gene", values_to = "acc", -c(raw_name, taxon)
+    ) %>%
+    filter(!is.na(acc)) %>%
+    group_by(raw_name, taxon) %>%
+    mutate(n_genes = n_distinct(gene)) %>%
+    ungroup() %>%
+    # For synonyms, select raw name with most genes
+    pivot_wider(names_from = gene, values_from = acc) %>%
+    group_by(taxon) %>%
+    slice_max(order_by = n_genes, with_ties = FALSE) %>%
+    ungroup() %>%
+    select(-raw_name) %>%
+    rename(species = taxon) %>%
+    select(-n_genes) %>%
+    # Remove some incorrect entries
+    filter(
+      !species %in% c(
+        "Coryphopteris_nipponica", # alternate seq provided in manual list
+        "Goniopteris_cordata", # accession num is wrong
+        "Coryphopteris_angulariloba", # alternate seq provided in manual list
+        "Coryphopteris_simulata", # alternate seq provided in manual list
+        "Goniopteris_retroflexa", # accession num is wrong
+        "Pelazoneuron_ovatum", # accession num is wrong
+        "Amauropelta_beddomei", # accession num is wrong
+        "Amauropelta_angustifrons", # rbcL AB575009 seq is hybrid Thelypteris angustifrons x Thelypteris cystopteroides # nolint
+        "Pelazoneuron_augescens", # accession num KR816701 is mis-id (rogue)
+        "Pseudophegopteris_tibetana" # accession num JN168050 is mis-id (rogue)
+        ))
 }
 
-#' Add Patel el at. 2019 sequences that were missing from
-#' other Sanger seq data
-#'
-#' @param patel_inclusion_list_full List with two dataframes,
-#' first is patel et al 2019 sequences that are in extracted
-#' Sange seq data, other is accessions that were missing.
-#' @param patel_seqs_missing The missing sequences, extracted
-#' separately from other Sanger sequences.
-#'
-#' @return Tibble in format that can be used by
-#'   select_genbank_genes
-add_missing_patel_seqs <- function(
-  patel_inclusion_list_full,
-  patel_seqs_missing
-) {
-  patel_inclusion_list_full$missing %>%
-    inner_join(
-      select(patel_seqs_missing, -target),
-      by = "accession") %>%
-      mutate(seq_len = map_dbl(seq, ~length(.[[1]]))
-      ) %>%
-    select(-seq) %>%
-    pivot_wider(names_from = target, values_from = c(accession, seq_len)) %>%
-    mutate(join_by = "manual") %>%
-    bind_rows(patel_inclusion_list_full$with_sanger_seq, .) %>%
-    assert(is_uniq, species)
+# Helper function for combining manual inclusion lists
+combine_inclusion_lists <- function(...) {
+  bind_rows(...) %>%
+  select(-contains("note")) %>%
+  assert(is_uniq, species) %>%
+  assert(not_na, species)
 }
 
 # Download Sanger sequences from GenBank----
@@ -2542,7 +2495,17 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
       by = "species"
     ) %>%
     verify(nrow(.) > 0) %>%
-    assert(is_uniq, species)
+    assert(is_uniq, species) %>%
+    # Join accession length data
+    pivot_longer(names_to = "target", values_to = "accession", -species) %>%
+    filter(!is.na(accession)) %>%
+    left_join(
+      select(sanger_seqs_with_voucher_data, accession, target, seq_len),
+      by = c("target", "accession")
+    ) %>%
+    assert(not_na, seq_len) %>%
+    pivot_wider(names_from = target, values_from = c(accession, seq_len)) %>%
+    mutate(join_by = "manual")
 
   # 2. Filter to best joined sequences per species with rbcL and another gene
   rbcl_joined <- joined_all %>%

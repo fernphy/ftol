@@ -291,39 +291,23 @@ tar_plan(
   # Any species with accessions (sequences) in this data.frame
   # will be preferentially used over other sources.
 
-  # Process Thelypteridaceae from Patel el al. (2019)
-  # Use sequences already in sanger_seqs_combined_filtered when possible
-  # Also makes a list of "missing" seqs in sanger_seqs_combined_filtered
-  # that need to be loaded separately
-  patel_inclusion_list_full = create_patel_inclusion_list(
+  # Process Thelypteridaceae inclusion list from Patel el al. (2019)
+  patel_inclusion_list = create_patel_inclusion_list(
     path_to_patel_data = contentid::resolve(
       "hash://sha256/b8320b3ea7e59eb0c9e7da3b7163d375e1fd4511d53ffbb6f1c7c3c38858929a", # nolint
        registries = "utils/local.tsv"),
-    pteridocat = pteridocat,
-    sanger_seqs_combined_filtered = sanger_seqs_combined_filtered
+    pteridocat = pteridocat
   ),
-
-  # Load missing Patel et al. 2019 seqs from local db
-  patel_seqs_missing_raw = load_seqs_from_local_db(
-    patel_inclusion_list_full$missing),
-  patel_genes_missing = unique(patel_seqs_missing_raw$gene),
-  # Extract target genes and spacers with superCRUNCH
-  tar_target(
-    patel_seqs_missing_extract_res,
-    extract_from_ref_blast(
-      query_seqtbl = patel_seqs_missing_raw,
-      ref_seqtbl = fern_ref_seqs,
-      target = patel_genes_missing,
-      blast_flavor = "dc-megablast",
-      other_args = c("-m", "span", "--threads", "4")
-    ),
-    pattern = map(patel_genes_missing)
+  # Load manual inclusion list
+  tar_file_read(
+    manual_inclusion_list,
+    "_targets/user/data_raw/accs_manual.csv",
+    read_csv(file = !!.x)
   ),
-  patel_seqs_missing = clean_extract_res(
-    patel_seqs_missing_extract_res, "dc-megablast"),
-  patel_inclusion_list = add_missing_patel_seqs(
-    patel_inclusion_list_full,
-    patel_seqs_missing
+  # Combine Patel et al and manual lists
+  inclusion_list = combine_inclusion_lists(
+    patel_inclusion_list,
+    manual_inclusion_list
   ),
 
   # Select final Sanger sequences ----
@@ -341,7 +325,7 @@ tar_plan(
   # - 4. species with the greatest combined length of other genes
   sanger_accessions_selection = select_genbank_genes(
     sanger_seqs_with_voucher_data, mpcheck_monophy,
-    manually_selected_seqs = patel_inclusion_list),
+    manually_selected_seqs = inclusion_list),
 
   # Download core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
