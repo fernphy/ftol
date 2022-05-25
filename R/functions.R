@@ -2736,7 +2736,7 @@ inspect_rogues <- function(
     # Do any manual fixes needed to remove mistaken rogues
     # Then make sure all rogues are real
     assert(isTRUE, real_rogue) %>%
-    select(species, accession, gene, q_family, s_family)
+    select(species, accession, target = gene, q_family, s_family)
 	
 }
 
