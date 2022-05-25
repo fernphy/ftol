@@ -2883,9 +2883,9 @@ format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, stri
   if(isTRUE(strict)) {
     # require "partial or complete" "genome" if strict
     # exclude one accession that causes problems for extracting genes AP004638
-    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND (partial OR complete) AND genome NOT AP004638') # no lint
+    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7001:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND (partial OR complete) AND genome NOT AP004638') # no lint
   } else {
-    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7000:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
+    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7001:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
   }
   query
 }
