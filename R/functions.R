@@ -3303,16 +3303,17 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 
 #' Assign taxonomic clusters to sequences
 #'
-#' Only meant for spacer regions. Will drop sequences
-#' if fewer than four sequences in a cluster
-#'
-#' @param plastid_genes_unaligned_combined Combined Sanger and plastome sequences
+#' @param sanger_accessions_selection Selected GenBank (Sanger) sequences to use
+#' @param sanger_seqs_combined_filtered Sanger sequence data after removing
+#'   rogues
+#' @param plastome_seqs_combined_filtered Plastome sequence data after filtering
+#'   to best accession per taxon
 #' @param ppgi_taxonomy PPGI taxonomy
 #' @param plastome_metadata_renamed Plastome metadata with resolved taxonomic names
 #' @param target_select Name of selected target region
 #'
 #' @return seqtbl
-#'
+#' 
 assign_tax_clusters <- function(
   sanger_accessions_selection,
   sanger_seqs_combined_filtered,
