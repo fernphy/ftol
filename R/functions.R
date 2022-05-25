@@ -4508,14 +4508,16 @@ concatenate_plastid_sanger <- function(
         align_trimmed = map(
           align_trimmed,
           ~magrittr::extract(., rownames(.) %in% plastome_species, ))
-      )
+      ) %>%
+      mutate(align_trimmed = map(align_trimmed, ips::deleteEmptyCells))
     # Filter to Sanger alignments by gene name
   } else if (type_select == "sanger") {
     res <- bind_rows(
       plastid_genes_aligned_trimmed,
       plastid_spacers_aligned_trimmed) %>%
       select(-cluster) %>%
-      filter(target %in% target_loci)
+      filter(target %in% target_loci) %>%
+      mutate(align_trimmed = map(align_trimmed, ips::deleteEmptyCells))
   } else (stop("Must choose 'plastome' or 'sanger' for 'type_select'"))
   
   res
