@@ -3905,6 +3905,14 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   match_results_plastome_resolved <- ts_resolve_names(
     match_results_plastome, ref_names_data) %>%
     assert(not_na, everything()) %>%
+    # Modify check for correctly matched name after manual inspection
+    mutate(
+      match_type = case_when(
+        query == "Bolbitis laxireticulata K.Iwats." &
+        matched_name == "Bolbitis × laxireticulata K. Iwats." ~ "checked_ok",
+      TRUE ~ match_type
+      )
+    ) %>%
     # Make sure no names detected by fuzzy match
     # (all names should have already been inspected)
     verify(
