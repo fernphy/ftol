@@ -3222,7 +3222,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
     verify(all(n > 0)) %>%
     select(-n) %>%
     # Add column for sequence length
-    mutate(slen = map_dbl(seq, ~length(.[[1]]))) %>%
+    mutate(seq_len = map_dbl(seq, ~count_non_missing(.[1]))) %>%
     select(-seq) %>%
     assert(not_na, everything())
   
