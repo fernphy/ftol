@@ -142,3 +142,62 @@ gb_slen_get <- function(accessions, restez_path = "/data_raw", na_rm = TRUE) {
     assert(is_uniq, accession) %>%
     assert(not_na, everything())
 }
+
+# Data inspection ----
+
+#' Get useful information about accessions for a species in FTOL
+#'
+#' @param species_select Species name.
+#' @param sanger_accessions_selection Dataframe of accessions used in FTOL.
+#' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to resolved
+#'   name from pteridocat.
+#' @param match_results_resolved_all Dataframe with results of resolving
+#'   NCBI taxonomic names to pteridocat.
+#'
+#' @return Tibble
+#'
+get_acc_info <- function(
+  species_select,
+  sanger_accessions_selection,
+  ncbi_accepted_names_map,
+  match_results_resolved_all) {
+  sanger_accessions_selection %>%
+    filter(species == species_select) %>%
+    mutate(across(contains("seq_len"), as.character)) %>%
+    left_join(
+      unique(select(ncbi_accepted_names_map, species, taxid, resolved_name)),
+      by = "species"
+    ) %>%
+    left_join(
+      select(match_results_resolved_all, -taxid), by = "resolved_name"
+    ) %>%
+    pivot_longer(everything()) %>%
+    mutate(value = as.character(value)) %>%
+    filter(!is.na(value)) %>%
+    filter(value != "0")
+  }
+
+#' Lookup name data in NCBI taxonomic database for a
+#' species in FTOL
+#'
+#' @param species_select Species name.
+#' @param sanger_accessions_selection Dataframe of accessions used in FTOL.
+#' @param ncbi_accepted_names_map Dataframe mapping NCBI taxid to resolved
+#'   name from pteridocat.
+#' @param ncbi_names_full NCBI taxonomic names database for ferns
+#'
+#' @return Tibble
+get_ncbi_name <- function(
+  species_select,
+  sanger_accessions_selection,
+  ncbi_accepted_names_map,
+  ncbi_names_full) {
+  sanger_accessions_selection %>%
+    filter(species == species_select) %>%
+    select(-contains("seq_len")) %>%
+    left_join(
+      select(ncbi_accepted_names_map, species, taxid, resolved_name)
+    ) %>%
+    select(taxid) %>%
+    inner_join(ncbi_names_full)
+}
