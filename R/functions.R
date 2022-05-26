@@ -669,7 +669,7 @@ extract_gene_fragile <- function (gb_entry, target) {
   
 }
 
-extract_gene <- safely(extract_gene_fragile)
+extract_gene <- purrr::safely(extract_gene_fragile)
 
 #' Download fern DNA sequences to use as reference for extracting
 #' target sequences with BLAST
