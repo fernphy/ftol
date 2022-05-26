@@ -6,3 +6,6 @@ prep_ref_seqs:
 targets:
   script: _targets.R
   store: _targets
+supp_plan:
+  script: _supp_plan.R
+  store: _supp_store
