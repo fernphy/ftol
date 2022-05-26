@@ -581,9 +581,12 @@ tar_plan(
   # Load Sanger consensus tree
   sanger_con_tree = get_best_tree(sanger_ml_log_rep, "con"),
   # Check monophyly ----
-  # Root ML tree on bryophytes
+  # Root tree on Zygnema
+  # - rapid ML tree
+  sanger_fast_tree_rooted = root_fern_tree(sanger_tree_fast),
+  # - ML tree
   sanger_mlr_tree_rooted = root_fern_tree(sanger_mlr_tree),
-  # Root consensus tree
+  # - consensus tree
   sanger_con_tree_rooted = root_fern_tree(sanger_con_tree),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
