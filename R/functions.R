@@ -1170,6 +1170,35 @@ load_seqs_from_local_db <- function(raw_meta) {
 
 # Download metadata for Sanger sequences from GenBank ----
 
+#' Download GenBank summary data
+#'
+#' Helper frunction for fetch_metadata()
+#'
+#' @param search_res Output of initial search conducted with
+#'   rentrez::entrez_search(). Initial search must have `use_history = TRUE`.
+#' @param col_select Names of GenBank data columns to return.
+#' @param retstart Result index to start downloading. Note that NCBI starts
+#'   counting at 0.
+#' @param max_hits Maximum number of results to return.
+#'
+#' @return Dataframe
+#' 
+entrez_summary_gb <- function(search_res,
+                              col_select, retstart = 0, max_hits = 500) {
+  # Download data
+  rentrez::entrez_summary(
+    db = "nuccore",
+    retstart = retstart,
+    retmax = max_hits,
+    web_history = search_res$web_history
+  ) %>%
+    # Extract selected columns from result
+    purrr::map_dfr(magrittr::extract, col_select) %>%
+    # Make sure taxid column is character
+    mutate(taxid = as.character(taxid)) %>%
+    assert(not_na, taxid)
+}
+
 #' Fetch metadata from GenBank
 #'
 #' @param query String to use for querying GenBank
@@ -1179,75 +1208,63 @@ load_seqs_from_local_db <- function(raw_meta) {
 #'
 fetch_metadata <- function(
   query = NULL,
-  col_select = c("gi", "caption", "taxid", "title", "slen", "subtype", "subname")) {
-
+  col_select = c(
+    "gi", "caption", "taxid", "title", "slen", "subtype", "subname")) {
   assertthat::assert_that(assertthat::is.string(query))
-
   assertthat::assert_that(is.character(col_select))
 
-  # Do an initial search without downloading any IDs to see how many hits
-  # we get.
-  initial_genbank_results <- rentrez::entrez_search(
-    db = "nucleotide",
+  # Conduct search and keep results on server,
+  # don't download anything yet
+  search_res <- rentrez::entrez_search(
+    db = "nuccore",
     term = query,
-    use_history = FALSE
+    use_history = TRUE,
+    retmax = 0
   )
 
+  # Make sure something is in there
   assertthat::assert_that(
-    initial_genbank_results$count > 0,
-    msg = "Query resulted in no hits")
-
-  # Download IDs with maximum set to 1 more than the total number of hits.
-  genbank_results <- rentrez::entrez_search(
-    db = "nucleotide",
-    term = query,
-    use_history = FALSE,
-    retmax = initial_genbank_results$count + 1
+    search_res$count > 0,
+    msg = "Query resulted in no hits"
   )
 
-  # Define internal function to download genbank data into tibble
-  entrez_summary_gb <- function(id, col_select) {
-    # Download data
-    rentrez::entrez_summary(db = "nucleotide", id = id) %>%
-      # Extract selected columns from result
-      purrr::map_dfr(magrittr::extract, col_select) %>%
-      # Make sure taxid column is character
-      mutate(taxid = as.character(taxid)) %>%
-      assert(not_na, taxid)
-  }
+  # Number of hits NCBI allows us to download at once
+  # for emsummary.
+  # cf: "Esummary includes error message: Too many UIDs in request
+  # Maximum number of UIDs is 500 for JSON format output"
+  #
+  # This should not need to be changed
+  max_hits <- 500
 
-  # Extract list of IDs from search results
-  genbank_ids <- genbank_results$ids
+  # NCBI won't return more than 500 results at a time.
+  # So download in chunks to account for this
+  if (search_res$count > max_hits) {
 
-  # Fetch metadata for each ID and extract selected columns
-  if (length(genbank_ids) == 1) {
-    rentrez_results <- rentrez::entrez_summary(db = "nucleotide", id = genbank_ids) %>%
-      magrittr::extract(col_select) %>%
-      tibble::as_tibble() %>%
-      mutate(taxid = as.character(taxid)) %>%
-      assert(not_na, taxid)
+    # Determine number of chunks
+    n_chunks <- search_res$count %/% max_hits
+
+    # Set vector of start values: each chunk
+    # will be downloaded starting from that point
+    start_vals <- c(0, seq_len(n_chunks) * max_hits)
+
+    # Loop over start values and download up to max_hits for each,
+    # then combine
+    rentrez_results <- purrr::map_df(
+      start_vals,
+      ~ entrez_summary_gb(
+        search_res = search_res,
+        col_select = col_select,
+        retstart = .x,
+      )
+    )
   } else {
-    # Split input vector into chunks
-    n <- length(genbank_ids)
-    chunk_size <- 200
-    r <- rep(1:ceiling(n/chunk_size), each=chunk_size)[1:n]
-    genbank_ids_list <- split(genbank_ids, r) %>% magrittr::set_names(NULL)
-
-    # Will get error if there is only one ID in last chunk,
-    # so if that is the case, combine with previous chunk
-    n_chunks <- length(genbank_ids_list)
-    if (length(genbank_ids_list[[n_chunks]]) == 1) {
-      genbank_ids_list[[n_chunks - 1]] <- c(
-        genbank_ids_list[[n_chunks - 1]], genbank_ids_list[[n_chunks]])
-        genbank_ids_list[n_chunks] <- NULL
-    }
-
-    # Download results for each chunk
-    rentrez_results <- map_df(genbank_ids_list, ~entrez_summary_gb(., col_select = col_select))
+    rentrez_results <- entrez_summary_gb(
+      search_res = search_res,
+      col_select = col_select
+    )
   }
 
   return(rentrez_results)
-
 }
 
 #' Helper function for fetch_genbank_refs() to parse character vector from GenBank record into dataframe
@@ -1332,10 +1349,13 @@ fetch_genbank_refs <- function(query) {
 #' @param strict Logical; use strict version of search string or not?
 #'
 #' @return Datarame
-#' fetch_fern_metadata("rbcL", start_date = "2018/01/01", end_date = "2018/02/01")
-#' fetch_fern_metadata("trnL-trnF_intron", start_date = "2017/01/01", end_date = "2018/02/01")
+#' fetch_fern_metadata(
+#'   "rbcL", start_date = "2018/01/01", end_date = "2018/02/01")
+#' fetch_fern_metadata(
+#'   "trnL-trnF_intron", start_date = "2017/01/01", end_date = "2018/02/01")
 fetch_fern_metadata <- function(
-  target, start_date = "1980/01/01", end_date, accs_exclude = NULL, strict = FALSE) {
+  target, start_date = "1980/01/01", end_date, accs_exclude = NULL,
+  strict = FALSE) {
 
   assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
