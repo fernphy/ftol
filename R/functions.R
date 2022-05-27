@@ -2,11 +2,11 @@
 
 #' Load data from the Catalog of Life
 #'
-#' @param col_data_path Path to TSV downloaded from the Catalog of Life 
+#' @param col_data_path Path to TSV downloaded from the Catalog of Life
 #' https://www.catalogueoflife.org/data/download
 #'
 #' @return Dataframe (tibble)
-#' 
+#'
 load_col <- function(col_data_path) {
   # Use data.table as it handles quotation marks in data better than read_*() functions
   data.table::fread(file = col_data_path, sep = "\t", stringsAsFactors = FALSE) %>%
@@ -15,22 +15,22 @@ load_col <- function(col_data_path) {
 }
 
 #' Extract Ferns of the World taxonomic data from Catalog of Life
-#' 
+#'
 #' Also do some quality checks, and filter to only data at species level or below
 #'
 #' @param col_data Catalog of Life data. Output of of load_col()
 #'
 #' @return Dataframe (tibble)
-#' 
+#'
 extract_fow_from_col <- function(col_data) {
   # Filter Catalog of Life data to only Ferns of the World
-  fow <- col_data %>% 
+  fow <- col_data %>%
     filter(dwc_dataset_id == "1140") %>%
     select(
-      taxonID = dwc_taxon_id, 
-      acceptedNameUsageID = dwc_accepted_name_usage_id, 
+      taxonID = dwc_taxon_id,
+      acceptedNameUsageID = dwc_accepted_name_usage_id,
       taxonomicStatus = dwc_taxonomic_status,
-      rank = dwc_taxon_rank, 
+      rank = dwc_taxon_rank,
       scientificName = dwc_scientific_name) %>%
     # Keep only species level and below
     filter(rank %in% c("form", "infraspecific name", "species", "subform", "subspecies", "subvariety", "variety")) %>%
@@ -38,37 +38,37 @@ extract_fow_from_col <- function(col_data) {
     filter(str_detect(scientificName, "Polypodiaceae tribe Thelypterideae|Asplenium grex Triblemma|Pteridaceae tribus Platyzomateae|Filicaceae tribus Taenitideae", negate = TRUE)) %>%
     select(-rank) %>%
     # Note: taxonID is unique, but scientificName may not be (esp in case of ambiguous synonyms)
-    assert(not_na, taxonID, scientificName) %>% 
+    assert(not_na, taxonID, scientificName) %>%
     assert(is_uniq, taxonID)
-  
+
   # Make sure all synonyms map correctly
-  fow_accepted <- 
+  fow_accepted <-
     fow %>%
     filter(str_detect(taxonomicStatus, "accepted")) %>%
     select(taxonID, scientificName, -taxonomicStatus)
-  
-  fow_synonyms <- 
+
+  fow_synonyms <-
     fow %>%
     filter(str_detect(taxonomicStatus, "synonym")) %>%
     select(taxonID, acceptedNameUsageID, scientificName, -taxonomicStatus)
-  
+
   fow_synonyms %>%
     anti_join(fow_accepted, by = c(acceptedNameUsageID = "taxonID")) %>%
     verify(nrow(.) == 0, success_fun = success_logical)
-  
+
   # Make sure all accepted names and synonyms are accounted for
   bind_rows(fow_accepted, fow_synonyms) %>%
     assert(is_uniq, taxonID) %>%
     anti_join(fow, by = "taxonID") %>%
     verify(nrow(.) == 0, success_fun = success_logical)
-  
+
   # FIXME: Make sure accepted names and synonyms are distinct
   # A few repeats. Leave these in for now, but will need to fix.
   # fow_accepted %>%
   #   inner_join(fow_synonyms, by = c(name = "synonym")) %>%
-  #   select(scientific_name = name) %>% 
+  #   select(scientific_name = name) %>%
   #   left_join(fow)
-  
+
   fow
 }
 
@@ -76,12 +76,12 @@ extract_fow_from_col <- function(col_data) {
 #'
 #' @param ref_aln_files Path to alignment (fasta) files,
 #' named like 'ref_aln_atpA.fasta', where "atpA" is the target (gene) name
-#' @return Tibble with two columns: "target" with name of gene, 
+#' @return Tibble with two columns: "target" with name of gene,
 #' and "align_trimmed" with DNA sequences in a list
 load_ref_aln <- function(ref_aln_files) {
   tibble(path = ref_aln_files) %>%
     mutate(
-      target = str_match(path, "([a-zA-Z0-9\\-]+)\\.fasta") %>% 
+      target = str_match(path, "([a-zA-Z0-9\\-]+)\\.fasta") %>%
         magrittr::extract(,2),
       align_trimmed = map(path, ~ape::read.FASTA(.) %>% as.matrix)
     ) %>%
@@ -278,10 +278,10 @@ combine_inclusion_lists <- function(...) {
 #'
 #' @return String
 format_fern_query <- function(target, start_date = "1980/01/01", end_date, strict = FALSE) {
-  
+
   # Format query
-	# Assume that we only want single genes or small sets of genes, not entire plastome.
-	# Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
+  # Assume that we only want single genes or small sets of genes, not entire plastome.
+  # Set upper limit to 7000 bp (we will fetch plastomes >7000 bp separately).
 
   # Define query based on whether it is a spacer region or not
   is_spacer <- str_detect(target, "-")
@@ -322,35 +322,35 @@ format_fern_query <- function(target, start_date = "1980/01/01", end_date, stric
 #' single string. Records are separated by '\\' within the string.
 #'
 #' @param query String; query string (formatted as if querying https://www.ncbi.nlm.nih.gov/nuccore/)
-#' @param ret_type Return type; choose from "gb" 
+#' @param ret_type Return type; choose from "gb"
 #'   (raw text in GenBank flat-file format) or "fasta" (list of class DNAbin)
 #' @param clean_names Logical; should names be cleaned to accession number only?
 #'
 #' @return String or list of class DNAbin
-#' 
+#'
 fetch_gb_raw <- function(query, ret_type = c("gb", "fasta"), clean_names = TRUE) {
-  
+
   assertthat::assert_that(assertthat::is.string(query))
   assertthat::assert_that(assertthat::is.string(ret_type))
   assertthat::assert_that(assertthat::is.flag(clean_names))
-  
+
   # Get list of GenBank IDs (GIs)
   uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
-  
+
   # Extract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
   message(glue("Found {num_hits} accessions (UIDs) for query '{query}'"))
-  
+
   # Download complete GenBank record for each and write it to a temporary file
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, digest::digest(query))
-  
+
   # Make sure temp file doesn't already exist
   if (fs::file_exists(temp_file)) fs::file_delete(temp_file)
-  
+
   # Download data
   reutils::efetch(uid, "nucleotide", rettype = ret_type, retmode = "text", outfile = temp_file)
-  
+
   # Load results back in to R
   if (ret_type == "fasta") {
     results <- ape::read.FASTA(temp_file)
@@ -364,12 +364,12 @@ fetch_gb_raw <- function(query, ret_type = c("gb", "fasta"), clean_names = TRUE)
   } else {
     error("'ret_type' must be 'gb' or 'fasta'")
   }
-  
+
   # Clean up
   fs::file_delete(temp_file)
-  
+
   results
-  
+
 }
 
 #' Parse a GenBank flatfile and retrieve integeneic spacer sequences
@@ -388,13 +388,13 @@ parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
 
   # Change back to sequential when done (including on failure)
   on.exit(future::plan(future::sequential), add = TRUE)
-  
+
   assertthat::assert_that(assertthat::is.string(gb_raw))
   assertthat::assert_that(assertthat::is.number(workers))
-  
+
   # Set backend for parallelization
   future::plan(future::multisession, workers = workers)
-  
+
   seqs_and_errors <-
     # Start with raw GenBank flat-file as single text string
     gb_raw %>%
@@ -414,7 +414,7 @@ parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
 
   # Close parallel workers
   future::plan(future::sequential)
-  
+
   # Convert results to tibble
   seqs <- seqs_and_errors[["result"]] %>%
     purrr::compact() %>%
@@ -444,13 +444,13 @@ parse_gb_gene <- function(gb_raw, target, workers) {
 
   # Change back to sequential when done (including on failure)
   on.exit(future::plan(future::sequential), add = TRUE)
-  
+
   assertthat::assert_that(assertthat::is.string(gb_raw))
   assertthat::assert_that(assertthat::is.number(workers))
-  
+
   # Set backend for parallelization
   future::plan(future::multisession, workers = workers)
-  
+
   seqs_and_errors <-
     # Start with raw GenBank flat-file as single text string
     gb_raw %>%
@@ -468,13 +468,13 @@ parse_gb_gene <- function(gb_raw, target, workers) {
 
   # Close parallel workers
   future::plan(future::sequential)
-  
+
   # Convert results to tibble
   seqs <- seqs_and_errors[["result"]] %>%
     purrr::compact() %>%
     do.call(c, .) %>%
     dnabin_to_seqtbl()
-    
+   
   # Split accession and species columns
   if(nrow(seqs > 0)) {
   seqs <-
@@ -502,15 +502,15 @@ parse_gb_gene <- function(gb_raw, target, workers) {
 #' (in the case of trnL-trnF, trnL) be included?
 #'
 #' @return DNA sequence
-#' 
-extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
+#'
+extract_spacer_fragile <- function(gb_entry, target, req_intron = FALSE) {
 
   # `target` should have exactly one hyphen
-	assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
-	
-	# split into names of two flanking genes
-	flank_1 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
-	flank_2 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
+  assertthat::assert_that(isTRUE(str_count(target, "-") == 1))
+
+  # split into names of two flanking genes
+  flank_1 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(1)
+  flank_2 <- str_split(target, "-") %>% magrittr::extract2(1) %>% magrittr::extract2(2)
 
   # Parse the GenBank file
   gb_parsed <- suppressMessages(genbankr::readGenBank(text = gb_entry, partial = TRUE, verbose = FALSE))
@@ -518,7 +518,7 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
   if(is.null(gb_parsed)) {
     stop("Could not parse GenBank file")
   }
-  
+
   # Extract the accession
   accession <- attributes(gb_parsed)$accession
   if(is.null(accession)) {
@@ -526,7 +526,7 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
   }
   # Extract the feature locations
   other_features <-
-    genbankr::otherFeatures(gb_parsed) %>% 
+    genbankr::otherFeatures(gb_parsed) %>%
     as_tibble() %>%
     mutate(across(where(is.factor), as.character))
 
@@ -534,7 +534,7 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
     stop(glue::glue("No 'type' for {target} gene detected in accession {accession}"))
   }
 
-  # Optionally check for intron in flank_1  
+  # Optionally check for intron in flank_1 
   if(isTRUE(req_intron)) {
     # Return NULL if no gene detected
     if(!"gene" %in% colnames(other_features)) {
@@ -561,7 +561,7 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
   spacer_features <-
     other_features %>%
     filter(
-      type == "misc_feature", 
+      type == "misc_feature",
       str_detect(note, regex(as.character(glue::glue("{flank_1}-{flank_2}")), ignore_case = TRUE)),
       str_detect(note, "spacer"),
       str_detect(note, "intron", negate = TRUE)
@@ -584,13 +584,13 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
   if(isTRUE(req_intron)) {
     # Extract the intron + spacer sequence, or
     seq <-
-      Biostrings::getSeq(gb_parsed) %>% 
+      Biostrings::getSeq(gb_parsed) %>%
       Biostrings::subseq(intron_features$start, spacer_features$end) %>%
       ape::as.DNAbin()
     } else {
     # extract the spacer sequence
     seq <-
-      Biostrings::getSeq(gb_parsed) %>% 
+      Biostrings::getSeq(gb_parsed) %>%
       Biostrings::subseq(spacer_features$start, spacer_features$end) %>%
       ape::as.DNAbin()
   }
@@ -600,9 +600,9 @@ extract_spacer_fragile <- function (gb_entry, target, req_intron = FALSE) {
 
   # attributes(gb_parsed)$sources$organism
   names(seq) <- glue::glue("{accession}__{organism}") %>% as.character()
-  
+
   seq
-  
+
 }
 
 extract_spacer <- purrr::safely(extract_spacer_fragile)
@@ -616,8 +616,8 @@ extract_spacer <- purrr::safely(extract_spacer_fragile)
 #' @param target String; name of gene
 #'
 #' @return DNA sequence
-#' 
-extract_gene_fragile <- function (gb_entry, target) {
+#'
+extract_gene_fragile <- function(gb_entry, target) {
 
   # Parse the GenBank file
   gb_parsed <- suppressMessages(genbankr::readGenBank(text = gb_entry, partial = TRUE, verbose = FALSE))
@@ -625,7 +625,7 @@ extract_gene_fragile <- function (gb_entry, target) {
   if(is.null(gb_parsed)) {
     stop("Could not parse GenBank file")
   }
-  
+
   # Extract the accession
   accession <- attributes(gb_parsed)$accession
   if(is.null(accession)) {
@@ -647,15 +647,15 @@ extract_gene_fragile <- function (gb_entry, target) {
 
   assertthat::assert_that(
     is.numeric(target_genes$start))
-  
+
   assertthat::assert_that(
     is.numeric(target_genes$end))
-  
+
   assertthat::assert_that(target_genes$start < target_genes$end)
 
   # Extract the gene
   seq <-
-    Biostrings::getSeq(gb_parsed) %>% 
+    Biostrings::getSeq(gb_parsed) %>%
     Biostrings::subseq(target_genes$start, target_genes$end) %>%
     ape::as.DNAbin()
 
@@ -664,9 +664,9 @@ extract_gene_fragile <- function (gb_entry, target) {
 
   # attributes(gb_parsed)$sources$organism
   names(seq) <- glue::glue("{accession}__{organism}") %>% as.character()
-  
+
   seq
-  
+
 }
 
 extract_gene <- purrr::safely(extract_gene_fragile)
@@ -685,7 +685,7 @@ extract_gene <- purrr::safely(extract_gene_fragile)
 #' from results
 #'
 #' @return Tibble of DNA sequences
-fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date, 
+fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date,
   req_intron = FALSE, workers, strict = FALSE, accs_exclude = NULL) {
 
    # Check if query target is a spacer region
@@ -732,7 +732,7 @@ fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date,
 #' @param fern_ref_seqs_raw Output of fetch_fern_ref_seqs()
 #' @return Tibble of filtered sequences
 filter_ref_seqs <- function(fern_ref_seqs_raw) {
-  
+
 # Filter based on non-missing bases
   fern_ref_seqs_raw %>%
     select(seq, target) %>%
@@ -884,10 +884,10 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
   extracted_seqs_res <- NULL
 
   fmt6_cols <- c("qseqid", "sseqid", "pident", "length", "mismatch",
-                 "gapopen", "qstart", "qend", "sstart", "send", "evalue", 
+                 "gapopen", "qstart", "qend", "sstart", "send", "evalue",
                  "bitscore")
 
-  if (length(blast_file) > 0 && isTRUE(blast_res)) 
+  if (length(blast_file) > 0 && isTRUE(blast_res))
     blast_res <- suppressMessages(
       {read_tsv(blast_file, col_names = fmt6_cols, col_types = "ccdddddddddd")})
   if (length(log_file) > 0) log_res <- suppressMessages(read_tsv(log_file))
@@ -899,7 +899,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
       dnabin_to_seqtbl()
     }
   }
-    
+   
   fs::dir_delete(in_folder)
   fs::dir_delete(out_folder)
 
@@ -932,59 +932,59 @@ error_tbl <- function(accession, gene, msg) {
 #' @return List with two items:
 #'   - seq: Named character vector; DNA sequence
 #'   - error: Tibble with error message, gene name, and accession
-#' 
-extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
+#'
+extract_sequence <- function(gb_entry, gene, accs_exclude = NULL) {
 
   # Check for accession number
   accession_detected <- str_detect(gb_entry, "ACCESSION")
-	accession_detected_msg <- assertthat::validate_that(
-		accession_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
-	)
+  accession_detected_msg <- assertthat::validate_that(
+    accession_detected,
+    msg = glue::glue("Genbank flatfile not valid (missing ACCESSION); no sequence extracted")
+  )
   if (!accession_detected) {
-		message(accession_detected_msg)
-		return(
+    message(accession_detected_msg)
+    return(
       list(
         seq = NULL,
         error = tibble(gene = gene, msg = accession_detected_msg)
       )
     )
-	}
+  }
 
    # Extract accession number
-	accession <-
-		gb_entry %>%
-		paste(sep = "") %>%
-		str_match('ACCESSION(.+)\n') %>%
-		magrittr::extract(,2) %>%
-		# In very rare cases, may have multiple values for accession,
-		# separated by space. If so, take the first one.
-		str_trim(side = "both") %>%
-		str_split(" ") %>%
-		purrr::pluck(1,1)
+  accession <-
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_match('ACCESSION(.+)\n') %>%
+    magrittr::extract(,2) %>%
+    # In very rare cases, may have multiple values for accession,
+    # separated by space. If so, take the first one.
+    str_trim(side = "both") %>%
+    str_split(" ") %>%
+    purrr::pluck(1,1)
 
   # If exclusion list is present and it's on the list, skip it
   if(!is.null(accs_exclude) && accession %in% accs_exclude) return (list(seq = NULL, error = NULL))
-	
-	# Check for FEATURES and ORIGIN fields
+
+  # Check for FEATURES and ORIGIN fields
   features_detected <- str_detect(gb_entry, "FEATURES")
-	features_detected_msg <- assertthat::validate_that(
-		features_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
-	)
+  features_detected_msg <- assertthat::validate_that(
+    features_detected,
+    msg = glue::glue("Genbank flatfile not valid (missing FEATURES); no sequence extracted")
+  )
   if(!features_detected) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = features_detected_msg))
   )
 
   origin_detected <- str_detect(gb_entry, "ORIGIN")
-	origin_detected_msg <- assertthat::validate_that(
-		origin_detected,
-		msg = glue::glue("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
-	)
+  origin_detected_msg <- assertthat::validate_that(
+    origin_detected,
+    msg = glue::glue("Genbank flatfile not valid (missing ORIGIN); no sequence extracted")
+  )
   if(!origin_detected) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = origin_detected_msg))
   )
-  
+
   # Extract start and end of target gene
   gene_range_list <-
     gb_entry %>%
@@ -993,14 +993,14 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
     str_remove_all('\"') %>%
     str_match("FEATURES(.*)ORIGIN") %>%
     magrittr::extract(,1) %>%
-    # Match strings like 'gene complement(<1..10) /gene=rbcL' 
+    # Match strings like 'gene complement(<1..10) /gene=rbcL'
     # (we want the gene and the range it contains)
     # use negative look-ahead to match middle part NOT containing the word "/gene"
     # use '?' for non-greedy match, that will stop on the first instance of "/gene"
     str_match_all("gene +(?!/gene).*?/gene=[:alnum:]+") %>%
     unlist %>%
     str_squish()
-  
+
   # Make sure target gene is detected
   gene_detected <- any(str_detect(gene_range_list, regex(gene, ignore_case = TRUE)))
   gene_detected_msg <- assertthat::validate_that(
@@ -1010,11 +1010,11 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
   if(!gene_detected) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_detected_msg))
   )
-  
+
   # Subset to only the target gene
   gene_range <-
     gene_range_list %>%
-    magrittr::extract(str_detect(., regex(gene, ignore_case = TRUE))) %>% 
+    magrittr::extract(str_detect(., regex(gene, ignore_case = TRUE))) %>%
     str_split(" +") %>%
     unlist %>%
     magrittr::extract(!str_detect(., "gene")) %>%
@@ -1023,42 +1023,42 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
     unlist() %>%
     parse_number %>%
     sort()
-  
+
   # Check for duplicated genes
   gene_not_duplicated <- length(unique(gene_range)) <= 2
-	gene_not_duplicated_msg <- assertthat::validate_that(
-		gene_not_duplicated,
-		msg = glue::glue("Duplicate copies of {gene} gene detected in accession {accession}")
-	)
+  gene_not_duplicated_msg <- assertthat::validate_that(
+    gene_not_duplicated,
+    msg = glue::glue("Duplicate copies of {gene} gene detected in accession {accession}")
+  )
   if(!gene_not_duplicated) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_not_duplicated_msg))
   )
-	
+
   # Check that full range of gene was detected
-  gene_full <- length(gene_range) > 1 && 
-    is.numeric(gene_range) && 
-    !anyNA(gene_range) && 
-    gene_range[1] <= gene_range[2] && 
+  gene_full <- length(gene_range) > 1 &&
+    is.numeric(gene_range) &&
+    !anyNA(gene_range) &&
+    gene_range[1] <= gene_range[2] &&
     gene_range[2] >= gene_range[1]
-  
- 	gene_full_msg <- assertthat::validate_that(
-		gene_full,
-		msg = glue::glue("Full range of {gene} gene not detected in accession {accession}")
-	)
-	if(!gene_full) return(
+
+   gene_full_msg <- assertthat::validate_that(
+    gene_full,
+    msg = glue::glue("Full range of {gene} gene not detected in accession {accession}")
+  )
+  if(!gene_full) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = gene_full_msg))
   )
-  
+
   # Extract sequence, subset to target gene
-	sequence <- 
-		gb_entry %>%
-		paste(sep = "") %>%
-		str_remove_all("\n") %>%
-		str_remove_all('\"') %>%
-    strex::str_after_last("ORIGIN") %>% 
-		str_remove_all(" ") %>%
-		str_remove_all("[0-9]") %>%
-		substr(gene_range[1], gene_range[2])
+  sequence <-
+    gb_entry %>%
+    paste(sep = "") %>%
+    str_remove_all("\n") %>%
+    str_remove_all('\"') %>%
+    strex::str_after_last("ORIGIN") %>%
+    str_remove_all(" ") %>%
+    str_remove_all("[0-9]") %>%
+    substr(gene_range[1], gene_range[2])
 
   # Check for valid DNA sequences
   # - make a grep query that will hit any non-IUPAC character (in upper case)
@@ -1067,20 +1067,20 @@ extract_sequence <- function (gb_entry, gene, accs_exclude = NULL) {
   iupac_only <- str_detect(str_to_upper(sequence), non_iupac, negate = TRUE)
 
   iupac_only_msg <- assertthat::validate_that(
-		iupac_only,
-		msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
-	)
+    iupac_only,
+    msg = glue::glue("Non-IUPAC characters detected in {flank_1}-{flank_2} spacer of accession {accession}")
+  )
 
-	if(!iupac_only) return(
+  if(!iupac_only) return(
     list(seq = NULL, error = error_tbl(accession = accession, gene = gene, msg = iupac_only_msg))
   )
-  
+
   # If pass all checks, return sequence with no error
   list(
     # convert sequence to ape DNAseq
     seq = set_names(sequence, accession),
     error = NULL
-  ) 
+  )
 }
 
 #' Clean up results from extract_from_ref_blast()
@@ -1099,7 +1099,7 @@ clean_extract_res <- function(extract_from_ref_blast_res, blast_flavor_select) {
 # Load GenBank sequences from local database ----
 
 #' Load a tibble of all accession numbers in local GenBank database
-#' 
+#'
 #' Database must be created using {restez}. See ./R/setup_gb.R
 #'
 #' @param restez_path Path to directory containing restez database.
@@ -1176,15 +1176,15 @@ load_seqs_from_local_db <- function(raw_meta) {
 #' @param col_select Character vector; columns of metadata to retain in output
 #'
 #' @return Tibble
-#' 
+#'
 fetch_metadata <- function(
   query = NULL,
   col_select = c("gi", "caption", "taxid", "title", "slen", "subtype", "subname")) {
-  
+
   assertthat::assert_that(assertthat::is.string(query))
-  
+
   assertthat::assert_that(is.character(col_select))
-  
+
   # Do an initial search without downloading any IDs to see how many hits
   # we get.
   initial_genbank_results <- rentrez::entrez_search(
@@ -1192,11 +1192,11 @@ fetch_metadata <- function(
     term = query,
     use_history = FALSE
   )
-  
+
   assertthat::assert_that(
     initial_genbank_results$count > 0,
     msg = "Query resulted in no hits")
-  
+
   # Download IDs with maximum set to 1 more than the total number of hits.
   genbank_results <- rentrez::entrez_search(
     db = "nucleotide",
@@ -1204,7 +1204,7 @@ fetch_metadata <- function(
     use_history = FALSE,
     retmax = initial_genbank_results$count + 1
   )
-  
+
   # Define internal function to download genbank data into tibble
   entrez_summary_gb <- function(id, col_select) {
     # Download data
@@ -1215,10 +1215,10 @@ fetch_metadata <- function(
       mutate(taxid = as.character(taxid)) %>%
       assert(not_na, taxid)
   }
-  
+
   # Extract list of IDs from search results
   genbank_ids <- genbank_results$ids
-  
+
   # Fetch metadata for each ID and extract selected columns
   if (length(genbank_ids) == 1) {
     rentrez_results <- rentrez::entrez_summary(db = "nucleotide", id = genbank_ids) %>%
@@ -1245,9 +1245,9 @@ fetch_metadata <- function(
     # Download results for each chunk
     rentrez_results <- map_df(genbank_ids_list, ~entrez_summary_gb(., col_select = col_select))
   }
-  
+
   return(rentrez_results)
-  
+
 }
 
 #' Helper function for fetch_genbank_refs() to parse character vector from GenBank record into dataframe
@@ -1255,19 +1255,19 @@ fetch_metadata <- function(
 #' @param text Character vector from reading in a GenBank record
 #'
 #' @return Dataframe
-#' 
+#'
 #' @examples
-#' gb_text <- c("ACCESSION   MK697585",                                             
-#' "REFERENCE   1  (bases 1 to 817)",                                  
+#' gb_text <- c("ACCESSION   MK697585",                                            
+#' "REFERENCE   1  (bases 1 to 817)",                                 
 #' "  TITLE     Hybridization rates in Dryopteris carthusiana complex",
-#' "REFERENCE   2  (bases 1 to 817)",                                  
-#' "  TITLE     Direct Submission")  
+#' "REFERENCE   2  (bases 1 to 817)",                                 
+#' "  TITLE     Direct Submission") 
 #' tidy_gb_text(gb_text)
 tidy_gb_text <- function(text) {
-  
+
   if(length(text) == 0) return(tibble())
   if(is.null(text)) return(tibble())
-  
+
   text %>%
     stringr::str_trim("left") %>%
     # Split text on the first instance of >1 space
@@ -1290,37 +1290,37 @@ tidy_gb_text <- function(text) {
 #' fetch_genbank_refs("KY241392")
 #' fetch_genbank_refs("Crepidomanes minutum AND rbcL[Gene]")
 fetch_genbank_refs <- function(query) {
-  
+
   # Get list of GenBank IDs (GIs)
   uid <- reutils::esearch(term = query, db = "nucleotide", usehistory = TRUE)
-  
+
   # Exract number of hits and print
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
   print(glue("Found {num_hits} sequences (UIDs)"))
-  
+
   # Download complete GenBank record for each and write it to a temporary file
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, "gb_records.txt")
-  
+
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
+
   # Read in full GenBank records text
-  gbrecs <- readr::read_lines(temp_file) %>% 
+  gbrecs <- readr::read_lines(temp_file) %>%
     # Replace problematic slashes (that indicate a break between records) with "RECORD_BREAK"
-    stringr::str_replace_all("^//$", "RECORD_BREAK") %>% 
+    stringr::str_replace_all("^//$", "RECORD_BREAK") %>%
     # Keep only relevant lines in each record
     magrittr::extract(str_detect(., "ACCESSION|TITLE|REFERENCE|RECORD_BREAK"))
-  
+
   # Make a vector of record groups for splitting the records into a list
   record_groups <- cumsum(gbrecs == "RECORD_BREAK")
-  
+
   # Split the records into a list of records
   split(gbrecs, record_groups) %>%
     # Don't need the "RECORD_BREAK" string anymore
     purrr::map(~magrittr::extract(., stringr::str_detect(., "RECORD_BREAK", negate = TRUE))) %>%
     # Tidy the list
     purrr::map_df(tidy_gb_text)
-  
+
 }
 
 #' Download a set of fern sequence metadata for a given target
@@ -1336,15 +1336,15 @@ fetch_genbank_refs <- function(query) {
 #' fetch_fern_metadata("trnL-trnF_intron", start_date = "2017/01/01", end_date = "2018/02/01")
 fetch_fern_metadata <- function(
   target, start_date = "1980/01/01", end_date, accs_exclude = NULL, strict = FALSE) {
-  
+
   assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
   assertthat::assert_that(assertthat::is.string(start_date))
-  
+
   # Format query
   query <- format_fern_query(
     target = target,
-    start_date = start_date, 
+    start_date = start_date,
     end_date = end_date,
     strict = strict)
 
@@ -1370,17 +1370,18 @@ fetch_fern_metadata <- function(
   # (no real pub associated with the sequence, can't match on this)
   ref_data <- fetch_genbank_refs(query) %>%
     transmute(
-      accession, 
+      accession,
       publication = str_replace_all(title, "Direct Submission", NA_character_)) %>%
     # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
     assert(is_uniq, accession)
-  
+
   # Combine standard metadata with publication metadata
   left_join(metadata, ref_data, by = "accession") %>%
     assert(is_uniq, accession) %>%
     mutate(target = target)
-  
+
+
 }
 
 #' Align sequences used as reference
@@ -1451,10 +1452,10 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
 
 
 #' Trim a DNA alignment by removing sequences prior to a motif
-#' 
+#'
 #' e.g., trim the portion of rps4-trnS prior to the stop codon of rps4,
 #' so that only the rps4-trnS spacer is retained (not rps4 gene)
-#' 
+#'
 #' Used in prep_ref_seqs plan
 #'
 #' @param aln_tbl Tibble including DNA alignment as a list-column
@@ -1467,58 +1468,58 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
 #'
 #' @return Tibble including DNA alignment as a list-column. The alignment for the
 #' selected gene will be trimmed to remove all bases prior to and including the motif
-#' 
+#'
 trim_align_by_motif <- function(
-	aln_tbl, aln_col = "align_trimmed",
-	target_select = "rps4-trnS", motif = "CTTAATGA",
-	expect_start = 500,
-	expect_end = 700) {
-	
-	# Extract alignment, preserving gaps
-	aln <-
-		aln_tbl %>%
-		filter(target == target_select) %>%
-		pull(.data[[aln_col]]) %>%
-		magrittr::extract2(1) %>%
-		DNAbin_to_DNAstringset(remove_gaps = FALSE)
-	
-	# Search for pattern matching end of region
-	# vmatchPattern can't account for indels in DNAStringSet
-	matches <- Biostrings::vmatchPattern(
+  aln_tbl, aln_col = "align_trimmed",
+  target_select = "rps4-trnS", motif = "CTTAATGA",
+  expect_start = 500,
+  expect_end = 700) {
+
+  # Extract alignment, preserving gaps
+  aln <-
+    aln_tbl %>%
+    filter(target == target_select) %>%
+    pull(.data[[aln_col]]) %>%
+    magrittr::extract2(1) %>%
+    DNAbin_to_DNAstringset(remove_gaps = FALSE)
+
+  # Search for pattern matching end of region
+  # vmatchPattern can't account for indels in DNAStringSet
+  matches <- Biostrings::vmatchPattern(
     Biostrings::DNAString(motif), aln, with.indels = FALSE)
-	
+
   # Convert vmatchPattern output to tibble
-	group_names_tbl <- tibble(
-		group_name = names(matches),
-		group = 1:length(matches))
-	
-	hits_tbl <-
-		as.data.frame(matches) %>%
-		as_tibble() %>%
-		select(-group_name) %>%
-		left_join(group_names_tbl, by = "group") %>%
-		# Run checks: should only be a single unique match location,
-		# within expected range
-		verify(n_distinct(.$end) == 1) %>%
-		verify(all(.$start > expect_start)) %>%
-		verify(all(.$end < expect_end))
-	
-	# Trim alignment
-	# removes all sequences before (and including) the matched motif
-	aln_clean <-
-		Biostrings::DNAStringSet(aln, start = (unique(hits_tbl$end) + 1)) %>%
-		as.DNAbin() %>%
-		as.matrix()
-	
-	# Convert back to tbl
-	aln_tbl %>%
-		filter(target != target_select) %>%
-		bind_rows(
-			tibble(
-				target = target_select,
-				!!aln_col := list(aln_clean)
-			)
-		)
+  group_names_tbl <- tibble(
+    group_name = names(matches),
+    group = 1:length(matches))
+
+  hits_tbl <-
+    as.data.frame(matches) %>%
+    as_tibble() %>%
+    select(-group_name) %>%
+    left_join(group_names_tbl, by = "group") %>%
+    # Run checks: should only be a single unique match location,
+    # within expected range
+    verify(n_distinct(.$end) == 1) %>%
+    verify(all(.$start > expect_start)) %>%
+    verify(all(.$end < expect_end))
+
+  # Trim alignment
+  # removes all sequences before (and including) the matched motif
+  aln_clean <-
+    Biostrings::DNAStringSet(aln, start = (unique(hits_tbl$end) + 1)) %>%
+    as.DNAbin() %>%
+    as.matrix()
+
+  # Convert back to tbl
+  aln_tbl %>%
+    filter(target != target_select) %>%
+    bind_rows(
+      tibble(
+        target = target_select,
+        !!aln_col := list(aln_clean)
+      )
+    )
 }
 
 #' Write out DNA alignments from a tibble
@@ -1527,7 +1528,7 @@ trim_align_by_motif <- function(
 #'
 #' @param tbl Tibble with aligned DNA sequences. Will only write out first row.
 #' @param aln_col Name of list-column with aligned DNA sequences
-#' @param gene_col Name of column with gene (target locus) names 
+#' @param gene_col Name of column with gene (target locus) names
 #' @param dir Directory to write output
 #' @param prefix Characters to add to file name preceding the target locus.
 #' @param postfix Characters to add to file name following the target locus.
@@ -1552,7 +1553,7 @@ write_fasta_from_tbl <- function(
 #'
 #' @param tbl Tibble with phylogenetic tree. Will only write out first row.
 #' @param tree_col Name of list-column with phylogenetic tree
-#' @param gene_col Name of column with gene (target locus) names 
+#' @param gene_col Name of column with gene (target locus) names
 #' @param dir Directory to write output
 #' @param prefix Characters to add to file name preceding the target locus.
 #' @param postfix Characters to add to file name following the target locus.
@@ -1562,7 +1563,7 @@ write_fasta_from_tbl <- function(
 write_tree_from_tbl <- function(
   tbl, tree_col = "tree",
   gene_col = "target",
-  dir = "intermediates/ref_seqs", 
+  dir = "intermediates/ref_seqs",
   prefix = "",
   postfix = "_ref_phy.tree") {
   write_tree_tar(
@@ -1576,16 +1577,16 @@ write_tree_from_tbl <- function(
 # Specify varieties to exclude from collapsing during taxonomic name resolution
 define_varieties_to_keep = function() {
   c(
-	  "Arachniodes simplicior var. simplicior",
-	  "Asplenium attenuatum var. attenuatum",
-	  "Asplenium bulbiferum subsp. bulbiferum",
-	  "Asplenium obovatum subsp. obovatum",
-	  "Asplenium trichomanes subsp. trichomanes",
-	  "Botrychium lanceolatum subsp. lanceolatum",
-	  "Equisetum ramosissimum subsp. ramosissimum",
-	  "Pellaea mucronata subsp. mucronata",
-	  "Pleopeltis polypodioides var. polypodioides",
-	  "Polystichum polyblepharum var. polyblepharum",
+    "Arachniodes simplicior var. simplicior",
+    "Asplenium attenuatum var. attenuatum",
+    "Asplenium bulbiferum subsp. bulbiferum",
+    "Asplenium obovatum subsp. obovatum",
+    "Asplenium trichomanes subsp. trichomanes",
+    "Botrychium lanceolatum subsp. lanceolatum",
+    "Equisetum ramosissimum subsp. ramosissimum",
+    "Pellaea mucronata subsp. mucronata",
+    "Pleopeltis polypodioides var. polypodioides",
+    "Polystichum polyblepharum var. polyblepharum",
     "Dicksonia lanata subsp. lanata",
     "Dryopteris simasakii var. simasakii",
     "Elaphoglossum peltatum f. peltatum",
@@ -1594,7 +1595,7 @@ define_varieties_to_keep = function() {
 }
 
 #' Inspect results of name matching with taxastand
-#' 
+#'
 #' Subsets to fuzzily matched names and names without a match, prepares for updating database
 #'
 #' @param match_results_resolved_all Dataframe (tibble); results of taxonomic name matching
@@ -1636,7 +1637,7 @@ inspect_ts_results <- function(match_results_resolved_all) {
         TRUE ~ 0),
       use_query_as_accepted = 0,
       use_query_as_new = 0,
-      namePublishedIn	= NA,
+      namePublishedIn  = NA,
       nameAccordingTo = NA,
       taxonRemarks = case_when(
         query_match_taxon_agree == TRUE ~ "author variant",
@@ -1660,14 +1661,14 @@ inspect_ts_results <- function(match_results_resolved_all) {
 
 # Count the number of non-missing bases in a DNA sequence
 #' @param seq List of class DNAbin of length one.
-count_non_missing <- function (seq) {
+count_non_missing <- function(seq) {
   bases <- ape::base.freq(seq, all = TRUE, freq = TRUE)
   sum(bases[!names(bases) %in% c("n", "N", "-", "?")])
 }
 
 #' Combine sanger sequence metadata with sequences, join to resolved names
 #' and filter by sequence length and if name was resolved or not
-#' 
+#'
 #' Drops sequences with scientific names that could not be resolved,
 #' adds `otu` column ({species}|{accession}|{gene})
 #'
@@ -1679,14 +1680,14 @@ count_non_missing <- function (seq) {
 #' @param min_spacer_len Number: minimum length (bp) required for Sanger intergenic spacer regions
 #'
 #' @return Tibble with Sanger sequence metadata, sequences, and accepted name
-#' 
+#'
 combine_and_filter_sanger <- function(
   raw_meta, raw_fasta, ncbi_accepted_names_map,
   min_gene_len, min_spacer_len) {
-  
+
   # Check that input names match arguments
   check_args(match.call())
-  
+
   # Join metadata and fasta sequences
   raw_meta %>%
     left_join(raw_fasta, by = c("accession", "target")) %>%
@@ -1717,7 +1718,7 @@ combine_and_filter_sanger <- function(
     verify(all(str_detect(accession, "\\|", negate = TRUE))) %>%
     verify(all(str_detect(target, "\\|", negate = TRUE))) %>%
     mutate(otu = glue("{species}|{accession}|{target}"))
-  
+
 }
 
 # Remove rogues ----
@@ -1764,7 +1765,7 @@ combine_and_filter_sanger <- function(
 #' list.files(temp_dir)
 #' fs::file_delete(temp_dir)
 #' @export
-build_blast_db <- function (in_seqs,
+build_blast_db <- function(in_seqs,
                             db_type = "nucl",
                             out_name = NULL,
                             title = NULL,
@@ -1869,7 +1870,7 @@ build_blast_db <- function (in_seqs,
 #' # Cleanup.
 #' fs::file_delete(temp_dir)
 #' @export
-blast_n <- function (query,
+blast_n <- function(query,
                      database,
                      out_file = NULL,
                      outfmt = "6",
@@ -1918,10 +1919,10 @@ blast_n <- function (query,
 #' @param name_col Name of column with sequence name
 #' @param seq_col Name of column with sequences (list-column)
 #' @return List of class DNAbin
-#' 
+#'
 seqtbl_to_dnabin <- function(seqtbl, name_col = "accession", seq_col = "seq") {
   require(ape)
-  
+
   # Check input
   assertthat::assert_that(inherits(seqtbl, "tbl"))
   assertthat::assert_that(assertthat::is.string(name_col))
@@ -1930,7 +1931,7 @@ seqtbl_to_dnabin <- function(seqtbl, name_col = "accession", seq_col = "seq") {
   # Extract sequences from metadata and rename
   seqs_dnabin <- do.call(c, seqtbl[[seq_col]])
   names(seqs_dnabin) <- seqtbl[[name_col]]
-  
+
   # Make sure that went OK
   assertthat::assert_that(is.list(seqs_dnabin))
   assertthat::assert_that(inherits(seqs_dnabin, "DNAbin"))
@@ -1945,7 +1946,7 @@ seqtbl_to_dnabin <- function(seqtbl, name_col = "accession", seq_col = "seq") {
 #' @param name_col Name of column to use for sequence name
 #' @param seq_col Name of column to use for sequences (list-column)
 #' @return Tibble with one row per sequence
-#' 
+#'
 dnabin_to_seqtbl <- function(dnabin, name_col = "accession", seq_col = "seq") {
   # Convert to a list in case DNA sequences are aligned (in matrix)
   dnabin <- as.list(dnabin)
@@ -1956,7 +1957,7 @@ dnabin_to_seqtbl <- function(dnabin, name_col = "accession", seq_col = "seq") {
   assertthat::assert_that(assertthat::is.string(seq_col))
 
   tibble::tibble(
-    "{seq_col}" := split(dnabin, 1:length(dnabin)), 
+    "{seq_col}" := split(dnabin, 1:length(dnabin)),
     "{name_col}" := names(dnabin))
 }
 
@@ -1967,26 +1968,26 @@ dnabin_to_seqtbl <- function(dnabin, name_col = "accession", seq_col = "seq") {
 #' @param out_name Name of BLAST database
 #'
 #' @return Paths to components of BLAST database. Externally, database will be created
-#' 
+#'
 make_fern_blast_db <- function(seqtbl, blast_db_dir, out_name) {
 
-	# Extract sequences from metadata and rename
-	fern_seqs <- seqtbl_to_dnabin(seqtbl, "otu")
-	
-	# Remove any gaps
-	fern_seqs <- ape::del.gaps(fern_seqs)
-	
-	# Write out sequences to temporary file
-	fern_seqs_path <- tempfile(
-		pattern = digest::digest(fern_seqs),
-		fileext = ".fasta") %>%
-		fs::path_abs()
-	if(fs::file_exists(fern_seqs_path)) {fs::file_delete(fern_seqs_path)}
-	ape::write.FASTA(fern_seqs, fern_seqs_path)
+  # Extract sequences from metadata and rename
+  fern_seqs <- seqtbl_to_dnabin(seqtbl, "otu")
+
+  # Remove any gaps
+  fern_seqs <- ape::del.gaps(fern_seqs)
+
+  # Write out sequences to temporary file
+  fern_seqs_path <- tempfile(
+    pattern = digest::digest(fern_seqs),
+    fileext = ".fasta") %>%
+    fs::path_abs()
+  if(fs::file_exists(fern_seqs_path)) {fs::file_delete(fern_seqs_path)}
+  ape::write.FASTA(fern_seqs, fern_seqs_path)
 
   # Define output files
-	out_files <- fs::path(blast_db_dir, out_name) %>%
-		paste0(c(".nhr", ".nin", ".nsq"))
+  out_files <- fs::path(blast_db_dir, out_name) %>%
+    paste0(c(".nhr", ".nin", ".nsq"))
 
   # Delete any existing output
   for (i in seq_along(out_files)) {
@@ -1994,15 +1995,15 @@ make_fern_blast_db <- function(seqtbl, blast_db_dir, out_name) {
       fs::file_delete(out_files[[i]])
     }
   }
-		
-	# Create blast DB (side-effect)
-	build_blast_db(                                                     
-		fern_seqs_path,                            
-		title = out_name,                                                
-		out_name = out_name,                                                
-		parse_seqids = FALSE,                                              
-		wd = blast_db_dir)
-	
+    
+  # Create blast DB (side-effect)
+  build_blast_db(                                                    
+    fern_seqs_path,                           
+    title = out_name,                                               
+    out_name = out_name,                                               
+    parse_seqids = FALSE,                                             
+    wd = blast_db_dir)
+
   # Return path to output file
   out_files
 
@@ -2017,31 +2018,31 @@ make_fern_blast_db <- function(seqtbl, blast_db_dir, out_name) {
 #' @param max_target_seqs Number of maximum hits to return per query
 #'
 #' @return Tibble
-#' 
-blast_seqtbl <- function (
-  seqtbl, name_col = "otu", seq_col = "seq", 
+#'
+blast_seqtbl <- function(
+  seqtbl, name_col = "otu", seq_col = "seq",
   blastdb_files, max_target_seqs = 10) {
 
   # Convert sequences to DNAbin
   query_seqs <- seqtbl_to_dnabin(seqtbl, name_col = name_col, seq_col = seq_col)
 
   # Remove any gaps
-	query_seqs <- ape::del.gaps(query_seqs)
-	
-	# Write out sequences to temporary file
-	query_seqs_path <- tempfile(
-		pattern = digest::digest(query_seqs),
-		fileext = ".fasta") %>%
-		fs::path_abs()
-	if(fs::file_exists(query_seqs_path)) {fs::file_delete(query_seqs_path)}
-	ape::write.FASTA(query_seqs, query_seqs_path)
+  query_seqs <- ape::del.gaps(query_seqs)
+
+  # Write out sequences to temporary file
+  query_seqs_path <- tempfile(
+    pattern = digest::digest(query_seqs),
+    fileext = ".fasta") %>%
+    fs::path_abs()
+  if(fs::file_exists(query_seqs_path)) {fs::file_delete(query_seqs_path)}
+  ape::write.FASTA(query_seqs, query_seqs_path)
 
   # Define name of output file
   blast_out_path <- tempfile(
-		pattern = digest::digest(query_seqs),
-		fileext = ".csv") %>%
-		fs::path_abs()
-	if(fs::file_exists(blast_out_path)) {fs::file_delete(blast_out_path)}
+    pattern = digest::digest(query_seqs),
+    fileext = ".csv") %>%
+    fs::path_abs()
+  if(fs::file_exists(blast_out_path)) {fs::file_delete(blast_out_path)}
 
   # Query sequences
   blast_n(
@@ -2052,33 +2053,33 @@ blast_seqtbl <- function (
     wd = fs::path_dir(blastdb_files) %>% unique(),
     echo = TRUE
   )
-  
+
   # Read in sequences.
-  # BLAST doesn't output column headers, so we need to specify 
+  # BLAST doesn't output column headers, so we need to specify
   # (make sure they match correctly first!)
   fmt6_cols <- c("qseqid", "sseqid", "pident", "length", "mismatch",
                  "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
-  
+
   # Read in BLAST output
   blast_results <- readr::read_tsv(
     blast_out_path,
     col_names = fmt6_cols,
     col_types = "ccdddddddddd" # two ID cols are char, rest is numeric
   )
-  
+
   # Cleanup
   if(fs::file_exists(blast_out_path)) fs::file_delete(blast_out_path)
   if(fs::file_exists(query_seqs_path)) fs::file_delete(query_seqs_path)
-  
+
   blast_results
-	
+
 }
 
 #' Detect rogues from running all-by-all BLAST
-#' 
-#' Any sequence with a three top non-self hits to a different family 
+#'
+#' Any sequence with a three top non-self hits to a different family
 #' will be flagged as a "rogue" sequence.
-#' 
+#'
 #' All families in Cyatheales and Saccolomatineae, respectively,
 #' are treated as single families.
 #'
@@ -2088,19 +2089,19 @@ blast_seqtbl <- function (
 #' @param blast_results Output of running blast_rogues()
 #' @param ppgi_taxonomy Tibble; genus-level and higher taxonomic system for pteridophytes,
 #' according to PPGI 2016.
-#' 
+#'
 #' @return Tibble; list of rogue sequences showing which families were matched
 detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
-  
+
   ### Detect rogues ###
-  
+
   ### Check for monotypic families within each gene ###
   # These by default will match to a different (non-self)
   # family, so are not valid for checking rogues.
   exclude_from_rogues <-
-    metadata_with_seqs %>% 
+    metadata_with_seqs %>%
     dplyr::left_join(
-      select(ppgi_taxonomy, genus, family), 
+      select(ppgi_taxonomy, genus, family),
       by = "genus") %>%
     assert(not_na, genus, family) %>%
     dplyr::add_count(family, target) %>%
@@ -2109,7 +2110,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
       otu = glue("{species}|{accession}|{target}") %>% stringr::str_replace_all(" ", "_")
     ) %>%
     select(otu, family, target)
-  
+
   # Group small families by order
   # to avoid false-positives
   ppgi_taxonomy <- mutate(ppgi_taxonomy, family = case_when(
@@ -2117,7 +2118,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
     suborder == "Saccolomatineae" ~ "Saccolomatineae",
     TRUE ~ family
   ))
-  
+
   # Make list of rogue sequences (accessions) to exclude
   # Start with blast results
   blast_results %>%
@@ -2139,7 +2140,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
     dplyr::left_join(
       select(ppgi_taxonomy, q_genus = genus, q_family = family),
       by = "q_genus"
-    ) %>% 
+    ) %>%
     dplyr::left_join(
       select(ppgi_taxonomy, s_genus = genus, s_family = family),
       by = "s_genus"
@@ -2157,7 +2158,7 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
     verify(all(str_count(qseqid, "\\|") == 2)) %>%
     mutate(
       accession = str_split(qseqid, "\\|") %>% map_chr(2),
-      target = str_split(qseqid, "\\|") %>% map_chr(3)) 
+      target = str_split(qseqid, "\\|") %>% map_chr(3))
 }
 
 # Filter to one seq per species by removing 'rogue' sequences, then
@@ -2166,8 +2167,8 @@ detect_rogues <- function(metadata_with_seqs, blast_results, ppgi_taxonomy) {
 # Call ties by sorting on accession. Oviously, this
 # shouldn't matter for the quality of sequence,
 # but is reproducible.
-filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
-  
+filter_and_extract_pterido_rbcl <- function(metadata_with_seqs) {
+
   metadata_with_seqs <-
     metadata_with_seqs %>%
     # Only keep seqs > 99 bp
@@ -2188,27 +2189,27 @@ filter_and_extract_pterido_rbcl <- function (metadata_with_seqs) {
     dplyr::mutate(
       otu = glue("{species}_{accession}") %>% stringr::str_replace_all(" ", "_")
     )
-  
+
   # Extract sequences from metadata and rename
   seqs <- ape::as.DNAbin(metadata_with_seqs$seq)
   names(seqs) <- metadata_with_seqs$otu
-  
+
   # Make sure that went OK
   assertthat::assert_that(is.list(seqs))
   assertthat::assert_that(inherits(seqs, "DNAbin"))
   assertthat::assert_that(all(names(seqs) == metadata_with_seqs$otu))
-  
+
   seqs
 }
 
 #' Parse voucher specimen data in data downloaded from GenBank
-#' 
+#'
 #' @param genbank_seqs_tibble Tibble; metadata for GenBank sequences
-#' including columns for `gene`, `species`, `specimen_voucher`, 
+#' including columns for `gene`, `species`, `specimen_voucher`,
 #' `accession` (GenBank accession), and `length` (gene length in bp)
 #'
 #' @return Tibble including column `specimen_voucher`
-#' 
+#'
 parse_voucher <- function(genbank_seqs_tibble) {
   genbank_seqs_tibble %>%
     assert(is_uniq, otu) %>%
@@ -2235,7 +2236,7 @@ parse_voucher <- function(genbank_seqs_tibble) {
     # Join back onto original data (so, adds `specimen_voucher_raw` column)
     right_join(genbank_seqs_tibble, by = c("subtype", "subname")) %>%
     select(target, species, specimen_voucher_raw, publication, accession, seq_len, otu) %>%
-    # In some cases, there are multiple vouchers including `s.n.` and 
+    # In some cases, there are multiple vouchers including `s.n.` and
     # a numbered voucher. Use only the numbered voucher.
     # (still have some cases with multiple vouchers per accession though
     #  eg., MH101453, KY711736)
@@ -2249,7 +2250,7 @@ parse_voucher <- function(genbank_seqs_tibble) {
     # not herbarium where it is stored
     # Also drop "et al"
     mutate(
-      specimen_voucher = 
+      specimen_voucher =
         str_remove_all(specimen_voucher_raw, "\\([^\\(|^\\)]+\\)") %>%
         str_remove_all("et al\\.") %>%
         str_remove_all("et al") %>%
@@ -2486,7 +2487,7 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
 
   # 1. First use any accessions in manual inclusion list
   # Filter to species that are also in list of unjoined genes
-  manual_selection <- 
+  manual_selection <-
     manually_selected_seqs %>%
     verify(nrow(.) > 0) %>%
     assert(is_uniq, species) %>%
@@ -2636,13 +2637,13 @@ select_genbank_genes <- function(sanger_seqs_with_voucher_data,
 #' @param sanger_accessions_selection Selected GenBank (Sanger) sequences to use
 #' @param filter Logical; should filtering be done or not?
 #'
-#' @return sanger_accessions_selection, with species in plastome data filtered out (if `filter` = TRUE) 
-#' 
-filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_metadata_renamed, sanger_accessions_selection, filter) {
-  
+#' @return sanger_accessions_selection, with species in plastome data filtered out (if `filter` = TRUE)
+#'
+filter_out_plastome_species <- function(plastome_genes_unaligned, plastome_metadata_renamed, sanger_accessions_selection, filter) {
+
   # Don't do any filtering if `filter` is false
   if(filter == FALSE) return (sanger_accessions_selection)
-  
+
   ### Make list of species in selected plastome genes ###
   # (not the same as plastome_metadata_renamed, since that was ALL plastomes, and
   # we need a list of species names of only the plastomes that will actually be used)
@@ -2651,18 +2652,18 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
     left_join(plastome_metadata_renamed, by = "accession") %>%
     select(gene, accession, species) %>%
     assert(not_na, species)
-  
+
   # Filter out species from GenBank (Sanger) accessions that are already in plastome data
   anti_join(
-    sanger_accessions_selection, 
+    sanger_accessions_selection,
     plastid_genes_unaligned_species_list,
     by = "species"
   )
-  
+
 }
 
 #' Inspect rogue sequences
-#' 
+#'
 #' Sanger rogue sequences were assessed by checking the top BLAST hit from
 #' an all-by-all BLAST. Those whose families don't match were flagged as
 #' rogues. However, some of this may be due to incorrect taxonomic treatment.
@@ -2679,10 +2680,10 @@ filter_out_plastome_species <- function (plastome_genes_unaligned, plastome_meta
 #' @return Tibble with potential "real rogue" sequences flagged as 1
 #'
 inspect_rogues <- function(
-	sanger_seqs_rogues,
-	raw_meta_all,
-	ncbi_names_query,
-	ppgi_taxonomy) {
+  sanger_seqs_rogues,
+  raw_meta_all,
+  ncbi_names_query,
+  ppgi_taxonomy) {
 
   # Check that input names match arguments
   check_args(match.call())
@@ -2695,55 +2696,55 @@ inspect_rogues <- function(
     TRUE ~ family
   ))
 
-	# Filter original GenBank names to accepted name
-	gb_names <-
-		ncbi_names_query %>%
-		filter(accepted == TRUE) %>%
-		# Combine `scientific_name`, `species` filling in NAs as needed
-		mutate(gb_name = dplyr::coalesce(scientific_name, species)) %>%
-		select(taxid, gb_name) %>%
-		unique()
-	
-	sanger_seqs_rogues %>%
-		# Split query text into component parts
-		separate(qseqid, c("species", "accession", "gene"), sep = "\\|") %>%
-		verify(all(gene == target)) %>%
-		select(-target) %>%
-		# Add taxid
-		left_join(
-			unique(select(raw_meta_all, accession, taxid)), by = "accession"
-		) %>%
-		# Join original GenBank names by taxid
-		assert(not_na, taxid) %>%
-		left_join(gb_names, by = "taxid") %>%
-		assert(not_na, gb_name) %>%
-		# Join original GenBank family
-		mutate(gb_genus = str_split(gb_name, " ") %>%
-					 	map_chr(1)) %>%
-		left_join(
-			select(ppgi_taxonomy, gb_genus = genus, gb_family = family), 
+  # Filter original GenBank names to accepted name
+  gb_names <-
+    ncbi_names_query %>%
+    filter(accepted == TRUE) %>%
+    # Combine `scientific_name`, `species` filling in NAs as needed
+    mutate(gb_name = dplyr::coalesce(scientific_name, species)) %>%
+    select(taxid, gb_name) %>%
+    unique()
+
+  sanger_seqs_rogues %>%
+    # Split query text into component parts
+    separate(qseqid, c("species", "accession", "gene"), sep = "\\|") %>%
+    verify(all(gene == target)) %>%
+    select(-target) %>%
+    # Add taxid
+    left_join(
+      unique(select(raw_meta_all, accession, taxid)), by = "accession"
+    ) %>%
+    # Join original GenBank names by taxid
+    assert(not_na, taxid) %>%
+    left_join(gb_names, by = "taxid") %>%
+    assert(not_na, gb_name) %>%
+    # Join original GenBank family
+    mutate(gb_genus = str_split(gb_name, " ") %>%
+             map_chr(1)) %>%
+    left_join(
+      select(ppgi_taxonomy, gb_genus = genus, gb_family = family),
         by = "gb_genus"
-		) %>%
-		select(-gb_genus) %>%
-		# Consider a potential "real rogue" if
-		# the query family and genbank family agree
-		mutate(
-			real_rogue = case_when(
-				q_family == gb_family ~ TRUE,
-				TRUE ~ FALSE
-			)
-		) %>%
+    ) %>%
+    select(-gb_genus) %>%
+    # Consider a potential "real rogue" if
+    # the query family and genbank family agree
+    mutate(
+      real_rogue = case_when(
+        q_family == gb_family ~ TRUE,
+        TRUE ~ FALSE
+      )
+    ) %>%
     # Do any manual fixes needed to remove mistaken rogues
     # Then make sure all rogues are real
     assert(isTRUE, real_rogue) %>%
     select(species, accession, target = gene, q_family, s_family)
-	
+
 }
 
 # Check for species monophyly in Sanger loci ----
 
 #' Check monophyly of a species
-#' 
+#'
 #' Monophyly check done with ape::is.monophyletic(), which is rather
 #' slow. Speed things up by running in parallel.
 #'
@@ -2753,15 +2754,15 @@ inspect_rogues <- function(
 #' @param workers Number of workers to run in parallel
 #'
 #' @return Tibble, with logical column `is_monophy` indicating monophyly
-#' of species with >1 accession. If species has only 1 accession, `is_monophy` 
+#' of species with >1 accession. If species has only 1 accession, `is_monophy`
 #' is `NA`.
 check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
-	
-	# Change back to sequential when done (including on failure)
-	on.exit(future::plan(future::sequential), add = TRUE)
-	
-	# Set backend for parallelization
-	future::plan(future::multisession, workers = workers)
+
+  # Change back to sequential when done (including on failure)
+  on.exit(future::plan(future::sequential), add = TRUE)
+
+  # Set backend for parallelization
+  future::plan(future::multisession, workers = workers)
 
   # If mpcheck_tree input is dataframe, extract tree
   if(inherits(mpcheck_tree, "data.frame")) {
@@ -2769,46 +2770,46 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
     assertthat::assert_that("tree" %in% colnames(mpcheck_tree))
     mpcheck_tree <- mpcheck_tree$tree[[1]]
   }
-	
+
   # Make dataframe of taxa to check for monophyly (>1 accession)
-	species_to_check <-
-		mpcheck_sliced %>% 
+  species_to_check <-
+    mpcheck_sliced %>%
     verify(all(accession %in% mpcheck_tree$tip.label)) %>%
-		add_count(species) %>%
-		filter(n > 1) %>%
-		select(species, accession) %>%
-		unique()
-	
+    add_count(species) %>%
+    filter(n > 1) %>%
+    select(species, accession) %>%
+    unique()
+
   # and dataframe of accessions to skip (1 accession each)
-	species_to_skip <- mpcheck_sliced %>% 
-		add_count(species, name = "n_accs") %>%
-		filter(n_accs == 1) %>%
-		select(species, n_accs)
-	
+  species_to_skip <- mpcheck_sliced %>%
+    add_count(species, name = "n_accs") %>%
+    filter(n_accs == 1) %>%
+    select(species, n_accs)
+
   # check monophyly
-	res <- species_to_check %>%
-		group_by(species) %>%
-		add_count(name = "n_accs") %>%
-		nest(data = accession) %>%
-		ungroup() %>%
-		mutate(
+  res <- species_to_check %>%
+    group_by(species) %>%
+    add_count(name = "n_accs") %>%
+    nest(data = accession) %>%
+    ungroup() %>%
+    mutate(
       # ape::is.monophyletic is slow, so run in parallel
-			is_monophy = furrr::future_map_lgl(
-				data, 
-				~ape::is.monophyletic(
-					phy = mpcheck_tree, 
-					tips = .x$accession, reroot = TRUE, plot = FALSE),
+      is_monophy = furrr::future_map_lgl(
+        data,
+        ~ape::is.monophyletic(
+          phy = mpcheck_tree,
+          tips = .x$accession, reroot = TRUE, plot = FALSE),
         .options = furrr::furrr_options(seed = TRUE)
-			)
-		) %>%
-		select(species, n_accs, is_monophy) %>%
-		bind_rows(species_to_skip) %>%
+      )
+    ) %>%
+    select(species, n_accs, is_monophy) %>%
+    bind_rows(species_to_skip) %>%
     mutate(target = unique(mpcheck_sliced$target))
-	
-	# Close parallel workers
-	future::plan(future::sequential)
-	
-	res
+
+  # Close parallel workers
+  future::plan(future::sequential)
+
+  res
 }
 
 # Download plastomes from GenBank ----
@@ -2819,55 +2820,55 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
 #' data separated by '|'. The names of these data are in the "subname" column.
 #' This function tidies these two columns, i.e., converts the data in the
 #' "subtype" column so each value gets its own column.
-#' 
+#'
 #' @param data Dataframe; GenBank metadata obtained with
 #' gbfetch::fetch_metadata.
 #'
 #' @return Dataframe.
-#' 
+#'
 #' @examples
 #' raw_meta <- fetch_metadata("rbcl[Gene] AND Crepidomanes[ORGN]")
-#' # Raw metadata still contains untidy data in the "subtype" and 
+#' # Raw metadata still contains untidy data in the "subtype" and
 #' # "subname" columns
 #' raw_meta
 #' # Tidy!
 #' tidy_genbank_metadata(raw_meta)
 
 tidy_genbank_metadata <- function(data) {
-  
+
   # Check assumptions: must have subtype and subname columns present
   assertthat::assert_that("subtype" %in% colnames(data))
   assertthat::assert_that("subname" %in% colnames(data))
-  
+
   # Define helper function that works on one row at a time
   tidy_genbank_meta_single <- function(data) {
-    
+   
     # Early return if no data to parse in subtype
     if(data$subtype == "" | is.na(data$subtype)) return (data %>% dplyr::select(-subname, -subtype))
     if(data$subname == "" | is.na(data$subname)) return (data %>% dplyr::select(-subname, -subtype))
-    
+   
     # Split "subtype" into multiple columns
     # Use janitor::make_clean_names to de-duplicate names
-    sub_cols <- data %>% 
-      dplyr::pull(subtype) %>% 
-      stringr::str_split("\\|") %>% 
-      magrittr::extract2(1) %>% 
+    sub_cols <- data %>%
+      dplyr::pull(subtype) %>%
+      stringr::str_split("\\|") %>%
+      magrittr::extract2(1) %>%
       janitor::make_clean_names()
-    
-    sub_data <- data %>% 
-      dplyr::select(subname) %>% 
+   
+    sub_data <- data %>%
+      dplyr::select(subname) %>%
       tidyr::separate(subname, into = sub_cols, sep = "\\|")
-    
-    data %>% 
-      dplyr::select(-subname, -subtype) %>% 
+   
+    data %>%
+      dplyr::select(-subname, -subtype) %>%
       dplyr::bind_cols(sub_data)
   }
-  
+
   # Apply the function row-wise and combine back into a dataframe
   transpose(data) %>%
     purrr::map(as_tibble) %>%
     purrr::map_df(tidy_genbank_meta_single)
-  
+
 }
 
 #' Format a query string to download fern plastome sequences from GenBank
@@ -2891,11 +2892,11 @@ format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, stri
 }
 
 #' Download plastome metadata for ferns
-#' 
+#'
 #' Using `strict = TRUE` will (most likely) restrict search to properly
 #' annotated plastomes, but fewer sequences. `strict = FALSE` will result in
 #' more hits, but some may not be annotated (at all)
-#' 
+#'
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
 #' @param strict Logical; use strict version of search string or not?
@@ -2906,13 +2907,13 @@ format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, stri
 #'
 #' @return Tibble of GenBank metadata combining the results of
 #' the query and the outgroups.
-#' 
-download_plastome_metadata <- function (start_date = "1980/01/01", end_date, 
+#'
+download_plastome_metadata <- function(start_date = "1980/01/01", end_date,
   strict = FALSE, outgroups, accs_exclude = NULL) {
-  
+
   assertthat::assert_that(assertthat::is.string(start_date))
   assertthat::assert_that(assertthat::is.string(end_date))
-  
+
   # Format GenBank query: all ferns plastomes within specified dates
   # There is no formal category for "whole plastome" in genbank, so use size
   # cutoff: >7000 and < 500000 bp
@@ -2923,7 +2924,7 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date,
   ingroup_metadata_raw <- fetch_metadata(
     query = ingroup_query,
     col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
-  
+
   ingroup_metadata <-
     ingroup_metadata_raw %>%
     rename(accession = caption) %>%
@@ -2943,24 +2944,24 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date,
     # Sort by accession
     arrange(accession) %>%
     select(-maybe_dup)
-  
-  # Download outgroup metadata: use one representative of each major 
+
+  # Download outgroup metadata: use one representative of each major
   # seed plant, lycophyte, and bryo group
   og_query <- outgroups %>% pull(accession) %>% paste(collapse = "[accession] OR ") %>%
     paste("[accession]", collapse = "", sep = "")
-  
+
   outgroup_metadata_raw <- fetch_metadata(
     query = og_query,
     # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
     col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
-  
+
   # Combine ingroup and outgroup data
   outgroup_metadata <-
     outgroup_metadata_raw %>%
     rename(accession = caption) %>%
     verify(all(accession %in% outgroups$accession)) %>%
     verify(all(outgroups$accession %in% accession))
-  
+
   combined_metadata <- bind_rows(ingroup_metadata, outgroup_metadata)
 
   # Exclude accessions in accs_exclude
@@ -2982,53 +2983,53 @@ download_plastome_metadata <- function (start_date = "1980/01/01", end_date,
 #' out any abnormally (probably erroneously) long genes.
 #'
 #' @return Dataframe with columns for `accession`, `gene`, and `seq`
-#' 
+#'
 #' test <- fetch_fern_genes_from_plastome(
 #' accession = "AY178864",
 #' max_length = 10000,
 #' genes = read_lines("data_raw/wei_2017_coding_genes.txt")
 #' )
-fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000) {
-  
+fetch_fern_genes_from_plastome <- function(genes, accession, max_length = 10000) {
+
   # Get GenBank ID for the accession
   uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
-  
+
   # Make sure there is only 1 hit for that accession
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  
+
   assertthat::assert_that(
     num_hits == 1,
     msg = "Did not find exactly one accession")
-  
+
   # Download complete GenBank record and write it to a temporary file
   temp_file <- tempfile(pattern = "gb_records_", fileext = ".txt")
   if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
-  
+
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
+
   # Parse flatfile
   gb_entry <- readr::read_file(temp_file)
-  
+
   # get the results (includes NULL if errored)
-  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>% 
-    transpose() %>% 
+  extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>%
+    transpose() %>%
     magrittr::extract2("seq")
-  
+
   # subset gene names to those to successfully extracted
   genes_successful <- genes[!map_lgl(extracted_genes, is.null)]
-  
+
   # Subset results to successful genes, filter by length, and set names
   extracted_genes_filtered <-
     extracted_genes %>%
     # Drop errors
     compact() %>%
     flatten()
-  
+
   # Make sure length of filtered names matches
   assertthat::assert_that(
     length(extracted_genes_filtered) == length(genes_successful)
   )
-  
+
   extracted_genes_filtered <-
     extracted_genes_filtered %>%
     # Name each list item as the gene
@@ -3041,7 +3042,7 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
     magrittr::extract(!map_lgl(., ~map_dbl(., length) > max_length)) %>%
     # Name each DNAbin as the accession
     map(~set_names(., accession))
-  
+
   # Return as a dataframe, so the results can be combined later
   tibble(
     accession = accession,
@@ -3055,17 +3056,17 @@ fetch_fern_genes_from_plastome <- function (genes, accession, max_length = 10000
 #' Renames plastome sequences downloaded from GenBank by their resolved names
 #' from pteridocat, filters to one best (longest) sequence per genus
 #'
-#' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from 
+#' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from
 #' GenBank
 #' @param plastome_metadata_renamed Tibble; metadata of sequences
 #' including resolved names.
 #'
-#' @return Tibble (seqtbl); gene sequences downloaded from 
+#' @return Tibble (seqtbl); gene sequences downloaded from
 #' GenBank with column "accession" including species_accession
 #'
 rename_and_filter_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
   plastome_genes_raw %>%
-    # Add resolved names  
+    # Add resolved names 
     left_join(
       select(plastome_metadata_renamed, species, accession),
       by = "accession"
@@ -3095,7 +3096,7 @@ rename_and_filter_raw_plastome_seqs <- function(plastome_genes_raw, plastome_met
 #' @param seq_list List of sequences
 #'
 #' @return Length of each sequence in long format
-get_gene_lengths <- function (seq_list) {
+get_gene_lengths <- function(seq_list) {
   seq_list %>%
     map_df(~map_dbl(., length), .id = "gene") %>%
     rename(slen = 2)
@@ -3113,11 +3114,11 @@ get_gene_lengths <- function (seq_list) {
 #'
 #' @return Dataframe
 #'
-filter_majority_missing <- function (
+filter_majority_missing <- function(
   gene_lengths_best,
   genes_keep = c("rps4-trnS", "trnL-trnF"),
   accs_keep) {
-  
+
   # Make sure genes_keep and accs_keep are valid
   assertthat::assert_that(
     all(genes_keep %in% gene_lengths_best$gene),
@@ -3127,7 +3128,7 @@ filter_majority_missing <- function (
     all(accs_keep %in% gene_lengths_best$accession),
     msg = "accs_keep not in gene_lengths_best$accession"
   )
-  
+
   # Count number of accessions recovered per gene and flag accessions to remove
   missing_acc_summ <-
     gene_lengths_best %>%
@@ -3150,7 +3151,7 @@ filter_majority_missing <- function (
         TRUE ~ FALSE
       )
     )
-  
+
   # Count number of genes recovered per accession and flag genes to remove
   missing_gene_summ <-
     gene_lengths_best %>%
@@ -3170,7 +3171,7 @@ filter_majority_missing <- function (
         TRUE ~ FALSE
       )
     )
-  
+
   # Filter genes
   gene_lengths_best %>%
     left_join(missing_acc_summ, by = "gene") %>%
@@ -3190,8 +3191,8 @@ filter_majority_missing <- function (
 #' a sequence for a gene for a plastome accession.
 #' @param plastome_metadata_renamed Associated plastome metadata (species names)
 #'
-select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed) {
-  
+select_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
+
   # Check that input names match arguments
   check_args(match.call())
 
@@ -3213,9 +3214,9 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
     assert(not_na, everything()) %>%
     assert_rows(col_concat, is_uniq, accession, target, species) %>%
     rename(gene = target)
-    
+   
   # Make tibble of gene lengths by accession, including species and voucher
-  gene_lengths <- 
+  gene_lengths <-
     plastome_genes_raw %>%
     # Make sure each accession has at least one gene
     add_count(accession, gene) %>%
@@ -3225,18 +3226,18 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
     mutate(slen = map_dbl(seq, ~count_non_missing(.[1]))) %>%
     select(-seq) %>%
     assert(not_na, everything())
-  
+
   # Missing genes (length 0) are not in the original sequences list,
   # so add these by crossing all combinations of accession and gene
-  gene_lengths <- 
+  gene_lengths <-
     purrr::cross_df(list(
-      gene = gene_lengths$gene %>% unique, 
+      gene = gene_lengths$gene %>% unique,
       accession = gene_lengths$accession %>% unique)) %>%
     left_join(select(gene_lengths, gene, accession, slen), by = c("gene", "accession")) %>%
     left_join(select(gene_lengths, accession, species) %>% unique, by = "accession") %>%
     mutate(slen = replace_na(slen, 0)) %>%
     assert(not_na, gene, accession, slen, species)
-  
+
   # Get table of maximum lengths per gene
   # (we will assume these are the actual max. lengths)
   max_lengths <-
@@ -3247,7 +3248,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
       max_length = max(slen),
       .groups = "drop"
     )
-  
+
   # Identify the "best" accessions as those having the least
   # amount of missing data overall per species
   best_accessions_by_species <-
@@ -3265,7 +3266,7 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
     group_by(species) %>%
     slice_max(n = 1, order_by = total_rel_len, with_ties = FALSE) %>%
     ungroup
-  
+
   # Assemble final selection: filtered plastome loci, one accession per species
     gene_lengths %>%
       # Make a table of (relative) gene lengths for
@@ -3294,17 +3295,17 @@ select_plastome_seqs <- function (plastome_genes_raw, plastome_metadata_renamed)
 #' @param plastome_genes_aligned Tibble (seqtbl); aligned plastome genes.
 #'
 #' @return Trimmed, aligned plastome genes
-#' 
+#'
 trim_plastome_genes <- function(plastome_genes_aligned) {
-  plastome_genes_aligned %>% 
+  plastome_genes_aligned %>%
      select(seq, target, accession) %>%
      group_by(target) %>%
      nest(data = c(seq, accession)) %>%
      mutate(
        align_trimmed = map(
-         data, trimal, 
-         other_args = c("-gt", "0.05"), 
-         return_seqtbl = FALSE, 
+         data, trimal,
+         other_args = c("-gt", "0.05"),
+         return_seqtbl = FALSE,
          name_col_in = "accession"
        )) %>%
      ungroup() %>%
@@ -3325,11 +3326,11 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 #' @param target_select Name of selected target region
 #'
 #' @return seqtbl
-#' 
+#'
 assign_tax_clusters <- function(
   sanger_accessions_selection,
   sanger_seqs_combined_filtered,
-  plastome_seqs_combined_filtered, 
+  plastome_seqs_combined_filtered,
   ppgi_taxonomy, plastome_metadata_renamed,
   target_select) {
 
@@ -3367,7 +3368,7 @@ assign_tax_clusters <- function(
 
 #' Combine Sanger and plastome sequences, rename sequences by species
 #'
-#' @param sanger_accessions_selection Dataframe; selection of Sanger accessions in 
+#' @param sanger_accessions_selection Dataframe; selection of Sanger accessions in
 #' wide format. Output of select_genbank_genes()
 #' @param sanger_seqs_combined_filtered Dataframe; filtered Sanger sequences
 #' Output of combine_and_filter_sanger()
@@ -3375,13 +3376,13 @@ assign_tax_clusters <- function(
 #' Output of select_plastome_seqs()
 #'
 #' @return Dataframe; combined Sanger and plastome sequences in long format
-#' 
+#'
 combine_sanger_plastome <- function(
   sanger_accessions_selection,
   sanger_seqs_combined_filtered,
   plastome_seqs_combined_filtered
 ) {
-  
+
   sanger_accessions_selection %>%
     # Remove any accessions in plastome data
     anti_join(plastome_seqs_combined_filtered, by = "species") %>%
@@ -3396,7 +3397,7 @@ combine_sanger_plastome <- function(
     bind_rows(plastome_seqs_combined_filtered) %>%
     assert(not_na, everything()) %>%
     assert_rows(col_concat, is_uniq, species, target, accession)
-    
+   
 }
 
 #' Align sequences in a tibble
@@ -3408,7 +3409,7 @@ combine_sanger_plastome <- function(
 #'
 #' @return Dataframe with aligned sequences. New column logical column "reversed" will
 #' be appended indicating if sequence was reversed when aligning or not.
-#' 
+#'
 align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   # Extract sequences, convert to ape DNAbin list
   seqs <-
@@ -3451,7 +3452,7 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
 
 }
 
-#' Reformat a list of plastid genes from 
+#' Reformat a list of plastid genes from
 #' a named list of gene sequences by plastome accession to
 #' a named list of sequences from various accessions by gene
 #'
@@ -3460,8 +3461,8 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
 #' @param plastome_selection Tibble of selected plastomes to use.
 #'
 #' @return List of unaligned genes.
-#' 
-extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
+#'
+extract_seqs_by_gene <- function(plastid_seq_list, plastome_selection) {
   plastid_seq_list %>%
     magrittr::extract(unique(plastome_selection$plastid_seq_name)) %>%
     transpose %>%
@@ -3469,7 +3470,7 @@ extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
 }
 
 #' Run trimal on a DNA alignment in "auto" mode
-#' 
+#'
 #' trimal removes low-quality (i.e., poorly aligned, gappy sites) from
 #' an alignment.
 #'
@@ -3488,11 +3489,11 @@ extract_seqs_by_gene <- function (plastid_seq_list, plastome_selection) {
 #' If FALSE, will return as list of class 'DNAbin'. Default to TRUE if `seqs` is seqtbl.
 #'
 #' @return DNA sequence alignment with gappy sites removed by trimal
-#' 
-trimal <- function (
-    seqs, other_args = NULL, echo = FALSE, 
-    name_col_in = "accession", seq_col_in = "seq", 
-    name_col_out = "accession", seq_col_out = "seq", 
+#'
+trimal <- function(
+    seqs, other_args = NULL, echo = FALSE,
+    name_col_in = "accession", seq_col_in = "seq",
+    name_col_out = "accession", seq_col_out = "seq",
     return_seqtbl = inherits(seqs, "tbl")) {
 
   # Evaluate return type
@@ -3502,13 +3503,13 @@ trimal <- function (
   if(inherits(seqs, "tbl")) {
     seqs <- seqtbl_to_dnabin(seqs, name_col = name_col_in, seq_col = seq_col_in)
   }
-  
+
   # Check arguments
   assertthat::assert_that(inherits(seqs, "DNAbin"), msg = "seqs must be of class DNAbin")
   assertthat::assert_that(is.logical(echo))
-  
+
   if(!is.matrix(seqs)) seqs <- as.matrix(seqs)
-  
+
   # Check that trimal is installed and on the PATH
   check_trimal <- tryCatch({
     processx::run("trimal", "-h", echo = FALSE)
@@ -3519,37 +3520,37 @@ trimal <- function (
   }, finally = {
     TRUE
   })
-  
+
   # Write out alignment to temp dir
   temp_wd <- tempdir()
-  
+
   in_file_name <- glue("{digest::digest(seqs)}.fasta")
-  
+
   out_file_name <- glue("{digest::digest(seqs)}.aln")
-  
+
   ape::write.FASTA(seqs, fs::path(temp_wd, in_file_name))
-  
+
   # Set up arguments to trimal
   args <- c("-in", in_file_name, "-out", out_file_name, "-fasta", other_args)
-  
+
   # Run trimal
-  results <- processx::run("trimal", args, wd = temp_wd, 
+  results <- processx::run("trimal", args, wd = temp_wd,
                            echo = echo)
-  
+
   # Read in results
   results <- ape::read.FASTA(fs::path(temp_wd, out_file_name)) %>% as.matrix
-  
+
   # Clean up
   fs::file_delete(fs::path(temp_wd, out_file_name))
   fs::file_delete(fs::path(temp_wd, in_file_name))
-  
+
   # All done
   if(isTRUE(return_seqtbl)) {
     results <- dnabin_to_seqtbl(results, name_col = name_col_out, seq_col = seq_col_out)
   }
 
   results
-  
+
 }
 
 #' Trim spacer regions
@@ -3558,21 +3559,21 @@ trimal <- function (
 #'
 #' @return Tibble with list-column of trimmed spacers; each row is
 #' one cluster per target region
-#' 
+#'
 trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 
   # Check that input names match arguments
   check_args(match.call())
 
-  plastid_spacers_aligned_clusters %>% 
+  plastid_spacers_aligned_clusters %>%
     select(seq, species, target, cluster) %>%
     group_by(target, cluster) %>%
     nest(data = c(seq, species)) %>%
     # trim spacers lightly to keep most gaps
     mutate(
       align_trimmed = map(
-        data, trimal, 
-        other_args = c("-gt", "0.01"), 
+        data, trimal,
+        other_args = c("-gt", "0.01"),
         return_seqtbl = FALSE,
         name_col_in = "species"
       )) %>%
@@ -3588,10 +3589,10 @@ trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 #'
 #' @return Tibble with list-column of trimmed genes (or spacers); each row is
 #' a target gene (or spacer)
-#' 
+#'
 trim_genes <- function(plastid_aligned, name_col_in = "species") {
 
-  plastid_aligned %>% 
+  plastid_aligned %>%
     select(seq, species, target, accession) %>%
     group_by(target) %>%
     nest(data = c(seq, species, accession)) %>%
@@ -3601,9 +3602,9 @@ trim_genes <- function(plastid_aligned, name_col_in = "species") {
         # spacers have hyphen, genes don't
         str_detect(target, "-"), "0.01", "0.05"),
       align_trimmed = map(
-        data, trimal, 
-        other_args = c("-gt", trim_strength), 
-        return_seqtbl = FALSE, 
+        data, trimal,
+        other_args = c("-gt", trim_strength),
+        return_seqtbl = FALSE,
         name_col_in = name_col_in
       )) %>%
     ungroup() %>%
@@ -3674,17 +3675,17 @@ align_rep_spacers <- function(plastid_spacers_aligned_trimmed, plastid_spacers_u
 #' alignments of clusters; column "seq" includes sequences of individual singletons.
 #'
 reverse_spacers <- function(plastid_spacers_aligned_trimmed_clusters, plastid_spacers_rep_align) {
-  
+
   # Check that input names match arguments
   check_args(match.call())
-  
+
   # Make a tibble showing which clusters were reversed
   clusters_rev_tbl <-
     plastid_spacers_rep_align %>%
     select(cluster, target, reversed) %>%
     filter(cluster != "none") %>%
     unique()
-  
+
   # Reverse-complement clusters
   # will drop any clusters that were excluded when making `clusters_rev_tbl`
   plastid_spacers_aligned_trimmed_rev <-
@@ -3706,17 +3707,17 @@ reverse_spacers <- function(plastid_spacers_aligned_trimmed_clusters, plastid_sp
     filter(cluster == "none") %>%
     assert(not_na, reversed) %>%
     assert(is.logical, reversed)
-  
+
   # Combine singletons and clusters
   bind_rows(plastid_spacers_aligned_trimmed_rev, singletons_rev) %>%
     assert(not_na, target, cluster, reversed) %>%
     select(-reversed)
-  
+
 }
 
 #' Merge subalignments with MAFFT
-#' 
-#' Modified from ips::mafft.merge(), but allows adding 
+#'
+#' Modified from ips::mafft.merge(), but allows adding
 # "singleton" seqs that are not part of any subalignment
 #'
 #' @param subMSA List of sub-alignments to merge; each one a matrix of class "DNAbin"
@@ -3731,11 +3732,11 @@ reverse_spacers <- function(plastid_spacers_aligned_trimmed_clusters, plastid_sp
 #'
 #' @return Matrix of class "DNAbin"; the merged alignment
 #'
-mafft_merge <- function (subMSA, other_seqs, method = "auto", gt, thread = -1, exec, quiet = TRUE, adjustdirection = FALSE) 
+mafft_merge <- function(subMSA, other_seqs, method = "auto", gt, thread = -1, exec, quiet = TRUE, adjustdirection = FALSE)
 {
     quiet <- ifelse(quiet, "--quiet", "")
     adjustdirection <- ifelse(adjustdirection, "--adjustdirection", "")
-    method <- match.arg(method, c("auto", "localpair", "globalpair", 
+    method <- match.arg(method, c("auto", "localpair", "globalpair",
         "genafpair", "parttree", "retree 1", "retree 2"))
     method <- paste("--", method, sep = "")
     if (missing(gt)) {
@@ -3778,16 +3779,16 @@ mafft_merge <- function (subMSA, other_seqs, method = "auto", gt, thread = -1, e
 }
 
 #' Write out a nexus block of gene start and end positions for IQTREE
-#' 
+#'
 #' Output nexus file example: http://www.iqtree.org/workshop/data/turtle.nex
 #'
 #' @param gene_list List of genes in the aligment
 #' @param nexus_file Path to write out nexus file
 #'
 #' @return A vector of gene start and end positions
-#' 
-write_nexus_gene_block <- function (gene_list, nexus_file) {
-  
+#'
+write_nexus_gene_block <- function(gene_list, nexus_file) {
+
   gene_locs <-
     tibble::tibble(
       gene = names(gene_list),
@@ -3800,14 +3801,14 @@ write_nexus_gene_block <- function (gene_list, nexus_file) {
       nexus_line = glue::glue("  charset {gene} = {start}-{end};")
     ) %>%
     dplyr::pull(nexus_line)
-  
+
   cat(
     "#nexus", "begin sets;", gene_locs, "end;",
     file = nexus_file, sep = "\n"
   )
-  
+
   gene_locs
-  
+
 }
 
 #' Concatenate a list of aligned genes
@@ -3822,20 +3823,20 @@ write_nexus_gene_block <- function (gene_list, nexus_file) {
 #' gene_2 <- woodmouse[,101:200]
 #' woodmouse_genes <- list(gene_1, gene_2)
 #' concatenate_genes(woodmouse_genes)
-concatenate_genes <- function (dna_list) {
+concatenate_genes <- function(dna_list) {
   require(apex)
-  
+
   assertthat::assert_that(is.list(dna_list))
-  assertthat::assert_that(all(lapply(dna_list, class) == "DNAbin"), 
+  assertthat::assert_that(all(lapply(dna_list, class) == "DNAbin"),
                           msg = "All elements of dna_list must be of class DNAbin")
-  assertthat::assert_that(all(sapply(dna_list, is.matrix)), 
+  assertthat::assert_that(all(sapply(dna_list, is.matrix)),
                           msg = "All elements of dna_list must be matrices")
-  
+
   # Check that there are no duplicate sequence names (species) within a gene
   map_df(dna_list, ~rownames(.) %>% tibble(species = .), .id = "gene") %>%
     assert_rows(col_concat, is_uniq, species, gene, error_fun = assertr::error_stop)
-  
-  dna_multi <- new("multidna", dna_list) 
+
+  dna_multi <- new("multidna", dna_list)
   apex::concatenate(dna_multi)
 }
 
@@ -3851,14 +3852,14 @@ concatenate_genes <- function (dna_list) {
 #' of fern species; output of ts_parse_names()
 #' @param ref_names_data Reference data for taxonomic name resolution of fern species
 #' extracted from Catalog of Life data; output of extract_fow_from_col()
-#' 
+#'
 #' @return Dataframe; plastome_metadata with new column `accepted_name` and `species`
 #' containing the standardized name attached to it, also a column `outgroup` indicating
 #' if the data correspond to outgroup or not
-#' 
-resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw, 
+#'
+resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   plastome_metadata_raw, plastome_outgroups, ref_names_parsed, ref_names_data) {
-  
+
   ### outgroups ###
   # Fetch full scientific names for plastome outgroups
   plastome_outgroup_sci_names <-
@@ -3877,7 +3878,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     assert(not_na, scientific_name)
 
   ### ferns ###
-  plastome_names_query <- 
+  plastome_names_query <-
     # Exclude outgroups
     plastome_metadata_raw %>%
     anti_join(
@@ -3898,7 +3899,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
         # NCBI mistakenly used Drynaria parishii (Bedd.) C.Chr. & Tardieu with basionym as "Pleopeltis parishii Bedd."
         # but the real basionym for Drynaria parishii (Bedd.) C.Chr. & Tardieu is Meniscium parishii Bedd. -> Grypothrix parishii #nolint
         # Pleopeltis parishii Bedd. should point to Drynaria parishii (Bedd.) Bedd. #nolint
-        taxid == "2836282" ~ "Drynaria parishii (Bedd.) Bedd.", 
+        taxid == "2836282" ~ "Drynaria parishii (Bedd.) Bedd.",
         TRUE ~ scientific_name
       )
     ) %>%
@@ -3911,7 +3912,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   match_results_plastome <- ts_match_names(
     query = unique(plastome_names_query$query_name),
     reference = ref_names_parsed,
-    max_dist = 5, match_no_auth = TRUE, 
+    max_dist = 5, match_no_auth = TRUE,
     match_canon = TRUE, collapse_infra = TRUE)
 
   # Resolve synonyms
@@ -3946,7 +3947,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     # add resolved name
     left_join(
       unique(select(
-        match_results_plastome_resolved, 
+        match_results_plastome_resolved,
         query_name = query, resolved_name)),
       by = "query_name") %>%
     select(-query_name) %>%
@@ -3956,7 +3957,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   plastome_metadata_outgroups_resolved <-
     plastome_metadata_raw %>%
     inner_join(
-      unique(select(plastome_outgroups, accession)), by = "accession") %>% 
+      unique(select(plastome_outgroups, accession)), by = "accession") %>%
     select(-matches("species|variety")) %>%
     left_join(
       select(
@@ -3969,7 +3970,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   bind_rows(
     plastome_metadata_ferns_resolved,
     plastome_metadata_outgroups_resolved
-  ) %>% 
+  ) %>%
   # Make sure all accessions are included
   verify(all(accession %in% plastome_metadata_raw$accession)) %>%
   verify(all(plastome_metadata_raw$accession %in% accession)) %>%
@@ -3977,7 +3978,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
   filter(!is.na(resolved_name)) %>%
   # Parse resolved name to just species (drops infrasp taxon)
   mutate(
-    gn_parse_tidy_quiet(resolved_name) %>% 
+    gn_parse_tidy_quiet(resolved_name) %>%
       select(taxon = canonicalsimple)
   ) %>%
   mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
@@ -3992,10 +3993,10 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
 }
 
 #' Combine GenBank rbcL and plastome-derived rbcL sequences
-#' 
+#'
 #' Preferentially use plastome-derived rbcL sequences if the same
 #' species is present in both.
-#' 
+#'
 #' All spaces in species names replaced with underscores (for proper
 #' handling in phy. analysis)
 #'
@@ -4010,52 +4011,52 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
 #'
 #' @examples
 combine_rbcL <- function(plastome_genes_unaligned, plastome_metadata_renamed, pterido_rbcl_clean_seqs) {
-  
+
   # Extract rbcL from the plastome genes list, and rename by species
   plastome_rbcL <- plastome_genes_unaligned[["rbcL"]]
-  
+
   plastome_rbcL_names <-
     tibble(accession = names(plastome_rbcL)) %>%
     left_join(
       select(plastome_metadata_renamed, accession, species),
       by = "accession") %>%
     mutate(species = str_replace_all(species, " ", "_"))
-  
+
   names(plastome_rbcL) <- plastome_rbcL_names$species
-  
+
   # Make tibble of rbcL alignment tip names, species, accessions,
   # and column if that species is in the plastome data
   rbcL_species <-
     tibble(tip_name = names(pterido_rbcl_clean_seqs)) %>%
     # Make sure there aren't any accessions with an underscore like 'NC_178345'
     # because these would break the str_match used to extract accession numbers
-    assert(function (x) str_detect(x, "[:upper:]_", negate = TRUE), tip_name) %>%
+    assert(function(x) str_detect(x, "[:upper:]_", negate = TRUE), tip_name) %>%
     mutate(
       species = map_chr(tip_name, ~str_match(., "^(.*)_.*$") %>% magrittr::extract(,2)),
       accession = map_chr(tip_name, ~str_match(., "^.*_(.*)$") %>% magrittr::extract(,2)),
       in_plastomes = species %in% names(plastome_rbcL)
     )
-  
+
   # Make list of rbcL seqs to exclude because those species are in
   # the plastome data
   rbcL_to_exclude <-
     rbcL_species %>%
     filter(in_plastomes == TRUE) %>%
     pull(tip_name)
-  
+
   # Exclude said species
   rbcL_sub <- pterido_rbcl_clean_seqs[!names(pterido_rbcl_clean_seqs) %in% rbcL_to_exclude]
-  
+
   # Rename rbcL sequences as species
-  rbcL_species_sub <- 
+  rbcL_species_sub <-
     tibble(tip_name = names(rbcL_sub)) %>%
     left_join(rbcL_species, by = "tip_name")
-  
+
   names(rbcL_sub) <- rbcL_species_sub$species
-  
+
   # Combine plastome and GenBank individual rbcL sequences
   rbcL_combined <- c(plastome_rbcL, rbcL_sub)
-  
+
   # Make final tibble with all accession numbers
   rbcL_combined_accessions <- bind_rows(
     transmute(plastome_rbcL_names, species, accession, from_plastome = TRUE),
@@ -4064,7 +4065,7 @@ combine_rbcL <- function(plastome_genes_unaligned, plastome_metadata_renamed, pt
     # Double check that all species are present and unique
     assert(not_na, species) %>%
     assert(is_uniq, species)
-  
+
   # Make sure that all species are accounted for in both results
   assertthat::assert_that(
     isTRUE(
@@ -4072,14 +4073,14 @@ combine_rbcL <- function(plastome_genes_unaligned, plastome_metadata_renamed, pt
         rbcL_combined_accessions %>% pull(species) %>% sort,
         rbcL_combined %>% names %>% sort
       )))
-  
+
   return(
     list(
       rbcL_combined = rbcL_combined,
       rbcL_combined_accessions = rbcL_combined_accessions
     )
   )
-  
+
 }
 
 #' Rename a single alignment from accessions to species names
@@ -4089,9 +4090,9 @@ combine_rbcL <- function(plastome_genes_unaligned, plastome_metadata_renamed, pt
 #' accessions in the alignment and "species", which will be used for renaming
 #'
 #' @return Matrix of class "DNAbin"
-#' 
+#'
 rename_alignment <- function(alignment, name_metadata) {
-  
+
   # Only use the unique set of accessions and species names
   # (no repeats, or will mess up join.)
   name_metadata <-
@@ -4100,7 +4101,7 @@ rename_alignment <- function(alignment, name_metadata) {
     unique %>%
     assert(not_na, accession, species) %>%
     assert(is_uniq, accession)
-  
+
   lookup_tibble <-
     tibble(accession = rownames(alignment)) %>%
     # Remove '_R_' that may be added to sequence names by MAFFT
@@ -4113,9 +4114,9 @@ rename_alignment <- function(alignment, name_metadata) {
     # Replace spaces with underscores
     mutate(species = str_replace_all(species, " ", "_")) %>%
     assert(not_na, species)
-  
+
   rownames(alignment) <- lookup_tibble$species
-  
+
   alignment
 }
 
@@ -4128,11 +4129,11 @@ rename_alignment <- function(alignment, name_metadata) {
 #'
 #' @return List
 rename_alignment_list <- function(alignment_list, name_metadata) {
-  
+
   purrr::map(
     alignment_list, rename_alignment,
     name_metadata = name_metadata)
-  
+
 }
 
 #' Remove the "_R_" from mafft-generated alignments
@@ -4140,8 +4141,8 @@ rename_alignment_list <- function(alignment_list, name_metadata) {
 #' @param matrix Alignment matrix
 #'
 #' @return matrix
-#' 
-remove_mafft_r <- function (matrix) {
+#'
+remove_mafft_r <- function(matrix) {
   rownames(matrix) <- rownames(matrix) %>% str_remove_all("_R_")
   matrix
 }
@@ -4153,25 +4154,25 @@ remove_mafft_r <- function (matrix) {
 #' rbcL sequences and rbcL sequences from plastomes
 #'
 #' @return Matrix of class "DNAbin"
-#' 
-concatenate_rbcL_with_other_plastid_genes <- function (plastid_genes_aligned_trimmed_renamed, rbcL_combined_aligned) {
-  
+#'
+concatenate_rbcL_with_other_plastid_genes <- function(plastid_genes_aligned_trimmed_renamed, rbcL_combined_aligned) {
+
   # Remove plastome-only rbcL from plastome genes list
   plastid_genes_no_rbcL <- plastid_genes_aligned_trimmed_renamed %>%
     magrittr::extract(names(.) != "rbcL")
-  
+
   # Combine combined genbank and plastome rbcL with other plastome genes
   final_gene_list <- c(
     list(rbcL = rbcL_combined_aligned),
     plastid_genes_no_rbcL)
-  
+
   concatenate_genes(final_gene_list)
-  
+
 }
 
 #' Join parts of a DNA sequence together
 #' using the range description in a GenBank flatfile
-#' 
+#'
 #' Helper function used by fetch_genes_from_plastome()
 #'
 #' @param seq Character vector of length 1; complete DNA sequence in format, e.g.,
@@ -4180,32 +4181,32 @@ concatenate_rbcL_with_other_plastid_genes <- function (plastid_genes_aligned_tri
 #' together. Formatted as e.g., "1..3,8..10,20..40". No spaces allowed.
 #'
 #' @return Character vector of length 1
-#' 
+#'
 join_cds <- function(seq, ranges) {
-  
+
   # Make sure only allowed characters are present
   assertthat::assert_that(
     str_detect(ranges, "[^0-9|..|,|<|>]") == FALSE,
     msg = "CDS range not properly specified"
   )
-  
+
   # Convert range description string into list,
   # one item per range
-  ranges_list <- 
+  ranges_list <-
     # Remove any characters other than '..', ',' or 0-9
     # (such as '<' or '>')
     str_remove_all(ranges, "[^0-9|..|,]") %>%
-    str_split(",") %>% 
-    magrittr::extract2(1) %>% 
+    str_split(",") %>%
+    magrittr::extract2(1) %>%
     map(~str_split(., "\\.\\.") %>% magrittr::extract2(1))
-  
+
   # Extract starts and ends of each range
   starts <- map_chr(ranges_list, 1)
   ends <-  map_chr(ranges_list, 2)
-  
+
   # Convert sequence into character vector with one character each
   seq_vec <- str_split(seq, "")[[1]]
-  
+
   # Extract the selected ranges, squash back together
   map2(starts, ends, ~magrittr::extract(seq_vec, .x:.y)) %>%
     unlist() %>%
@@ -4225,62 +4226,62 @@ join_cds <- function(seq, ranges) {
 #' - duplicates: Dataframe of genes that appear more than once in the
 #' plastome and are excluded from 'dna' and 'aa'.
 #'
-fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 10) {
-  
+fetch_genes_from_plastome <- function(accession, target_genes, limit_missing = 10) {
+
   # Download and read in GenBank flatfile ---
   # Get GenBank ID for the accession
   uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
-  
+
   # Make sure there is only 1 hit for that accession
   num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-  
+
   assertthat::assert_that(
     num_hits == 1,
     msg = "Did not find exactly one accession")
-  
+
   # Download complete GenBank record and write it to a temporary file
   temp_dir <- tempdir()
   temp_file <- fs::path(temp_dir, "gb_records.txt")
-  
+
   reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-  
+
   # Parse GenBank record
   # suppress "Sample 1 in 1 done" message
   read_gb <- quietly(read.gb::read.gb)
-  gb_parsed <- read_gb(temp_file) %>% 
+  gb_parsed <- read_gb(temp_file) %>%
     magrittr::extract2("result") %>%
     flatten()
-  
+
   fs::file_delete(temp_file)
-  
+
   # Extract full DNA sequence ---
   dna <- gb_parsed[["ORIGIN"]]
-  
+
   # Make sure it only includes IUPAC bases
   unique_bases <- dna %>% str_split("") %>% magrittr::extract2(1) %>% unique()
-  
+
   iupac <- c("A", "C", "G", "T", "U", "R", "Y", "S", "W", "K", "M", "B", "D", "H", "V", "N") %>%
     c(., str_to_lower(.))
-  
+
   assertthat::assert_that(
     all(unique_bases %in% iupac),
     msg = "DNA sequence includes non-IUPAC bases")
-  
+
   # Extract CDS with DNA sequence and translations ---
-  cds_with_dups <- 
+  cds_with_dups <-
     # Extract CDS from parsed flat-file (includes translation and DNA range)
     gb_parsed[["FEATURES"]][names(gb_parsed[["FEATURES"]]) == "CDS"] %>%
     map_df(~pivot_wider(., values_from = Qualifier, names_from = Location)) %>%
     # Filter to only target genes
-    filter(gene %in% target_genes) %>% 
+    filter(gene %in% target_genes) %>%
     select(gene, CDS, translation) %>%
     group_by(gene) %>%
     # Count number of entries per gene for each CDS
     add_count() %>%
     ungroup # Be sure to ungroup before using assertr!
-  
+
   duplicates <- filter(cds_with_dups, n > 1)
-  
+
   cds_with_all_aa <-
     # Filter out any genes with >1 CDS
     cds_with_dups %>%
@@ -4319,32 +4320,32 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
       expect_aa_high = ceiling((dna_len + 3) / 3),
       check_aa_high = aa_len <= expect_aa_high
     )
-  
+
   cds <- cds_with_all_aa %>%
     filter(check_aa_low, check_aa_high)
-  
+
   aa_length_errors <- anti_join(cds_with_all_aa, cds, by = "gene")
-  
+
   # Convert AA and DNA to APE format
   aa <- ape::as.AAbin(as.list(cds$translation)) %>%
     set_names(cds$seq_name)
-  
+
   dna <-
     cds$dna_seq %>%
     map(~str_split(., "")) %>%
     map(ape::as.DNAbin) %>%
     set_names(cds$seq_name)
-  
+
   # Reverse-complement those DNA sequences that need it
   dna[which(cds$complement == "complement")] <- dna[which(cds$complement == "complement")] %>% map(ape::complement)
-  
+
   list(
     dna = dna,
     aa = aa,
     duplicates = duplicates,
     length_errors = aa_length_errors
   )
-  
+
 }
 
 
@@ -4356,13 +4357,13 @@ fetch_genes_from_plastome <- function (accession, target_genes, limit_missing = 
 #' @param plastome_genes_unaligned List of unaligned genes extracted from plastomes
 #'
 #' @return List of class DNAbin
-#' 
-combine_sanger_with_plastome <- function (
+#'
+combine_sanger_with_plastome <- function(
   raw_fasta_all_genes,
   sanger_accessions_selection,
   plastome_genes_unaligned
 ) {
-  
+
   # Convert final selected GenBank (Sanger) accessions to long format
   final_gb_accessions <-
     sanger_accessions_selection %>%
@@ -4373,7 +4374,7 @@ combine_sanger_with_plastome <- function (
       names_pattern = "_(.*)$",
       values_to = "accession") %>%
     filter(!is.na(accession))
-  
+
   # GenBank (Sanger) data: add sequence data, group by gene
   final_seqs_grouped <-
     final_gb_accessions %>%
@@ -4388,37 +4389,37 @@ combine_sanger_with_plastome <- function (
     assert_rows(col_concat, is_uniq, accession, gene) %>%
     # Set grouping
     group_by(gene)
-  
+
   # GenBank (Sanger) data: convert to list of DNA sequences, name by gene
   genbank_genes_unaligned <-
     final_seqs_grouped %>%
     group_split %>%
     map(extract_seqs)
-  
+
   names(genbank_genes_unaligned) <- group_keys(final_seqs_grouped) %>% pull(gene)
-  
+
   ### Combine with plastome sequences ###
-  
+
   # - Make vector of genes in common between Sanger and plastome sequences
-  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastome_genes_unaligned)) 
-  
+  common_gene_names <- intersect(names(genbank_genes_unaligned), names(plastome_genes_unaligned))
+
   # - Make a list of accessions for genes in common between Sanger and plastome sequences
   common_genes <-
     common_gene_names %>%
     map(~c(genbank_genes_unaligned[[.]], plastome_genes_unaligned[[.]])) %>%
     set_names(common_gene_names)
-  
+
   # - Make a list of accessions in Sanger genes only (likely zero, but for completeness' sake)
   genbank_genes_only <- genbank_genes_unaligned %>%
     magrittr::extract(setdiff(names(genbank_genes_unaligned), names(plastome_genes_unaligned)))
-  
+
   # - Make a list of accessions in plastome sequences only
   plastome_genes_only <- plastome_genes_unaligned %>%
     magrittr::extract(setdiff(names(plastome_genes_unaligned), names(genbank_genes_unaligned)))
-  
+
   # Combine the lists
   c(common_genes, genbank_genes_only, plastome_genes_only)
-  
+
 }
 
 #' Merge spacer sub alignments with mafft
@@ -4429,7 +4430,7 @@ combine_sanger_with_plastome <- function (
 #'
 #' @return Tibble with list-column `align_trimmed` including alignment;
 #' column `cluster` will have the value "combined"
-#' 
+#'
 merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_threads) {
   # Extract sub alignments
   sub_alns <- plastid_spacers_reversed %>%
@@ -4437,14 +4438,14 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
     assert(not_na, cluster) %>%
     filter(cluster != "none") %>%
     pull(align_trimmed)
-  
+
   # Extract singletons
   singletons <- plastid_spacers_reversed %>%
     filter(target == target_select) %>%
     assert(not_na, cluster) %>%
     filter(cluster == "none") %>%
     seqtbl_to_dnabin(name_col = "species")
-  
+
   # Merge sub alignments and singletons
   alignment <-
     mafft_merge(
@@ -4455,7 +4456,7 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
       method = "retree 2",
       adjustdirection = FALSE,
       exec = "/usr/bin/mafft")
-  
+
   plastid_spacers_reversed %>%
     filter(target == target_select) %>%
     select(target) %>%
@@ -4469,7 +4470,7 @@ merge_spacer_alignments <- function(plastid_spacers_reversed, target_select, n_t
 #' Concatenate plastid and sanger genes
 #'
 #' For plastome dataset, will include only species with whole plastome data
-#' 
+#'
 #' For Sanger dataset, will include on the genes in `target_loci`
 #'
 #' @param plastid_genes_aligned_trimmed Tibble with list-column of trimmed
@@ -4486,7 +4487,7 @@ concatenate_plastid_sanger <- function(
   plastid_genes_aligned_trimmed,
   plastid_spacers_aligned_trimmed, target_loci,
   type_select) {
-  
+
   # Make list of plastome species:
   # those in genes that are not target Sanger loci
   plastome_species <-
@@ -4497,7 +4498,7 @@ concatenate_plastid_sanger <- function(
     unnest(species) %>%
     unique() %>%
     pull(species)
-  
+
   # Filter to plastome alignments by species
   if (type_select == "plastome") {
     res <- bind_rows(
@@ -4519,7 +4520,7 @@ concatenate_plastid_sanger <- function(
       filter(target %in% target_loci) %>%
       mutate(align_trimmed = map(align_trimmed, ips::deleteEmptyCells))
   } else (stop("Must choose 'plastome' or 'sanger' for 'type_select'"))
-  
+
   res
 }
 
@@ -4547,49 +4548,49 @@ concatenate_to_ape <- function(aln_tbl, aln_col = "align_trimmed") {
 #' @param program Name of program used to build tree; "iqtree" or 'fasttree'
 #'
 #' @return Tibble with tree in list-column `tree`
-#' 
+#'
 build_tree_from_alignment_df <- function(gene_tree_alignment_df, program = "fasttree") {
 
   assertthat::assert_that(
     program %in% c("fasttree", "iqtree"),
     msg = "Must choose 'fastree' or 'iqtree' for 'program'")
-	
-	# Extract alignment from df (df should only be one row)
-	alignment <- 
-		gene_tree_alignment_df %>%
-		pull(align_trimmed) %>%
-		magrittr::extract2(1)
-	
-	# Create temp dir for writing the tree (only needed for iqtree)
-	temp_dir <- fs::path(tempdir(), digest::digest(alignment))
-	
-	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
-	
-	fs::dir_create(temp_dir)
-	
-	# Run single iqtree analysis (no bootstrap)
-	if (program == "iqtree") { 
+
+  # Extract alignment from df (df should only be one row)
+  alignment <-
+    gene_tree_alignment_df %>%
+    pull(align_trimmed) %>%
+    magrittr::extract2(1)
+
+  # Create temp dir for writing the tree (only needed for iqtree)
+  temp_dir <- fs::path(tempdir(), digest::digest(alignment))
+
+  if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
+
+  fs::dir_create(temp_dir)
+
+  # Run single iqtree analysis (no bootstrap)
+  if (program == "iqtree") {
     tree <- iqtree(
-		  alignment, wd = temp_dir, 
-		  m = "GTR+I+G", nt = "AUTO", 
-		  echo = FALSE, 
-		  tree_path = fs::path(temp_dir, "alignment.phy.treefile")) 
+      alignment, wd = temp_dir,
+      m = "GTR+I+G", nt = "AUTO",
+      echo = FALSE,
+      tree_path = fs::path(temp_dir, "alignment.phy.treefile"))
     } else {
     tree <- fasttree(
-		  seqs = alignment,
+      seqs = alignment,
       mol_type = "dna",
       model = "gtr",
       gamma = FALSE,
-		  echo = FALSE, 
-		  tree_path = fs::path(temp_dir, "alignment.phy.treefile")) 
+      echo = FALSE,
+      tree_path = fs::path(temp_dir, "alignment.phy.treefile"))
   }
-	# Cleanup
-	if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
-	
-	# Return tree in data frame
-	gene_tree_alignment_df %>%
-		select(-align_trimmed) %>%
-		mutate(tree = list(tree))
+  # Cleanup
+  if(fs::dir_exists(temp_dir)) fs::dir_delete(temp_dir)
+
+  # Return tree in data frame
+  gene_tree_alignment_df %>%
+    select(-align_trimmed) %>%
+    mutate(tree = list(tree))
 }
 
 # Dating with treePL ----
@@ -4600,7 +4601,7 @@ build_tree_from_alignment_df <- function(gene_tree_alignment_df, program = "fast
 #' determine optimal rate-smoothing parameter. Output of run_treepl_cv().
 #'
 #' @return Character
-#' 
+#'
 get_best_smooth <- function(cv_results) {
   # Select the optimum smoothing value (smallest chisq) from cross-validation
   # The raw output looks like this:
@@ -4623,9 +4624,9 @@ get_best_smooth <- function(cv_results) {
 
 #' Do an initial treepl run to determine optimal
 #' smoothing parameters with random cross-validation.
-#' 
+#'
 #' Requires treepl to be installed and on PATH.
-#' 
+#'
 #' For more details on treepl options, see
 #' https://github.com/blackrim/treePL/wiki
 #'
@@ -4637,9 +4638,9 @@ get_best_smooth <- function(cv_results) {
 #' directory before running treePL?
 #' @param cvstart Start value for cross-validation
 #' @param cvstop Stop value for cross-validation
-#' @param cvsimaniter Start the number of cross validation simulated annealing 
+#' @param cvsimaniter Start the number of cross validation simulated annealing
 #' iterations, default = 5000 for cross-validation
-#' @param plsimaniter the number of penalized likelihood simulated annealing 
+#' @param plsimaniter the number of penalized likelihood simulated annealing
 #' iterations, default = 5000
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
@@ -4647,40 +4648,40 @@ get_best_smooth <- function(cv_results) {
 #' @param seed Seed for random number generator
 #' @param wd Working directory to run all treepl analyses
 #'
-run_treepl_cv <- function (
-  phy, alignment, calibration_dates, 
+run_treepl_cv <- function(
+  phy, alignment, calibration_dates,
   write_tree = TRUE,
   cvstart = "1000", cvstop = "0.1",
-  cvsimaniter = "5000", 
+  cvsimaniter = "5000",
   plsimaniter = "5000",
   thorough = TRUE,
   nthreads = "1",
   seed,
   wd) {
-  
+
   # Check that all taxa are in tree
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>%
     unique()
-  
+
   assertthat::assert_that(all(taxa %in% phy$tip.label),
                           msg = glue(
-                            "Taxa in calibration dates not present in tree: 
+                            "Taxa in calibration dates not present in tree:
                             {taxa[!taxa %in% phy$tip.label]}"))
-  
+
   # Check that tree is rooted
   assertthat::assert_that(
     ape::is.rooted(phy),
     msg = "Tree is not rooted")
-  
+
   # Write tree to wd
   phy_path <- "undated.tre"
   ape::write.tree(phy, fs::path(wd, phy_path))
-  
+
   # Get number of sites in alignment
   num_sites <- dim(alignment)[2] # nolint
-  
+
   outfile_path <- "treepl_cv_out.txt" # nolint
-  
+
   # Write config file to working directory
   treepl_config <- c(
     glue("treefile = {phy_path}"),
@@ -4697,30 +4698,30 @@ run_treepl_cv <- function (
     glue("nthreads = {nthreads}"),
     "randomcv"
   )
-  
+
   if(thorough) treepl_config <- c(treepl_config, "thorough")
-  
+
   config_file_name <- "treepl_cv_config.txt"
-  
+
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
-  
+
   # Run treePL
   processx::run(
     "treePL", config_file_name, wd = wd,
     stdout = fs::path(wd, "treepl_cv.stdout"),
     stderr = fs::path(wd, "treepl_cv.stderr")
   )
-  
+
   # Return cross-validation results
   readr::read_lines(fs::path(wd, outfile_path))
-  
+
 }
 
 #' Do an initial treepl run to determine optimal
 #' smoothing parameters with random cross-validation.
-#' 
+#'
 #' Requires treepl to be installed and on PATH.
-#' 
+#'
 #' For more details on treepl options, see
 #' https://github.com/blackrim/treePL/wiki
 #'
@@ -4733,9 +4734,9 @@ run_treepl_cv <- function (
 #' run_treepl_initial().
 #' @param cv_results Output of run_treepl_cv() so the best smoothing
 #' parameter can be selected.
-#' @param cvsimaniter Start the number of cross validation simulated annealing 
+#' @param cvsimaniter Start the number of cross validation simulated annealing
 #' iterations, default = 5000 for cross-validation
-#' @param plsimaniter the number of penalized likelihood simulated annealing 
+#' @param plsimaniter the number of penalized likelihood simulated annealing
 #' iterations, default = 5000
 #' @param thorough Logical; should the "thorough" setting in
 #' treePL be used?
@@ -4743,37 +4744,37 @@ run_treepl_cv <- function (
 #' @param seed Seed for random number generator
 #' @param wd Working directory to run all treepl analyses
 #'
-run_treepl_prime <- function (
-  phy, alignment, calibration_dates, 
+run_treepl_prime <- function(
+  phy, alignment, calibration_dates,
   cv_results,
   write_tree = FALSE,
-  cvsimaniter = "5000", 
+  cvsimaniter = "5000",
   plsimaniter = "5000",
   thorough = TRUE,
   nthreads = "1",
   seed,
   wd) {
-  
+
   # Check that all taxa are in tree
   taxa <- c(calibration_dates$taxon_1, calibration_dates$taxon_2) %>% unique
-  
+
   assertthat::assert_that(all(taxa %in% phy$tip.label),
                           msg = glue(
-                            "Taxa in calibration dates not present in tree: 
+                            "Taxa in calibration dates not present in tree:
                             {taxa[!taxa %in% phy$tip.label]}"))
 
   # Check that tree is rooted
   assertthat::assert_that(
     ape::is.rooted(phy),
     msg = "Tree is not rooted")
-  
+
   # Write tree to wd
   phy_path <- "undated.tre"
   ape::write.tree(phy, fs::path(wd, phy_path))
-  
+
   # Get number of sites in alignment
   num_sites <- dim(alignment)[2] #nolint
-  
+
   # Get best smoothing parameter
   # Select the optimum smoothing value (smallest chisq) from cross-validation
   # The raw output looks like this:
@@ -4782,16 +4783,16 @@ run_treepl_prime <- function (
   # etc.
   best_smooth <-
     tibble(cv_result = cv_results) %>%
-    mutate(smooth = str_match(cv_result, "\\((.*)\\)") %>% 
+    mutate(smooth = str_match(cv_result, "\\((.*)\\)") %>%
              magrittr::extract(,2) %>%
              parse_number()) %>%
-    mutate(chisq = str_match(cv_result, "\\) (.*)$") %>% 
+    mutate(chisq = str_match(cv_result, "\\) (.*)$") %>%
              magrittr::extract(,2) %>%
              parse_number()) %>%
     arrange(chisq) %>%
     slice(1) %>%
     pull(smooth)
-  
+
   # Write config file to working directory
   treepl_config <- c(
     glue("treefile = {phy_path}"),
@@ -4806,27 +4807,27 @@ run_treepl_prime <- function (
     glue("nthreads = {nthreads}"),
     "prime"
   )
-  
+
   if(thorough) treepl_config <- c(treepl_config, "thorough")
-  
+
   config_file_name <- "treepl_prime_config.txt"
-  
+
   readr::write_lines(treepl_config, fs::path(wd, config_file_name))
-  
+
   # Run treePL
   results <- processx::run(
     "treePL", config_file_name, wd = wd,
     stdout = fs::path(wd, "treepl_prime.stdout"),
     stderr = fs::path(wd, "treepl_prime.stderr")
   )
-  
+
   # Return stdout
   readr::read_lines(fs::path(wd, "treepl_prime.stdout"))
-  
+
 }
 
 #' Run treePL
-#' 
+#'
 #' Requires treepl to be installed and on PATH.
 #'
 #' For more details on treepl options, see
@@ -4835,7 +4836,7 @@ run_treepl_prime <- function (
 #' @param phy List of class "phylo"; phylogeny
 #' @param treepl_config Character vector: treePL config. If provided,
 #' will be used in favor of `alignment`, `calibration_dates`, `priming_results`,
-#' and `cv_results` to run treePL. 
+#' and `cv_results` to run treePL.
 #' The name of the infile must be "undated.tre".
 #' The name of the outfile must be "dated.tre".
 #' @param alignment List of class "DNAbin"; alignment
@@ -5104,7 +5105,7 @@ run_treepl_combined <- function(
 #'
 #' @param rbcL_combined_alignment Combined rbcL alignment including
 #' all rbcL and platome sequences
-#' @param plastome_metadata_renamed Source of names of plastome sequences 
+#' @param plastome_metadata_renamed Source of names of plastome sequences
 #' @param calibration_dates Tibble of taxa to be used for dating.
 #' Need to check that calibration taxa are not amongst those that
 #' will get removed by de-duplication.
@@ -5113,44 +5114,44 @@ run_treepl_combined <- function(
 #' grouped_alignment = Alignment with duplicate seqs removed and relabeled as groups
 #' group_table = Tibble matching representative sequences to original duplicate
 #' sequences so they can be added back in later.
-remove_dup_seqs <- function (
-  rbcL_combined_alignment, 
+remove_dup_seqs <- function(
+  rbcL_combined_alignment,
   plastome_metadata_renamed,
   calibration_dates) {
-  
+
   ### Cluster identical sequences ###
-  
+
   # It takes a very long time to run distance matrix on the full
   # alignment (> 50,000 characters), and I'm pretty sure we don't
   # have any identical plastome sequences. So remove these from
   # rbcL_combined_alignment, and check for identical seqs in the
   # remainder.
-  
+
   # Replace spaces with underscores in species names
   # for matching to alignment names
   plastome_species <- plastome_metadata_renamed$species %>% str_replace_all(" ", "_") %>% unique
-  
+
   rbcL_to_check <- rbcL_combined_alignment[
     !rownames(rbcL_combined_alignment) %in% plastome_species,]
-  
+
   # Calculate raw distance matrix with pairwise deletion
   # of sites with missing data
   dist_mat <- dist.dna(rbcL_to_check, pairwise.deletion = TRUE, model = "raw")
-  
+
   # Cluster the distances
   clusters <- hclust(dist_mat)
-  
+
   # Find the minimum non-zero height
   min_diff_height <-
     clusters$height %>% unique %>% sort %>% magrittr::extract(2)
-  
+
   # Find groups of sequences with minimum non-zero height.
   # i.e., groups of identical sequences
   seq_groups <- cutree(clusters, h = min_diff_height)
-  
+
   # Make a tibble mapping each taxon to its sequence group,
   # only keep those with > 1 taxon (duplicate seqs)
-  seq_groups_tibble <- 
+  seq_groups_tibble <-
     tibble(seq_group = seq_groups) %>%
     mutate(taxon = names(seq_groups)) %>%
     mutate(label = glue("group_{seq_group}")) %>%
@@ -5161,29 +5162,29 @@ remove_dup_seqs <- function (
     assert(function(x) !x %in% calibration_dates$taxon_2, taxon) %>%
     arrange(seq_group, taxon) %>%
     mutate(rep_seq = ifelse(duplicated(seq_group), FALSE, TRUE))
-  
+
   # Make a tibble of "representative" taxa, one per seq group
   # (arbitrarily choose by alph. order)
   rep_taxa_tibble <- seq_groups_tibble %>%
     filter(rep_seq == TRUE)
-  
+
   ### Remove dups from alignment ###
-  
+
   # Subset alignment to only "representative" seqs, rename
   # by sequence group
   pterido_rbcl_aln_rep_taxa <-
     rbcL_combined_alignment[rep_taxa_tibble$taxon, ]
-  
+
   rownames(pterido_rbcl_aln_rep_taxa) <- rep_taxa_tibble$label
-  
+
   # Remove all dup. seqs from alignment
   pterido_rbcl_aln_dups_removed <-
     rbcL_combined_alignment[!rownames(rbcL_combined_alignment) %in% seq_groups_tibble$taxon, ]
-  
+
   # Make combined alignment with uniq seqs plus "rep" seqs named by seq group
   rbcL_combined_alignment_grouped <-
     rbind(pterido_rbcl_aln_dups_removed, pterido_rbcl_aln_rep_taxa)
-  
+
   # Double-check: make sure all sequences are present in alignment
   # after restoring dup taxa
   tibble(label = rownames(rbcL_combined_alignment_grouped)) %>%
@@ -5197,28 +5198,28 @@ remove_dup_seqs <- function (
         sort(rownames(rbcL_combined_alignment))
       )
     ), success_fun = success_logical)
-  
+
   ### Format output ###
-  # Return list: de-duplicated alignment and 
+  # Return list: de-duplicated alignment and
   # tibble matching group names to original sequences to add them
   # back in later
   list(
     grouped_alignment = rbcL_combined_alignment_grouped,
     group_table = seq_groups_tibble
   )
-  
+
 }
 
 # Plotting ----
 
 # Hacked version of ape::add.scale.bar() that allows adding units
-add_scale_bar <- function (x, y, length = NULL, ask = FALSE, lwd = 1, lcol = "black", units = NA_character_,
-                           ...) 
+add_scale_bar <- function(x, y, length = NULL, ask = FALSE, lwd = 1, lcol = "black", units = NA_character_,
+                           ...)
 {
   lastPP <- get("last_plot.phylo", envir = .PlotPhyloEnv)
   direc <- lastPP$direction
   if (is.null(length)) {
-    nb.digit <- if (direc %in% c("rightwards", "leftwards")) 
+    nb.digit <- if (direc %in% c("rightwards", "leftwards"))
       diff(range(lastPP$xx))
     else diff(range(lastPP$yy))
     length <- pretty(c(0, nb.digit)/6, 1)[2]
@@ -5251,24 +5252,24 @@ add_scale_bar <- function (x, y, length = NULL, ask = FALSE, lwd = 1, lcol = "bl
       y <- lastPP$y.lim[1]
     }
   }
-  
+
   label <- paste3(as.character(length), units, sep = " ")
-  
+
   switch(direc, rightwards = {
     segments(x, y, x + length, y, col = lcol, lwd = lwd)
-    text(x + length * 1.1, y, label, adj = c(0, 
+    text(x + length * 1.1, y, label, adj = c(0,
                                              0.5), ...)
   }, leftwards = {
     segments(x - length, y, x, y, col = lcol, lwd = lwd)
-    text(x - length * 1.1, y, label, adj = c(1, 
+    text(x - length * 1.1, y, label, adj = c(1,
                                              0.5), ...)
   }, upwards = {
     segments(x, y, x, y + length, col = lcol, lwd = lwd)
-    text(x, y + length * 1.1, label, adj = c(0, 
+    text(x, y + length * 1.1, label, adj = c(0,
                                              0.5), srt = 90, ...)
   }, downwards = {
     segments(x, y - length, x, y, col = lcol, lwd = lwd)
-    text(x, y - length * 1.1, label, adj = c(0, 
+    text(x, y - length * 1.1, label, adj = c(0,
                                              0.5), srt = 270, ...)
   })
 }
@@ -5280,10 +5281,10 @@ add_scale_bar <- function (x, y, length = NULL, ask = FALSE, lwd = 1, lcol = "bl
 #' @param clade_select Selected clade
 #'
 #' @return Single number
-#' 
-get_clade_mrca <- function (phy, tips, clade_select) {
+#'
+get_clade_mrca <- function(phy, tips, clade_select) {
   ape::getMRCA(
-    phy, 
+    phy,
     tips %>% filter(clade == clade_select) %>% pull(tip)
   )
 }
@@ -5298,25 +5299,25 @@ get_clade_mrca <- function (phy, tips, clade_select) {
 #' if not provided)
 #'
 #' @return Dataframe (tibble)
-#' 
-parse_fastp_sum <- function (file, sample_name = NULL) {
-  
+#'
+parse_fastp_sum <- function(file, sample_name = NULL) {
+
   # Parse JSON with jsonlite package
   data <- jsonlite::fromJSON(file)
-  
+
   if(is.null(sample_name)) sample_name <- fs::path_file(file) %>% str_remove_all("_sequence_trim_report.json")
-  
+
   # Extract data of interest as tibbles
   before_filtering <- as_tibble(data[["summary"]][["before_filtering"]]) %>%
     rename_with(~paste0(.x, "_before"))
-  
+
   after_filtering <- as_tibble(data[["summary"]][["after_filtering"]]) %>%
     rename_with(~paste0(.x, "_after"))
-  
+
   filtering_result <- as_tibble(data[["filtering_result"]])
-  
+
   duplication_rate <- tibble(duplication_rate = data[["duplication"]][["rate"]])
-  
+
   # Combine the tibbles
   bind_cols(
     sample = sample_name,
@@ -5325,17 +5326,17 @@ parse_fastp_sum <- function (file, sample_name = NULL) {
     filtering_result,
     duplication_rate
   )
-  
+
 }
 
 #' Run fastp
-#' 
+#'
 #' Trims adapters and low-quality bases on fastp default settings, assuming
 #' paired-end input.
-#' 
+#'
 #' For more about fastp, see:
 #' https://github.com/OpenGene/fastp
-#' 
+#'
 #' Trimmed reads along with an html report will be be written to `out_dir`.
 #'
 #' @param sample String indicating unique sample name (other than suffix specifying
@@ -5350,20 +5351,20 @@ parse_fastp_sum <- function (file, sample_name = NULL) {
 #'
 #' @examples
 fastp <- function(sample, data_dir = "data_raw", out_dir = "intermediates/fastp/", f_suffix = "R1_001", r_suffix = "R2_001") {
-  
+
   # Find paths to raw F and R reads
   raw_forward <- list.files(data_dir, full.names = TRUE, pattern = glue(".*{sample}.*{f_suffix}"), recursive = TRUE)
   raw_reverse <- list.files(data_dir, full.names = TRUE, pattern = glue(".*{sample}.*{r_suffix}"), recursive = TRUE)
-  
+
   # Verify that input paths are OK
   assertthat::assert_that(length(raw_forward) == 1, msg = "Sample does not match exactly one forward raw read")
   assertthat::assert_that(length(raw_reverse) == 1, msg = "Sample does not match exactly one reverse raw read")
   assertthat::assert_that(assertthat::is.readable(raw_forward))
   assertthat::assert_that(assertthat::is.readable(raw_reverse))
-  
+
   # Specify temporary file for writing trimming report in json format
   temp_json <- fs::path(tempdir(), glue("{sample}.json"))
-  
+
   # Set up fastp arguments
   args <- c(
     "-i", raw_forward,
@@ -5373,19 +5374,19 @@ fastp <- function(sample, data_dir = "data_raw", out_dir = "intermediates/fastp/
     "-j", temp_json,
     "-h", glue::glue("{out_dir}/{sample}.html")
   )
-  
+
   # Run fastp
   processx::run("fastp", args)
-  
+
   # Parse json report into tibble
   res <- parse_fastp_sum(temp_json, sample)
-  
+
   # Cleanup
   fs::file_delete(temp_json)
-  
+
   # Return tibble
   res
-  
+
 }
 
 # Hypbiper ----
@@ -5400,38 +5401,38 @@ fastp <- function(sample, data_dir = "data_raw", out_dir = "intermediates/fastp/
 #'
 #' @return String
 #' @examples
-#' get_taxon_from_gb("KY427331") 
-get_taxon_from_gb <- function (accession, rank = "species") {
-  
+#' get_taxon_from_gb("KY427331")
+get_taxon_from_gb <- function(accession, rank = "species") {
+
   # Sleep for 1/3 second to avoid triggering Error: Too Many Requests (HTTP 429)
   # May have something to do with this?
   # https://github.com/ropensci/taxize/issues/722
   Sys.sleep(1)
-  
+
   assertthat::assert_that(assertthat::is.string(accession))
   assertthat::assert_that(assertthat::is.string(rank))
-  
+
   # Check for ENTREZ KEY
   assertthat::validate_that(
     nchar(Sys.getenv("ENTREZ_KEY")) > 0,
     msg = "Warning: ENTREZ_KEY not detected. See taxize::key_helpers()."
   )
-  
+
   taxonomy <-
     taxize::genbank2uid(id = accession) %>%
     taxize::classification(db = "ncbi", max_tries = 10) %>%
     purrr::flatten()
-  
+
   if(rank %in% taxonomy$rank) return(taxonomy$name[taxonomy$rank == rank])
-  
+
   NA_character_
-  
+
 }
 
 # Count the number of missing bases in a DNA sequence
 # Here "missing" is anything other than A,C,T, or G
 #' @param seq List of class DNAbin of length one.
-count_missing <- function (seq) {
+count_missing <- function(seq) {
   seq <- as.character(seq)
   non_missing <- sum(str_count(seq, "a|t|c|g|A|T|C|G"))
   total_chars <- sum(nchar(seq))
@@ -5456,26 +5457,26 @@ count_missing <- function (seq) {
 #' test_gene_list <- assemble_gene_set(test_accessions, test_genes)
 #' ppgi_taxonomy <- read_csv("http://bit.ly/ppgi_taxonomy")
 #' make_plastid_target_file (test_gene_list, test_accessions, test_genes, ppgi_taxonomy, "test.fasta")
-#' 
-make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonomy_data, out_path) {
-  
+#'
+make_plastid_target_file <- function(gene_list, accessions, gene_names, taxonomy_data, out_path) {
+
   # Get species names for accessions, join with PPGI taxonomy.
   species <-
     accessions %>%
     set_names(.) %>%
     map_chr(get_taxon_from_gb)
-  
+
   species_taxonomy <-
     tibble(species = species, accession = names(species)) %>%
     assert(not_na, species) %>%
     mutate(genus = str_split(species, " ") %>% map_chr(1)) %>%
     left_join(select(taxonomy_data, suborder, family, subfamily, genus))
-  
+
   # Filter the list of plastid genes by taxonomy (must be a eupolypod II fern),
   # then choose one sequence per genus that is the longest seq with least missing
   # data.
   plastid_phy_gene_list <- flatten(gene_list)
-  
+
   hybpiper_target_data <-
     tibble(seq = plastid_phy_gene_list, seq_name = names(plastid_phy_gene_list)) %>%
     separate(seq_name, into = c("accession", "gene"), sep = "-", remove = FALSE) %>%
@@ -5488,24 +5489,24 @@ make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonom
     filter(n_missing == min(n_missing)) %>%
     slice(1) %>%
     ungroup()
-  
+
   # These are the DNA sequences we will use as targets for HybPiper.
   plastid_targets <- pull(hybpiper_target_data, seq) %>%
     set_names(hybpiper_target_data$seq_name) %>%
     map(as.character) %>%
     ape::as.DNAbin()
-  
+
   # Check that all names meet hybpiper formatting requirements
   # (sample and gene separated by dash).
   assertthat::assert_that(
-    str_split(names(plastid_targets), "-") %>% 
-      map_chr(1) %>% 
+    str_split(names(plastid_targets), "-") %>%
+      map_chr(1) %>%
       setdiff(accessions) %>%
-      length %>% 
+      length %>%
       magrittr::equals(0),
     msg = "Target names don't match HybPiper format"
   )
-  
+
   assertthat::assert_that(
     str_split(names(plastid_targets), "-") %>%
       map_chr(2) %>%
@@ -5514,7 +5515,7 @@ make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonom
       magrittr::equals(0),
     msg = "Target names don't match HybPiper format"
   )
-  
+
   assertthat::assert_that(
     str_split(names(plastid_targets), "-") %>%
       map_dbl(length) %>%
@@ -5522,32 +5523,32 @@ make_plastid_target_file <- function (gene_list, accessions, gene_names, taxonom
       magrittr::equals(2),
     msg = "Target names don't match HybPiper format"
   )
-  
+
   # Write out target file for hybpiper
   ape::write.FASTA(plastid_targets, out_path)
-  
+
   plastid_targets
-  
+
 }
 
 # Get vector of trimmed reads for hybpiper
-get_reads <- function (data_dir, pattern, ...) {
+get_reads <- function(data_dir, pattern, ...) {
   list.files(data_dir, pattern = pattern, full.names = TRUE) %>%
     fs::path_norm() %>%
     sort
 }
 
 # Make list of readfiles for hybpiper readsfirst.py
-make_paired_reads_list <- function (
-  forward_reads, reverse_reads, 
+make_paired_reads_list <- function(
+  forward_reads, reverse_reads,
   forward_read_ending = "_R1.fastq",
   reverse_read_ending = "_R2.fastq") {
   tibble(forward_reads = forward_reads) %>%
     mutate(reverse_reads = reverse_reads,
-           forward_prefix = 
+           forward_prefix =
              fs::path_file(forward_reads) %>%
              str_remove(., forward_read_ending),
-           reverse_prefix = 
+           reverse_prefix =
              fs::path_file(reverse_reads) %>%
              str_remove(., reverse_read_ending)
     ) %>%
@@ -5559,75 +5560,75 @@ make_paired_reads_list <- function (
 
 #' Run HybPiper reads_first.py
 #'
-#' Extracts hits to target sequences from a (pair of) input read(s). This 
+#' Extracts hits to target sequences from a (pair of) input read(s). This
 #' requires HybPiper scripts to be on the user's PATH.
 #'
 #' @param wd String; working directory. All output will be written here.
 #' @param echo Logical; should STDOUT and STERR be printed?
-#' @param baitfile String; FASTA file containing bait sequences for each gene. 
+#' @param baitfile String; FASTA file containing bait sequences for each gene.
 #' If there are multiple baits for a gene, the id must be of the form: >Taxon-geneName.
 #' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
-#' @param readfiles Character vector; One or more read files to start the pipeline. 
+#' @param readfiles Character vector; One or more read files to start the pipeline.
 #' If exactly two are specified, will assume it is paired Illumina reads.
 #' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
-#' @param prefix String; Directory name for pipeline output, default is to use 
+#' @param prefix String; Directory name for pipeline output, default is to use
 #' the FASTQ file name.
 #' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
-#' @param bwa Logical; Use BWA to search reads for hits to target. 
+#' @param bwa Logical; Use BWA to search reads for hits to target.
 #' Requires BWA and a bait file that is nucleotides!
 #' @param cpu Numeric; Limit the number of CPUs. Default is to use all cores available.
 #' (From https://github.com/mossmatters/HybPiper/blob/master/reads_first.py).
 #' @param ... Other arguments not used by this function but meant for tracking
 #' with `drake`.
 #'
-#' @return A list with components specified in {\link[processx]{run}. 
-#' Externally, results of reads_first.py will be written in the working 
+#' @return A list with components specified in {\link[processx]{run}.
+#' Externally, results of reads_first.py will be written in the working
 #' directory.
 #'
 #' @examples
-reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, bwa = FALSE, cpu = NULL, other_args = NULL, ...) {
-  
+reads_first <- function(wd, echo = FALSE, baitfile, readfiles, prefix = NULL, bwa = FALSE, cpu = NULL, other_args = NULL, ...) {
+
   # Make sure input types are correct
   assertthat::assert_that(assertthat::is.readable(wd))
   assertthat::assert_that(is.logical(echo))
   assertthat::assert_that(assertthat::is.readable(baitfile))
   assertthat::assert_that(is.character(readfiles))
-  if(!is.null(prefix)) 
+  if(!is.null(prefix))
     assertthat::assert_that(assertthat::is.string(prefix))
-  if(!is.null(cpu)) 
+  if(!is.null(cpu))
     assertthat::assert_that(assertthat::is.number(cpu))
   assertthat::assert_that(is.logical(bwa))
-  if(!is.null(other_args)) 
+  if(!is.null(other_args))
     assertthat::assert_that(is.character(other_args))
-  
+
   # Modify arguments for processx::run()
   wd <- fs::path_abs(wd)
   baitfile <- fs::path_abs(baitfile)
-  
-  hybpiper_arguments <- c("-b", baitfile, 
+
+  hybpiper_arguments <- c("-b", baitfile,
                           "-r", readfiles,
-                          if(!is.null(prefix)) "--prefix", 
+                          if(!is.null(prefix)) "--prefix",
                           prefix,
-                          if(!is.null(cpu)) "--cpu", 
+                          if(!is.null(cpu)) "--cpu",
                           cpu,
                           if(isTRUE(bwa)) "--bwa",
                           other_args)
-  
+
   # Specify paths in new environment
   new_env <- Sys.getenv()
   new_env["PATH"] <- paste(Sys.getenv("PATH"), "/apps/SPAdes/3.13.0/bin/:/apps/HybPiper/:/apps/partitionfinder/2.1.1/", sep = ":")
-  
+
   # Run command
   processx::run(
-    "reads_first.py", 
-    hybpiper_arguments, 
+    "reads_first.py",
+    hybpiper_arguments,
     wd = wd, echo = echo, env = new_env)
 }
 
 # Retrieve read fragments from hybpiper ----
 
 #' Extract the consensus sequence of short reads sorted by HybPiper
-#' 
+#'
 #' Requires bbmap and kindel to be installed and on the PATH.
 #'
 #' @param sample Name of sample. Should be the same as the name of the sample
@@ -5649,13 +5650,13 @@ reads_first <- function (wd, echo = FALSE, baitfile, readfiles, prefix = NULL, b
 #' # sample with fewest reads
 #' sample <- "UFG_393201_P03_WC08"
 #' get_hybpip_consensus("UFG_393201_P03_WC08", plastid_targets)
-get_hybpip_consensus <- function (sample, plastid_targets, ...) {
+get_hybpip_consensus <- function(sample, plastid_targets, ...) {
 
   require(ape) # for combining seqs with c()
-  
+
   # Make temp working folder
   temp_dir <- fs::dir_create(fs::path(tempdir(), digest::digest(sample)))
-  
+
   # Load list of all DNA targets, format
   # as tibble named by accession-gene
   target_dna <-
@@ -5665,35 +5666,35 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
       gene = str_split(name, "-") %>% map_chr(2),
       dna = map2(dna, name, ~set_names(.x, .y))
     )
-  
+
   # Fetch the names of target sequences matched to the sample by hybpiper
   ref_names <- list.files(
-    paste0("intermediates/hybpiper/", sample), 
-    pattern = "baits.fasta", 
+    paste0("intermediates/hybpiper/", sample),
+    pattern = "baits.fasta",
     full.names = TRUE, recursive = TRUE) %>%
     map(ape::read.FASTA) %>%
     map_chr(names)
-  
+
   # Construct pseudo reference genome based on the matched targets
   pseudo_ref_genome <- filter(target_dna, name %in% ref_names) %>%
     pull(dna) %>%
     set_names(nm = NULL) %>%
     do.call(c, .)
-  
+
   # Write out pseudo reference genome
   ape::write.FASTA(pseudo_ref_genome, fs::path(temp_dir, "ref.fasta"))
-  
+
   # Load all the sorted reads from HybPiper for this sample, combine
   short_reads <- list.files(
-    paste0("intermediates/hybpiper/", sample), 
-    pattern = "interleaved.fasta", 
+    paste0("intermediates/hybpiper/", sample),
+    pattern = "interleaved.fasta",
     full.names = TRUE, recursive = TRUE) %>%
     map(ape::read.FASTA) %>%
     do.call(c, .)
-  
+
   # Write out sorted reads for mapping
   ape::write.FASTA(short_reads, fs::path(temp_dir, "reads.fasta"))
-  
+
   # Run bbmap: maps reads to reference
   args <- c(
     # input short reads
@@ -5709,24 +5710,24 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
     # don't write out the index file to disk
     "-nodisk"
   )
-  
+
   bbmap_res <- processx::run("bbmap", args)
-  
-  # Process bbmap stderr to get table of reads mapped, 
+
+  # Process bbmap stderr to get table of reads mapped,
   # number of input reads, number of input bases
   bbmap_stderr_raw <- write_lines(bbmap_res$stderr, fs::path(temp_dir, "bbmap.stderr"))
   bbmap_stderr_lines <- read_lines(bbmap_stderr_raw)
   skip_val <- str_detect(bbmap_stderr_lines, "Read 1 data") %>% which %>% magrittr::subtract(1)
   max_val <- str_detect(bbmap_stderr_lines, "Total time") %>% which %>% magrittr::subtract(skip_val + 6)
-  
+
   map_stats <- read_tsv(bbmap_stderr_raw, skip = skip_val, n_max = max_val) %>%
     janitor::clean_names() %>%
     rename(category = read_1_data) %>%
     mutate(category = str_remove_all(category, ":"))
-  
+
   n_input_reads <- str_match_all(bbmap_res$stderr, "Reads Used: +\t([0-9]+)") %>% purrr::pluck(1,2)
   n_input_bp <- str_match_all(bbmap_res$stderr, "Reads Used:[^\\(]+\\(([0-9]+) ") %>% purrr::pluck(1,2)
-  
+
   # Run kindel: extracts consensus from alignment
   args <- c(
     # kindel subcommand: produce consensus
@@ -5738,28 +5739,28 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
     # trim ambiguous bases from ends
     "-t"
   )
-  
+
   kindel_res <- processx::run("kindel", args)
-  
+
   # Write out standard output so it can be read in with ape::read.FASTA
   con_raw <- kindel_res$stdout %>%
     # remove some text from the sequence names added by kindel
     str_remove_all("_cns <unknown description>")
-  
+
   write_lines(con_raw, fs::path(temp_dir, "con.fasta"))
-  
+
   # Read back in with ape
   consensus <- ape::read.FASTA(fs::path(temp_dir, "con.fasta"))
-  
+
   # Reformat sequence names to "sample-gene"
   new_names <- paste(
     sample,
     names(consensus) %>% str_match("-(.+)$") %>% magrittr::extract(,2),
     sep = "-"
   )
-  
+
   names(consensus) <- new_names
-  
+
   # Combine results into tibble
   results <- tibble(
     consensus = list(consensus),
@@ -5768,12 +5769,12 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
     n_input_bp = n_input_bp,
     sample = sample
   )
-  
+
   # Delete temporary files
   fs::dir_delete(temp_dir)
-  
+
   return(results)
-  
+
 }
 
 # Reporting ----
@@ -5789,26 +5790,26 @@ get_hybpip_consensus <- function (sample, plastid_targets, ...) {
 #' @param target_genes Character vector of Sanger genes included in phylo. analysis
 #'
 #' @return Tibble
-#' 
+#'
 make_acc_ref_table <- function(
   plastid_genes_aligned_trimmed,
   sanger_seqs_names_resolved,
   plastome_metadata_renamed,
   target_genes
 ) {
-  
+
   # Get a vector of all accession numbers in the final plastid alignment
   plastid_accs <- map(plastid_genes_aligned_trimmed, rownames) %>%
     set_names(NULL) %>%
     unlist()
-  
+
   # combine sanger and plastome metata data
   sanger_plastome_dat <-
     bind_rows(
       select(sanger_seqs_names_resolved, accession, species, sci_name = scientificName, gene),
       transmute(plastome_metadata_renamed, accession, species, sci_name = scientificName, gene = "full_plastome")
     )
-  
+
   # Build table of accession numbers, species, gene, and "title" for full plastome sequences
   # - start with accession numbers used for phy. analysis.
   tibble(accession = plastid_accs) %>%
@@ -5833,7 +5834,7 @@ make_acc_ref_table <- function(
 #'
 #' @return Tibble of start and end positions of each gene
 #' in the concatenated data
-#' 
+#'
 make_gene_part_table <- function(gene_list) {
   tibble(
     gene = names(gene_list),
@@ -5847,7 +5848,7 @@ make_gene_part_table <- function(gene_list) {
 }
 
 #' Make accessions table in long format
-#' 
+#'
 #' (one row per accession)
 #'
 #' @param raw_meta Tibble; Raw metadata for GenBank accessions in Sanger dataset
@@ -5855,20 +5856,20 @@ make_gene_part_table <- function(gene_list) {
 #' Sanger dataset after removing rogues by all-by-all BLAST
 #' @param plastome_seqs_combined_filtered Tibble; DNA sequences and metadata for
 #' plastome dataset, filtered to single best accession per species
-#' @param ncbi_names_query Tibble; NCBI species names to query against 
+#' @param ncbi_names_query Tibble; NCBI species names to query against
 #' taxonomic standard
 #' @param sanger_accessions_selection Tibble; Final selection of accessions
 #' for Sanger dataset
 #' @param plastome_metadata_renamed Tibble; Metadata for plastome dataset
 #' renamed after resolving species names against taxonomic standard
-#' @param plastome_metadata_raw Tibble; Raw metadata for GenBank accessions 
+#' @param plastome_metadata_raw Tibble; Raw metadata for GenBank accessions
 #' in plastome dataset
-#' @param plastome_ncbi_names_raw Tibble; Species names in plastome data 
+#' @param plastome_ncbi_names_raw Tibble; Species names in plastome data
 #' extracted from NCBI taxonomy
 #'
 #' @return Tibble with one row per accession including species (tips in FTOL),
 #' scientific name, accession length, etc.
-#' 
+#'
 make_long_acc_table <- function(
   raw_meta, sanger_seqs_combined_filtered,
   plastome_seqs_combined_filtered,
@@ -5879,7 +5880,7 @@ make_long_acc_table <- function(
 
   # Check argument names
   check_args(match.call())
-  
+
   ## Plastome data ##
   # Tibble of NCBI accepted names
   plastome_ncbi_accepted_names <-
@@ -5892,14 +5893,14 @@ make_long_acc_table <- function(
     select(taxid, ncbi_name) %>%
     assert(not_na, everything()) %>%
     assert(is_uniq, everything())
-  
+
   # Tibble of taxid + accession
   plastome_taxid_acc <-
     plastome_metadata_raw %>%
     select(taxid, accession) %>%
     unique() %>%
-    assert(not_na, everything()) 
-  
+    assert(not_na, everything())
+
   # Tibble of plastome seqlengths
   # (actual seq length of non-missing bases in final dataset)
   plastome_acc_seqlen <-
@@ -5908,7 +5909,7 @@ make_long_acc_table <- function(
     mutate(seq_len = map_dbl(seq, ~count_non_missing(.[1]))) %>%
     group_by(accession) %>%
     summarize(seq_len = sum(seq_len))
-  
+
   # Tibble of plastome data in long format
   plastome_data <-
     plastome_seqs_combined_filtered %>%
@@ -5927,9 +5928,9 @@ make_long_acc_table <- function(
     left_join(plastome_ncbi_accepted_names, by = "taxid") %>%
     assert(not_na, everything()) %>%
     assert(is_uniq, species, accession)
-  
+
   ## Sanger data
-  
+
   # Tibble of taxid + scientific name
   # unique taxid, but not resolved_name
   taxid_sci_name <-
@@ -5937,8 +5938,8 @@ make_long_acc_table <- function(
     select(taxid, sci_name = resolved_name) %>%
     unique() %>%
     assert(not_na, everything()) %>%
-    assert(is_uniq, taxid) 
-  
+    assert(is_uniq, taxid)
+
   # Tibble of taxid + accepted NCBI name
   ncbi_accepted_names <-
     ncbi_names_query %>%
@@ -5947,7 +5948,7 @@ make_long_acc_table <- function(
     select(taxid, ncbi_name) %>%
     assert(not_na, everything()) %>%
     assert(is_uniq, everything())
-  
+
   # Tibble of taxid, accession, and locus (gene)
   # combination of accession + locus is unique
   taxid_accession_locus <-
@@ -5955,8 +5956,8 @@ make_long_acc_table <- function(
     select(taxid, accession, locus = target) %>%
     unique() %>%
     assert(not_na, everything()) %>%
-    assert_rows(col_concat, is_uniq, locus, accession) 
-  
+    assert_rows(col_concat, is_uniq, locus, accession)
+
   # Convert Sanger seqs to long format
   sanger_seq_len <-
     sanger_accessions_selection %>%
@@ -5966,7 +5967,7 @@ make_long_acc_table <- function(
     mutate(locus = str_remove_all(locus, "seq_len_")) %>%
     filter(!is.na(seq_len)) %>%
     filter(seq_len > 0)
-  
+
   ## Combine data into final table
   # Convert Sanger seqs to long format
   sanger_accessions_selection %>%
@@ -5990,7 +5991,7 @@ make_long_acc_table <- function(
     bind_rows(plastome_data) %>%
     arrange(outgroup, species, locus) %>%
     select(
-      species, locus, accession, seq_len, 
+      species, locus, accession, seq_len,
       sci_name, ncbi_name, ncbi_taxid = taxid,
       outgroup) %>%
     assert(not_na, everything()) %>%
@@ -6094,23 +6095,23 @@ make_parts_table <- function(aln_tbl, aln_seq) {
 #' @return Status of the `zip` program after running; externally, the data
 #' will be saved to `<version>.zip` in `out_path`.
 #'
-archive_raw_data <- function (version, metadata, out_path) {
-  
+archive_raw_data <- function(version, metadata, out_path) {
+
   # Specify location of zip archive
   archive <- paste0(fs::path(out_path, version), ".zip")
-  
+
   # Make sure the zip archize doesn't already exist
   assertthat::assert_that(
-    !fs::file_exists(archive), 
+    !fs::file_exists(archive),
     msg = glue::glue("{archive} already exists")
   )
-  
+
   # Create a temp dir for writing out csv file with metadata and README
   temp_dir <- tempdir()
-  
+
   # Write out csv of metadata (MD5 checksums)
   readr::write_csv(metadata, fs::path(temp_dir, "md5_checksums.csv"))
-  
+
   # Make vector of raw data files to copy into zip folder
   raw_data_to_copy <- metadata %>%
     filter(copy == TRUE) %>%
@@ -6119,19 +6120,19 @@ archive_raw_data <- function (version, metadata, out_path) {
     assertr::assert(assertr::is_uniq, file) %>%
     pull(path) %>%
     c(fs::path(temp_dir, "md5_checksums.csv"))
-  
+
   # zip the files
   zip_results <- utils::zip(
-    zipfile = archive, 
+    zipfile = archive,
     files = raw_data_to_copy,
     flags = "-r9Xj")
-  
+
   # Cleanup
   fs::file_delete(fs::path(temp_dir, "md5_checksums.csv"))
-  
+
   # Returnc
   zip_results
-  
+
 }
 
 # Taxonomic name resolution ----
@@ -6189,7 +6190,7 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
 
   # Identify taxids not in NCBI data
   missing_taxid <-
-    taxid_keep$taxid[!(taxid_keep$taxid %in% ncbi_raw$X1)] %>% 
+    taxid_keep$taxid[!(taxid_keep$taxid %in% ncbi_raw$X1)] %>%
       unique() %>%
       sort()
   if (length(missing_taxid) > 0) {
@@ -6225,7 +6226,7 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
          ncbi_names %>%
          # Make sure all taxids from metadata are in NCBI data
          verify(all(names_exclude %in% .$name)) %>%
-         # Exclude some superfluous sci names: these cause multiple accepted names 
+         # Exclude some superfluous sci names: these cause multiple accepted names
          # for a given taxid
       filter(!name %in% names_exclude)
    }
@@ -6384,11 +6385,11 @@ parse_ncbi_tax_record <- function(record) {
 
 #' Clean up species names extracted from NCBI taxonomy database
 #'
-#' @param ncbi_names_raw Tibble with columns `taxid` `species` `accepted` 
+#' @param ncbi_names_raw Tibble with columns `taxid` `species` `accepted`
 #' and `scientific_name`.
 #'
 #' @return Tibble
-#' 
+#'
 clean_ncbi_names <- function(ncbi_names_raw) {
   ncbi_names_raw %>%
     mutate(
@@ -6448,7 +6449,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         )
      ) %>%
      # Mixup: Cyathea affinis should be Cyathea affinis Brack. (from Samoa), not
-     # Cyathea affinis (G.Forst.) Sw. for acc MT657764 
+     # Cyathea affinis (G.Forst.) Sw. for acc MT657764
      mutate(
        scientific_name = case_when(
           taxid == "2853751" ~ "Cyathea affinis Brack.",
@@ -6474,9 +6475,9 @@ clean_ncbi_names <- function(ncbi_names_raw) {
 #' Output of clean_ncbi_names()
 #'
 #' @return Dataframe
-#' 
+#'
 exclude_invalid_ncbi_names <- function(ncbi_names) {
-  # Exclude names from consideration that aren't fully identified to species, 
+  # Exclude names from consideration that aren't fully identified to species,
   # environmental samples, or hybrid formulas.
   # Hybrid names *can* be parsed:
   # - "Equisetum x ferrissii" (x before specific epithet)
@@ -6488,23 +6489,23 @@ exclude_invalid_ncbi_names <- function(ncbi_names) {
     filter(
       str_detect(species, " sp\\.| aff\\.| cf\\.| × [A-Z]| x [A-Z]|environmental sample") | #nolint
         str_detect(scientific_name, " sp\\.| aff\\.| cf\\.| × [A-Z]| x [A-Z]|environmental sample") | #nolint
-        str_count(species, " ") < 1 | 
+        str_count(species, " ") < 1 |
         str_count(scientific_name, " ") < 1
       )
-  
+
   ncbi_names %>%
     anti_join(ncbi_names_exclude, by = "species", na_matches = "never") %>%
     anti_join(ncbi_names_exclude, by = "scientific_name", na_matches = "never")
 }
 
 #' Select NCBI names for first round of taxonomic name resolution
-#' 
+#'
 #' Names that are considered "accepted" by NCBI and have full scientific name (with author)
 #'
 #' @param ncbi_names Names downloaded from NCBI taxonomy database.
 #'
 #' @return Dataframe (tibble)
-#' 
+#'
 select_ncbi_names_round_1 <- function(ncbi_names) {
   ncbi_names %>%
     filter(accepted == TRUE) %>%
@@ -6513,44 +6514,44 @@ select_ncbi_names_round_1 <- function(ncbi_names) {
 }
 
 #' Select NCBI names for second round of taxonomic name resolution
-#' 
+#'
 #' Names that are considered synonyms by NCBI and have full scientific name (with author)
 #'
-#' @param match_results_resolved Dataframe; output of ts_resolve_names() 
+#' @param match_results_resolved Dataframe; output of ts_resolve_names()
 #' @param ncbi_names Names downloaded from NCBI taxonomy database.
 #'
 #' @return Dataframe (tibble)
-#' 
+#'
 select_ncbi_names_round_2 <- function(match_results_resolved_round_1, ncbi_names) {
-  
+
   # Get IDs of all resolved names from round 1
   ncbi_id_resolved <-
     match_results_resolved_round_1 %>%
     left_join(ncbi_names, by = c(query = "scientific_name")) %>%
     filter(!is.na(resolved_name)) %>%
     assert(not_na, taxid)
-  
+
   # Filter query names to those that failed round 1,
   # then to synonyms with a scientific name
   ncbi_names %>%
     anti_join(ncbi_id_resolved, by = "taxid") %>%
     filter(accepted == FALSE, !is.na(scientific_name)) %>%
     assertr::assert(is_uniq, scientific_name)
-  
+
 }
 
 #' Select NCBI names for third round of taxonomic name resolution
-#' 
+#'
 #' NCBI names that are species only (lack scientific name)
 #'
-#' @param match_results_resolved_round_1 Dataframe; output of ts_resolve_names() 
-#' @param match_results_resolved_round_2 Dataframe; output of ts_resolve_names() 
+#' @param match_results_resolved_round_1 Dataframe; output of ts_resolve_names()
+#' @param match_results_resolved_round_2 Dataframe; output of ts_resolve_names()
 #' @param ncbi_names Names downloaded from NCBI taxonomy database.
 #'
 #' @return Dataframe (tibble)
-#' 
+#'
 select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_results_resolved_round_2, ncbi_names) {
-  
+
   # Get IDs of all resolved names from round 1
   ncbi_id_resolved <-
     bind_rows(
@@ -6559,20 +6560,20 @@ select_ncbi_names_round_3 <- function(match_results_resolved_round_1, match_resu
     left_join(ncbi_names, by = c(query = "scientific_name")) %>%
     filter(!is.na(resolved_name)) %>%
     assert(not_na, taxid)
-  
+
   # Filter query names to those that failed round 1 + 2,
   # then to those lacking a scientific name (species name only)
   ncbi_names %>%
     anti_join(ncbi_id_resolved, by = "taxid") %>%
     filter(is.na(scientific_name)) %>%
     assertr::assert(is_uniq, species)
-  
+
 }
 
 #' Combine results of name matching rounds 1-3
 #'
-#' @param ncbi_names_query Names downloaded from NCBI taxonomy database. 
-#' @param ... Dataframes; output of ts_resolve_names() 
+#' @param ncbi_names_query Names downloaded from NCBI taxonomy database.
+#' @param ... Dataframes; output of ts_resolve_names()
 #'
 #' @return Dataframe; match results with NCBI taxid added
 #'
@@ -6596,9 +6597,9 @@ combined_match_results <- function(ncbi_names_query, ...) {
 #' @examples
 make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
   match_results_resolved_all %>%
-    filter(!is.na(resolved_name)) %>% 
+    filter(!is.na(resolved_name)) %>%
     select(taxid, resolved_name) %>%
-    unique() %>% 
+    unique() %>%
     add_count(taxid) %>%
     # Drop any taxid with multiple distinct resolved names
     filter(n == 1) %>%
@@ -6606,7 +6607,7 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
     select(-n) %>%
     # Add taxon (e.g., 'Foogenus barspecies fooinfraspname')
     mutate(
-      rgnparser::gn_parse_tidy(resolved_name) %>% 
+      rgnparser::gn_parse_tidy(resolved_name) %>%
         select(taxon = canonicalsimple)
     ) %>%
     mutate(taxon = str_replace_all(taxon, " ", "_")) %>%
@@ -6672,42 +6673,42 @@ iqtree <- function(alignment = NULL, wd = getwd(),
                    seed = NULL,
                    echo = FALSE,
                    other_args = NULL, ...) {
-  
+
   assertthat::assert_that(
     !is.null(alignment) | !is.null(aln_path),
     msg = "Either alignment or aln_path must be provided, but not both")
-  
+
   assertthat::assert_that(
     is.null(alignment) | is.null(aln_path),
     msg = "Either alignment or aln_path must be provided, but not both")
-  
+
   assertthat::assert_that(assertthat::is.dir(wd))
-  
+
   assertthat::assert_that(is.logical(echo))
-  
+
   assertthat::assert_that(is.logical(redo))
-  
+
   if (!is.null(bb))
     assertthat::assert_that(assertthat::is.number(bb))
-  
+
   if (!is.null(alrt))
     assertthat::assert_that(assertthat::is.number(alrt))
-  
+
   if (!is.null(nt))
     assertthat::assert_that(
       assertthat::is.number(nt) | assertthat::is.string(nt))
-  
+
   if (!is.null(m))
     assertthat::assert_that(assertthat::is.string(m))
-  
+
   if (!is.null(spp))
     assertthat::assert_that(assertthat::is.readable(spp))
-  
+
   if (!is.null(seed))
     assertthat::assert_that(assertthat::is.number(seed))
-  
+
   wd <- fs::path_norm(wd)
-  
+
   # check that iqtree is installed and on the PATH
   tryCatch({
     processx::run("iqtree2", "-h", echo = FALSE)
@@ -6718,7 +6719,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
   }, finally = {
     TRUE
   })
-  
+
   # Write alignment to working directory in phylip format if alignment
   # is provided via R as DNAbin
   if (is.null(aln_path)) {
@@ -6727,15 +6728,15 @@ iqtree <- function(alignment = NULL, wd = getwd(),
     assertthat::assert_that(
       is.matrix(alignment),
       msg = "alignment must be a matrix (not a list of unaligned sequences)")
-    
+   
     aln_path <- fs::path(wd, deparse(substitute(alignment))) %>%
       fs::path_ext_set("phy")
-    
+   
     phangorn::write.phyDat(alignment, aln_path, format = "phylip")
   }
-  
+
   assertthat::assert_that(assertthat::is.readable(aln_path))
-  
+
   # Set up arguments
   iqtree_arguments <- c(
     "-s", fs::path_abs(aln_path),
@@ -6754,7 +6755,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
     if (isTRUE(redo)) "-redo",
     other_args
   )
-  
+
   # Run iqtree command
   processx::run(
     "iqtree2",
@@ -6763,7 +6764,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
     # using all cores
     # https://github.com/iqtree/iqtree2/issues/18
     env = c("current", OMP_NUM_THREADS = "1"))
-  
+
   # Read in resulting tree(s)
   # Default: use default treefile if tree_path not provided
   if (is.null(tree_path)) {
@@ -6793,7 +6794,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
   }
 
   return(res)
-  
+
 }
 
 #' Infer a phylogenetic tree using FastTree
@@ -6820,7 +6821,7 @@ iqtree <- function(alignment = NULL, wd = getwd(),
 #' data(woodmouse)
 #' fasttree(woodmouse)
 #' }
-fasttree <- function (seqs, mol_type = "dna", model = "gtr", gamma = FALSE, other_args = NULL, echo = FALSE, ...) {
+fasttree <- function(seqs, mol_type = "dna", model = "gtr", gamma = FALSE, other_args = NULL, echo = FALSE, ...) {
 
   # Make sure input types are correct
   assertthat::assert_that(inherits(seqs, "DNAbin"),
@@ -6863,20 +6864,20 @@ fasttree <- function (seqs, mol_type = "dna", model = "gtr", gamma = FALSE, othe
 }
 
 #' Remove node labels from a phylogenetic tree
-#' 
+#'
 #' Used for generating a constraint tree with no bootstrap support values
 #'
 #' @param phy Phylogenetic tree; list of class "phylo".
 #'
 #' @return Phylogenetic tree with no node labels
-#' 
+#'
 remove_node_labels <- function(phy) {
   phy$node.label <- NULL
   phy
 }
 
 #' Make a single "bootstrap tree" with IQTREE
-#' 
+#'
 #' Re-estimates branchlengths using original alignment. See:
 #' http://www.iqtree.org/doc/Frequently-Asked-Questions#how-do-i-save-time-for-standard-bootstrap # nolint
 #'
@@ -6904,7 +6905,7 @@ remove_node_labels <- function(phy) {
 #'
 iqtree_bs <- function(
   alignment = NULL, aln_path = NULL,
-  constraint_tree, 
+  constraint_tree,
   rm_brln = FALSE,
   m = NULL, nt = 1, seed = 1,
   echo = FALSE, other_args = NULL) {
@@ -6962,7 +6963,7 @@ read_lines_tar <- function(..., depends = NULL) {
 #' @param iqtree_log Raw IQTREE log file (ending in .log) read into R
 #'
 #' @return Best-scoring model
-#' 
+#'
 extract_iqtree_mod <- function(iqtree_log) {
   iqtree_log[
     # Formatted for IQTREE2
@@ -7040,7 +7041,7 @@ get_best_tree <- function(
 #' @param sanger_tree Phylogenetic tree including Equisetum species.
 #'
 #' @return Tibble
-#' 
+#'
 load_equisetum_subgen <- function(equisteum_subgen_path, sanger_tree) {
   # Load CSV file, parse sci names
   equisetum_subgen <- read_csv(
@@ -7201,7 +7202,7 @@ assess_monophy <- function(
 #' at the node.
 #'
 #' @param phy List of class "phylo"
-#' 
+#'
 #' @return List of class "phylo": the rooted tree
 #'
 root_fern_tree <- function(phy) {
@@ -7252,7 +7253,7 @@ filter_fossil_calibration_points <- function(fossil_ferns_all) {
     ) %>%
     # Exclude non-monophyletic groups: Dennstaedtia, Dicksonia+Calochlaena
     filter(!affinities %in%
-      c("Dennstaedtia", "Dicksonia+Calochlaena")) %>% 
+      c("Dennstaedtia", "Dicksonia+Calochlaena")) %>%
     # Drop stem tracheophytes, since this is the same as MRCA land plants
     # which is used as a fixed age for treePL
     filter(node_calibrated != "stem Tracheophytes") %>%
@@ -7349,7 +7350,7 @@ make_fossil_species_map <- function(
         str_detect(species, paste(bryo_genera, collapse = "|"), negate = TRUE),
         "Tracheophytes", NA_character_),
       clade_2 = if_else(
-        str_detect(species, 
+        str_detect(species,
           paste(c(bryo_genera, lyco_genera), collapse = "|"), negate = TRUE),
         "Euphyllophytes", NA_character_)
     ) %>%
@@ -7388,7 +7389,7 @@ make_fossil_species_map <- function(
       tibble(
         species = .,
         genus = "Aglaomorpha"
-      ) %>% 
+      ) %>%
     # Make sure Aglaomorpha is formatted as expected:
     # check that immediate sister species
     # *outside* Aglaomorpha are *not* included
@@ -7396,7 +7397,7 @@ make_fossil_species_map <- function(
     verify(!"Drynaria_fortunei" %in% .$species)
     tip_tbl <- bind_rows(tip_tbl, aglaomorpha_tbl)
   }
-    
+   
   fossil_calibration_points %>%
     select(affinities) %>%
     # Split affinities that are composed of multiple taxa separated by '+'
@@ -7469,7 +7470,7 @@ make_fossil_species_map <- function(
 #' (xlsx format).
 #'
 #' @return Tibble with fossil calibration dates
-#' 
+#'
 parse_ts_calibrations <- function(testo_sundue_2016_si_path) {
 readxl::read_excel(
   testo_sundue_2016_si_path,
@@ -7479,7 +7480,7 @@ readxl::read_excel(
   janitor::clean_names() %>%
   mutate(
     stem_crown = str_to_lower(stem_crown),
-    clade = 
+    clade =
       str_replace_all(clade, "Aglaomorpha heraclea", "Drynaria heraclea") %>%
       str_replace_all("Alsophila/Cyathea clade", "Alsophila+Cyathea") %>%
       str_replace_all("Isoetales", "Isoëtales") %>%
@@ -7547,7 +7548,7 @@ make_ts_fossil_species_map <- function(
     select(species) %>%
     mutate(
       clade = if_else(
-        str_detect(species, 
+        str_detect(species,
           paste(c(bryo_genera, lyco_genera), collapse = "|"), negate = TRUE),
         "Euphyllophytes", NA_character_)
     ) %>%
@@ -7620,7 +7621,7 @@ make_ts_fossil_species_map <- function(
 #' @param fossil_affinity_select Name of fossil group to test.
 #'
 #' @return Tibble with monophyletic status of selected fossil group
-#' 
+#'
 mono_test_fossil <- function(
   tree,
   fossil_node_species_map,
@@ -7648,7 +7649,7 @@ mono_test_fossil <- function(
 #' @param node Number of a node in the tree.
 #'
 #' @return Character vector; a pair of tips whose MRCA is `node`
-#' 
+#'
 get_spanning_tips <- function(tree, node) {
   # Tree must be rooted
   assertthat::assert_that(ape::is.rooted(tree))
@@ -7669,15 +7670,15 @@ get_spanning_tips <- function(tree, node) {
   final_tips
 }
 
-#' Count the number of tips descending from a node defined by a pair of tips 
+#' Count the number of tips descending from a node defined by a pair of tips
 #' in a phylogenetic tree
 #'
 #' @param tree Phylogenetic tree.
 #' @param tips Character vector; a pair of tips in the tree.
 #'
-#' @return Number of terminal tips in the clade that is defined by the MRCA of 
+#' @return Number of terminal tips in the clade that is defined by the MRCA of
 #' `tips`
-#' 
+#'
 check_num_tips <- function(tree, tips) {
   if (is.null(tips)) return(NA)
   getMRCA(tree, tips) %>%
@@ -7692,7 +7693,7 @@ check_num_tips <- function(tree, tips) {
 #' @param species Single tip of the tree.
 #'
 #' @return Number of the parent node of the species
-#' 
+#'
 get_parent <- function(tree, species) {
   node <- which(tree$tip.label == species)
   phangorn::Ancestors(tree, node, type = "parent")
@@ -7704,7 +7705,7 @@ get_parent <- function(tree, species) {
 #' @param node Number of a node in the tree.
 #'
 #' @return Character vector; tips that descend from `node`
-#' 
+#'
 get_children <- function(tree, node) {
   # Tree must be rooted
   assertthat::assert_that(ape::is.rooted(tree))
@@ -7715,9 +7716,9 @@ get_children <- function(tree, node) {
 }
 
 #' Make tibble of manual spanning tips
-#' 
+#'
 #' This should always be done after inspecting the actual tree used for dating
-#' 
+#'
 #' @param data_set Choose data set; either "this_study" or "ts2016"
 #' (Testo and Sundue 2016 fossil calibration points)
 #' @return Tibble with columns "affinities", "tip_1_manual", and "tip_2_manual".
@@ -7747,7 +7748,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
 
 #' Get tips that define clades corresponding to each fossil
 #' calibration point
-#' 
+#'
 #' Filters out redundant calibrations (fossils calibrating the same node)
 #'
 #' @param fossil_node_species_map Tibble in long format with two columns,
@@ -7965,7 +7966,7 @@ get_fossil_calibration_tips <- function(
     add_count() %>%
     ungroup() %>%
     filter(n > 1)
-  
+
   if (nrow(aff_with_stem_and_crown) > 0) {
     aff_with_stem_and_crown %>%
     select(minimum_age, affinities_group, affinities) %>%
@@ -8022,7 +8023,7 @@ calibrate_root_node <- function(tree, node_name, time, tip_1, tip_2) {
 }
 
 #' Format fossil calibration points so they can be used for treePL
-#' 
+#'
 #' See https://github.com/blackrim/treePL/wiki/Quick-run
 #'
 #' @param fossil_calibration_tips Tibble of fossil calibration points.
@@ -8030,7 +8031,7 @@ calibrate_root_node <- function(tree, node_name, time, tip_1, tip_2) {
 #'
 #' @return Tibble with columns "mrca", "min", and "max" formatted like
 #' lines "mrca", "min", and "max" in a treePL config file
-#' 
+#'
 format_calibrations_for_treepl <- function(
   fossil_calibration_tips, root_tibble) {
 
@@ -8140,15 +8141,15 @@ not_null <- function(x) {
 
 # Convert ape::DNAbin format to Biostrings::DNAStringSet format,
 # optionally removing gaps
-DNAbin_to_DNAstringset <- function (seqs, remove_gaps = TRUE) {
+DNAbin_to_DNAstringset <- function(seqs, remove_gaps = TRUE) {
   if(isTRUE(remove_gaps)) {
-  seqs %>% as.list() %>% as.character %>% 
-      lapply(.,paste0,collapse="") %>% 
-      lapply( function (x) gsub("-", "", x)) %>% 
+  seqs %>% as.list() %>% as.character %>%
+      lapply(.,paste0,collapse="") %>%
+      lapply( function(x) gsub("-", "", x)) %>%
       unlist %>% Biostrings::DNAStringSet()
   } else {
-    seqs %>% as.list() %>% as.character %>% 
-      lapply(.,paste0,collapse="") %>% 
+    seqs %>% as.list() %>% as.character %>%
+      lapply(.,paste0,collapse="") %>%
       unlist %>% Biostrings::DNAStringSet()
   }
 }
@@ -8190,7 +8191,7 @@ gn_parse_tidy_quiet <- function(...) {
 #' this function to get tips in the order they are plotted.
 #' @param tree List of class "phylo"
 #' @return Character vector
-get_tips_in_ape_plot_order <- function (tree) {
+get_tips_in_ape_plot_order <- function(tree) {
   assertthat::assert_that(inherits(tree, "phylo"))
   # First filter out internal nodes
   # from the the second column of the edge matrix
@@ -8201,7 +8202,7 @@ get_tips_in_ape_plot_order <- function (tree) {
 }
 
 #' Create a tar archive
-#' 
+#'
 #' See https://archive.r-lib.org/reference/archive_write_files.html
 #'
 #' @param archive  The archive filename or an archive object.
@@ -8219,14 +8220,14 @@ get_tips_in_ape_plot_order <- function (tree) {
 #'
 archive_files <- function(
   archive, files, format = NULL, filter = NULL, options = character(), ...) {
- 
+
   archive::archive_write_files(
     archive = archive,
     files = files,
     format = format,
     filter = filter,
     options = options
-  )  
+  ) 
   archive
 }
 
@@ -8238,9 +8239,9 @@ archive_files <- function(
 #' @return Externally, the file or folder will be compressed. Returns the
 #' path to the compressed file.
 archive_dir <- function(
-  archive, dir, format = NULL, filter = NULL, options = character(), 
+  archive, dir, format = NULL, filter = NULL, options = character(),
   recursive = TRUE, full.names = FALSE, ...) {
- 
+
   archive::archive_write_dir(
     archive = archive,
     dir = dir,
@@ -8249,18 +8250,18 @@ archive_dir <- function(
     options = options,
     recursive = recursive,
     full.names = full.names
-  )  
+  ) 
   archive
 }
 
 #' Convert a data description in Roxygen format to one used for readmedown
-#' 
+#'
 #' Have to remove backslashes ('\') first though
 #'
-#' @param metadat Character string 
+#' @param metadat Character string
 #' @return Tibble
 #' @examples
-#'metadat <- 
+#'metadat <-
 #'  "item{species}{Species name; matches names of tips in tree}
 #'  item{locus}{Name of locus (gene or intergenic spacer region)}
 #'  item{accession}{GenBank accession number}
@@ -8271,10 +8272,10 @@ archive_dir <- function(
 #'  item{outgroup}{Logical; TRUE for outgroup taxa, FALSE for ingroup taxa (ferns)}"
 #'
 #'  roxy_to_tbl(metadat)
-#' 
+#'
 roxy_to_tbl <- function(metadat) {
   assertthat::assert_that(assertthat::is.string(metadat))
-  metadat %>% 
+  metadat %>%
     stringr::str_split(fixed("\n")) %>%
     magrittr::extract2(1) %>%
     stringr::str_squish() %>%
