@@ -1,5 +1,11 @@
 library(contentid)
 
+# register fern fossil input data
+
+# fern_fossils.csv v1.0.0
+register("https://raw.githubusercontent.com/fernphy/ferncal/6beb6b59c007d94d58f35658732ff561a9d6a537/fern_fossils.csv") # nolint
+# "hash://sha256/55fd2f21d8e26e4604d9128871f9435ede08f75efc8ae64ce56c671f8d605a1e" # nolint
+
 # register FTOL input data on figshare
 #
 # obtain URLs by navigating to

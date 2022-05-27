@@ -1,0 +1,48 @@
+accession,gene,note
+NC_040204,plastome,Supposed to be Pteris but sequences match Ceratopteris
+NC_040212,plastome,Supposed to be Ceratopteris but sequences match Pteris
+MT130555,plastome,Supposed to be Grypothrix megacuspis but almost exact match to Abacopteris gymnopteridifrons
+MW557379,plastome,Supposed to be Dryopteris but blasts to Polystichum
+MW042681,plastome,Drynaria acuminata lacks author can't distinguish between Drynaria acuminata Brack. = Lemmaphyllum accedens (Blume) Donk and Drynaria acuminata Fée = Microgramma thurnii (Baker) R.M.Tryon & Stolze
+MT364352,plastome,Neocheiropteris ovata but sequences match Goniophlebium
+FJ262719,trnL-trnF,Supposed to be Osmunda angustifolia but blasts to Mallotus
+MH826899,rbcL,Supposed to be Dicksonia sciurus but blasts to Cyathea; other D sciurus accs in GenBank blast properly to Dicksonia
+MH826861,rbcL,Supposed to be Dicksonia sciurus but blasts to Cyathea; other D sciurus accs in GenBank blast properly to Dicksonia
+MH826700,rbcL,Supposed to be Dicksonia sciurus but blasts to Alsophila; other D sciurus accs in GenBank blast properly to Dicksonia
+MH826928,rbcL,Supposed to be Dicksonia sciurus but blasts to Alsophila; other D sciurus accs in GenBank blast properly to Dicksonia
+MW052533,rbcL,Supposed to be Ophioglossum lusitanicum but blasts to Helminthostachys
+DQ646002,rbcL,Supposed to be Ophioglossum lusitanicum but blasts to Helminthostachys
+KP164486,atpA,Supposed to be Taenitis pinnata but blasts to Pteris
+KP164493,atpB,Supposed to be Taenitis pinnata but blasts to Pteris
+MT227276,rbcL,Pteris_hivaoaensis poor quality sequence on long branch
+KP337967,rbcL,Supposed to be Sphaeropteris inaequalis but blasts to Alsophila
+KP337992,rbcL,Supposed to be Sphaeropteris intramarginalis but blasts to Alsophila
+MT657760,rbcL,Supposed to be Alsophila vieillardii but matches Sphaeropteris
+MT657810,rbcL,Supposed to be Abrodictyum caudatum but matches Crepidomanes
+MT657791,rbcL,Supposed to be Abrodictyum dentatum but matches Callistopteris
+MK319101,rbcL,Supposed to be Cochlidium rostratum but matches Ascogrammitis; other C rostratum in GenBank blast properly to Cochlidium
+JF950912,trnL-trnF,Grammitis wattsii sequence ok but only trnLF available; too short and shows up as long branch; may add again if more markers become available
+MH665000,atpA,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665014,atpB,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665025,matK,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665081,rbcL,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665147,rps4,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665147,rps4-trnS,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+MH665213,trnL-trnF,Zealandia powellii voucher Wade 3352 misID actually Microsorum
+KP164484,atpA,Lecanopteris sinuosa but matches Microsorum; other L sinuosa in GenBank match Lecanopteris
+KP164491,atpB,Lecanopteris sinuosa but matches Microsorum; other L sinuosa in GenBank match Lecanopteris
+KP337999,rbcL,Supposed to be Sphaeropteris brackenridgei but blasts to Alsophila; one other seq in GenBank matches Sphaeropteris
+KP338006,rbcL,Supposed to be Sphaeropteris brackenridgei but blasts to Alsophila; one other seq in GenBank matches Sphaeropteris
+U18649,rbcL,Tapeinidium moluccanum poor quality sequence on long branch
+U18647,rbcL,Tapeinidium melanesicum poor quality sequence on long branch
+DQ191846,rbcL,Supposed to be Dryopteris tahmingensis (Dryopteris hwangii Ching) but matches Arachnioides
+DQ191881,rps4,Supposed to be Dryopteris subtriangularis but rps4 matches Arachnioides while rbcL for same voucher matches Dryopteris
+MN781349,rps4,Supposed to be Mickelia lindigii but poor match to anything on GenBank (e.g Elaphoglossum 95%); assume bad sequence
+MN781343,rbcL,Supposed to be Mickelia lindigii but poor match to anything on GenBank (e.g Teratophyllum 97%); short (543bp) assume bad sequence
+MK319110,rbcL,Supposed to be Terpsichore chrysleri but blasts to Lellingeria; one other seq in GenBank matches Terpsichore
+MW620230,rbcL,Supposed to be Pleopeltis cryptocarpos but blasts to Pecluma bourgeauana exact match
+MN781394,rps4,Supposed to be Steiropteris pennellii but tree places with Goniopteris; SF advises to remove
+MN781324,rbcL,Supposed to be Steiropteris pennellii but tree places with Goniopteris; SF advises to remove
+MN781284,atpB,Supposed to be Steiropteris pennellii but tree places with Goniopteris; SF advises to remove
+MT657517,rbcL,Supposed to be Reholttumia costata but tree places with Sphaerostephanos; SF advises to remove
+MT130565,plastome,Supposed to be Reholttumia truncata but tree places in Christella; SF advises to remove

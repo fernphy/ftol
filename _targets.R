@@ -33,6 +33,15 @@ input_data_readme_tar <- tar_render(
     knit_root_dir = "reports/input_data_readme"
   )
 
+input_data_readme_gh_tar <- tar_render(
+    input_data_readme_gh,
+    "reports/input_data_readme/input_data_readme_gh.Rmd",
+    output_dir = data_raw,
+    output_file = "README",
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/input_data_readme"
+  )
+
 ftol_data_readme_tar <- tar_render(
     ftol_data_readme,
     "reports/ftol_data_readme/ftol_data_readme.Rmd",
@@ -628,10 +637,11 @@ tar_plan(
   # Prepare fossil calibrations ----
   # Load fossil calibration points
   # Fossil calibration points
-  tar_file_read(
-    fossil_ferns_raw,
-    path(data_raw, "fern_fossils.csv"),
-    read_csv(!!.x)
+  # ferncal v1.0.0
+  fossil_ferns_raw = read_csv(
+    contentid::resolve(
+      "hash://sha256/55fd2f21d8e26e4604d9128871f9435ede08f75efc8ae64ce56c671f8d605a1e" # nolint
+    )
   ),
   # Drop MD formatting (asterisks) from data
   fossil_ferns_all = mutate(
@@ -887,6 +897,7 @@ tar_plan(
   # Render READMEs
   # - input data
   input_data_readme_tar,
+  input_data_readme_gh_tar,
   # - FTOL (output) data
   ftol_data_readme_tar
 )

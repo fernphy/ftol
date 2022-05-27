@@ -1,0 +1,345 @@
+---
+output: 
+  readmedown::plain_document:
+    columns: 80
+bibliography: input_data_readme_refs.yaml
+---
+
+```{r manual, include = FALSE, evaluate = FALSE}
+# Run these lines if rendering outside of targets plan
+library(targets)
+library(tarchetypes)
+library(readmedown)
+source(here::here("R/packages.R"))
+source(here::here("R/functions.R"))
+```
+
+```{r setup, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, message = FALSE,
+  warning = FALSE, results = "hide", cache = FALSE)
+
+# Load objects from targets workflow (all paths to data files)
+tar_load(
+  c(
+    accs_exclude_file,
+    manual_inclusion_list_file,
+    equisteum_subgen_path,
+    plastome_outgroups_file,
+    ppgi_taxonomy_file,
+    target_plastome_genes_file,
+    target_plastome_genes)
+  )
+```
+
+This README.txt file was generated on `r Sys.Date()` by Joel Nitta
+
+-------------------- 
+
+GENERAL INFORMATION 
+
+------------------
+
+Title of Dataset: Fern Tree of Life (FTOL) input data
+
+Principal Investigator: Joel H. Nitta
+
+Department of Integrated Biosciences, Graduate School of Frontier Sciences,
+The University of Tokyo, Chiba, Japan. joelnitta@gmail.com
+
+Associate or Co-investigators: Eric Schuettpelz, Santiago Ramírez-Barahona, Wataru Iwasaki
+
+Date of data collection: 1990 - 2022
+
+Geographic location of data collection: Global
+
+Information about funding sources that supported the collection of the data:
+Funding provided in part by the Japan Society for the Promotion of Science
+(Kakenhi) Grant Number 16H06279 and the Smithsonian National Museum of Natural
+History Peter Buck Fellowship (JHN).
+
+--------------------------
+
+SHARING/ACCESS INFORMATION
+
+--------------------------
+
+Licenses/restrictions placed on the data: CC0 v1.0 license
+
+Links to publications that cite or use the data:
+
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+
+Links to other publicly accessible locations of the data: none.
+
+Links/relationships to ancillary data sets:
+
+- ferncal (https://github.com/fernphy/ferncal)
+- pteridocat (https://github.com/fernphy/pteridocat)
+
+Was data derived from another source?
+
+- ppgi_taxonomy_mod.csv is derived from PPGI.csv (https://gist.github.com/mutolisp/d0bd8e7c998303e316ae09e4f37c91ae)
+- equisetum_subgenera.csv is based on data from https://en.wikipedia.org/wiki/Equisetum
+- target_coding_genes.txt is based on data in @Wei2017a
+
+Recommended citation for this dataset: 
+
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+
+--------------------
+
+DATA & FILE OVERVIEW
+
+--------------------
+
+File List:
+
+- accs_exclude.csv: GenBank accessions to exclude from analysis.
+- accs_manual.csv: GenBank accessions to include in analysis.
+- equisetum_subgenera.csv: Equisteum subgenera.
+- plastome_outgroups.csv: GenBank accessions of non-fern plastome sequences to include in analysis.
+- ppgi_taxonomy_mod.csv: Modified Pteridophyte Phylogeny Group I taxonomic system.
+- target_coding_genes.txt: List of coding genes.
+
+--------------------------
+
+METHODOLOGICAL INFORMATION
+
+--------------------------
+
+The data included here are used in a pipeline that (mostly) automatically
+generates a maximally sampled fern phylogenetic tree based on plastid sequences
+in GenBank (https://github.com/fernphy/ftol).
+
+The first step is to generate a set of reference FASTA files for 79 target loci
+(one per locus; ref_aln.tar.gz). These include 77 protein-coding genes based on
+a list of 83 genes [@Wei2017a] that was filtered to only genes that show no
+evidence of duplication (target_coding_genes.txt), plus two spacer regions
+(trnL-trnF and rps4-trnS). Each FASTA file in ref_aln.tar.gz includes one
+representative (longest) sequence per avaialable fern genus. This is done with
+custom R scripts contained in https://github.com/fernphy/ftol, in particular 
+prep_ref_seqs_plan.R (https://github.com/fernphy/ftol/blob/main/prep_ref_seqs_plan.R).
+
+Next, all available fern accessions for seven target "Sanger loci" (plastid regions
+typically sequenced using Sanger technology) and all available fern plastomes
+(accessions >7000 bp) are downloaded from GenBank. Non-fern accessions listed in
+plastome_outgroups.csv are downloaded as well. Sequences matching the target
+loci are then extracted from each accesion using the FASTA files contained in
+ref_aln.tar.gz as references with the "Reference_Blast_Extract.py" script of
+superCRUNCH [@Portik2020]. Any accessions matching those listed in
+accs_exclude.csv are excluded as putative rogues (i.e., misidentifications or
+contaminations). Any accessions matching those listed in
+accs_include.csv are used regardless of other accessions for the same species 
+in GenBank.
+
+The extracted sequences are aligned with MAFFT [@Katoh2002], phylogenetic
+analysis is done using IQ-TREE [@Nguyen2015] and divergence times estimated with
+treePL [@Smith2012]. During molecular dating, equisetum_subgenera.csv is used to
+specify some clades within Equisetum whose ages are constrained by fossils, and
+ppgi_taxonomy_mod.csv is used to map higher-level clade names (e.g., family,
+order, etc.) to species (tips of the phylogeny).
+
+For additional methodological details, see:
+
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and
+continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+
+--------------------------
+
+DATA-SPECIFIC INFORMATION
+
+--------------------------
+
+```{r accs-exclude}
+accs_exclude <- read_csv(accs_exclude_file)
+# Check that no data are missing
+assert(accs_exclude, not_na, everything(), success_fun = success_logical)
+```
+
+`r path_file(accs_exclude_file)`: GenBank accessions to exclude from analysis.
+
+Number of variables: `r ncol(accs_exclude)`
+
+Number of cases/rows: `r nrow(accs_exclude)`
+
+Variable list:
+
+```{r accs_exclude-cols, results = "asis"}
+  accs_exclude %>%
+  desc_data(
+    tribble(
+      ~col, ~desc,
+      "accession", "GenBank accession number.",
+      "gene", "Name of locus or if whole plastome, 'plastome'.",
+      "note", "Note about why the accession is excluded."
+  ))
+```
+
+Missing data codes: No missing data.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(accs_exclude_file)`
+
+--------------------------
+
+```{r accs-include}
+accs_include <- read_csv(manual_inclusion_list_file)
+```
+
+`r path_file(manual_inclusion_list_file)`: GenBank accessions to preferentially include in analysis.
+Accessions in this list will be used regardless of other accessions for the same species in GenBank.
+
+Number of variables: `r ncol(accs_include)`
+
+Number of cases/rows: `r nrow(accs_include)`
+
+Variable list:
+
+```{r accs_include-cols, results = "asis"}
+  accs_include %>%
+  desc_data(
+    tribble(
+      ~col, ~desc,
+      "species", "Species name (same as in FTOL tree).",
+      "atpA", "atpA GenBank accession.",
+      "atpB", "atpB GenBank accession.",
+      "matK", "matK GenBank accession.",
+      "rbcL", "rbcL GenBank accession.",
+      "rps4", "rps4 GenBank accession.",
+      "rps4-trnS", "rps4-trnS GenBank accession.",
+      "trnL-trnF", "trnL-trnF GenBank accession.",
+      "note", "Note on usage"
+  ))
+```
+
+
+Missing data codes: Non-applicable data indicated with 'NA'.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(manual_inclusion_list_file)`
+
+--------------------------
+
+```{r equisetum-subgenera}
+equisetum_subgenera <- read_csv(equisteum_subgen_path)
+```
+
+`r path_file(equisteum_subgen_path)`: Equisteum subgenera
+
+Number of variables: `r ncol(equisetum_subgenera)`
+
+Number of cases/rows: `r nrow(equisetum_subgenera)`
+
+Variable list:
+
+```{r equisetum-subgenera-cols, results = "asis"}
+  equisetum_subgenera %>%
+  desc_data(
+    tribble(
+      ~col, ~desc,
+      "scientificName", "Scientific name.",
+      "subgenus", "Subgenus."
+  ))
+```
+
+Missing data codes: Nothing entered if there is no assigned subgenus.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(equisteum_subgen_path)`
+
+--------------------------
+
+```{r plastome-outgroups}
+plastome_outgroups <- read_csv(plastome_outgroups_file)
+# Check that no data are missing
+assert(plastome_outgroups, not_na, everything(), success_fun = success_logical)
+```
+
+`r path_file(plastome_outgroups_file)`: GenBank accessions of non-fern plastome
+sequences to include in analysis.
+
+Number of variables: `r ncol(plastome_outgroups)`
+
+Number of cases/rows: `r nrow(plastome_outgroups)`
+
+Variable list:
+
+```{r plastome-outgroups-cols, results = "asis"}
+  plastome_outgroups %>%
+  desc_data(
+    tribble(
+      ~col, ~desc,
+      "group", "Name of clade containing the species.",
+      "species", "Species.",
+      "accession", "GenBank accession number."
+  ))
+```
+
+Missing data codes: None.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(plastome_outgroups_file)`
+
+--------------------------
+
+```{r ppgi-taxonomy}
+ppgi_taxonomy <- read_csv(ppgi_taxonomy_file)
+```
+
+`r path_file(ppgi_taxonomy_file)`: Taxonomic classification of ferns and lycophytes
+based on @PteridophytePhylogenyGroupI2016, with modifications.
+
+Number of variables: `r ncol(ppgi_taxonomy)`
+
+Number of cases/rows: `r nrow(ppgi_taxonomy)`
+
+Variable list:
+
+```{r ppgi-taxonomy-cols, results = "asis"}
+  ppgi_taxonomy %>%
+  desc_data(
+    tribble(
+      ~col, ~desc,
+      "class", "Class.",
+      "order", "Order.",
+      "suborder", "Suborder.",
+      "family", "Family.",
+      "subfamily", "Subfamily.",
+      "genus", "Genus.",
+      "notes", "Notes, in particular if the taxon differs from PPG I (2016).",
+      "nothogenus", "Is the taxon a nothogenus? 'yes' or 'no'.",
+  ))
+```
+
+Missing data codes: Non-applicable data indicated with 'NA'.
+
+Specialized formats or other abbreviations used: None.
+
+MD5 checksum: `r tools::md5sum(ppgi_taxonomy_file)`
+
+--------------------------
+
+CHANGE LOG
+
+2022-05-27
+
+- Move csv and plain text files from FigShare to Github.
+
+2022-04-04
+
+- Update DOIs.
+
+2022-03-31
+
+- Generate this README file.
+
+--------------------------
+
+REFERENCES
