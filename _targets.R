@@ -3,6 +3,8 @@ library(tarchetypes)
 source("R/packages.R")
 source("R/functions.R")
 
+Sys.setenv(TAR_PROJECT = "main")
+
 # Specify location of raw data
 data_raw <- "_targets/user/data_raw"
 
