@@ -1,9 +1,10 @@
 # Setup folders and data for analysis
 library(fs)
+library(contentid)
 
 # Set up folders ----
 
-dir_create("_targets/user/data_raw")
+dir_create("_targets/user/data_raw/ref_aln")
 dir_create("_targets/user/intermediates/blast_sanger")
 dir_create("_targets/user/intermediates/iqtree")
 dir_create("_targets/user/intermediates/iqtree/plastome")
@@ -15,21 +16,14 @@ dir_create("_targets/user/intermediates/treepl/con")
 dir_create("_targets/user/intermediates/treepl/ml")
 dir_create("_targets/user/intermediates/treepl/ts")
 dir_create("_targets/user/results")
+dir_create("ftol_data")
 
-# Download data from FigShare ----
+# Fetch data ----
 
-# Download input data to a temporary zip file
-temp_file <- tempfile(fileext = ".zip")
-download.file(
-  "https://figshare.com/ndownloader/articles/19474316/versions/1",
-  destfile = temp_file)
-
-# Unzip to targets/user/data_raw
-utils::unzip(temp_file, exdir = "_targets/user/data_raw")
-
-# Untar a tar achive that was inside the zipped file
+# Download and unzip reference alignments
 utils::untar(
-  "_targets/user/data_raw/ref_aln.tar.gz",
-  exdir = "_targets/user/data_raw/ref_aln")
-
-file_delete(temp_file)
+  contentid::resolve(
+    "hash://sha256/3c37fb9478a8d6d1d5cf12652f01e04c3187db64923be824ca689d924facde18" # nolint
+  ),
+  exdir = "_targets/user/data_raw/ref_aln"
+  )

@@ -94,14 +94,13 @@ tar_plan(
       full.names = TRUE)
   ),
   fern_ref_seqs = load_ref_aln(ref_aln_files),
-  # NCBI taxonomic database
-  # downloaded from
-  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-05-01.zip #nolint
-  tar_file(taxdump_zip_file, path(data_raw, "taxdmp_2022-05-01.zip")),
-  # Fossil calibration points from Testo and Sundue 2016 SI
-  tar_files_input(
-    testo_sundue_2016_si_path,
-    "_targets/user/data_raw/1-s2.0-S1055790316302287-mmc2.xlsx"
+  # Download and cache NCBI taxonomic database v2022-05-01
+  tar_file(
+    taxdump_zip_file,
+    contentid::resolve(
+      "hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23", # nolint
+      store = TRUE
+    )
   ),
 
   # Prep for assembling Sanger plastid regions ----
@@ -305,7 +304,7 @@ tar_plan(
   # Process Thelypteridaceae inclusion list from Patel el al. (2019)
   patel_inclusion_list = create_patel_inclusion_list(
     path_to_patel_data = contentid::resolve(
-      "hash://sha256/b8320b3ea7e59eb0c9e7da3b7163d375e1fd4511d53ffbb6f1c7c3c38858929a", # nolint
+      "hash://sha256/5bef560a9c02e1fb99ea15f008ea371de49fef0d29a4528d48ebcca4dad9cfc0", # nolint
        registries = "utils/local.tsv"),
     pteridocat = pteridocat
   ),
@@ -697,7 +696,11 @@ tar_plan(
   # Format Testo and Sundue 2016 calibration points for comparison
   # (consensus tree only)
   ts_fossil_calibration_points = parse_ts_calibrations(
-    testo_sundue_2016_si_path),
+    testo_sundue_2016_si_path = contentid::resolve(
+      "hash://sha256/3438efbd1fbc3513dd6bebe2cd474f59f8db0009bd6cda290190f5b5364ee6b0", # nolint
+      registries = "utils/local.tsv"
+    )
+  ),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
     sanger_con_tree_rooted, ts_fossil_calibration_points, ppgi_taxonomy,
     plastome_metadata_renamed),

@@ -21,9 +21,7 @@ Run the [setup.R](R/setup.R) script to create the folder structure needed to sto
 source("R/setup.R")
 ```
 
-You should see a new folder called `_targets` appear in the project root. The data files are in `_targets/user/data_raw`.
-
-Alternatively, you can manually create the `_targets` folder containing the following folder hierarchy yourself:
+Alternatively, you can manually create the following folder hierarchy yourself:
 
 ```
 _targets
@@ -62,16 +60,15 @@ If `setup.R` was run successfully, it will have already downloaded and unzipped 
 
 Alternatively, you can do so manually following these instructions:
 
-1. Download all of the files contained in the [FTOL input data on FigShare](https://doi.org/10.6084/m9.figshare.19474316.v1) by clicking on the "Download All" button.
-2. Unzip the files and place them in the `_targets/user/data_raw` folder. You will also need to unzip the `ref_aln.tar.gz` archive that is contained within the zip folder.
+1. Download `ref_aln.tar.gz` from FigShare from https://figshare.com/ndownloader/files/34604057
+2. Unzip `ref_aln.tar.gz` and put the `ref_aln` folder in `_targets/user/data_raw/`
 
 ### Other data files
 
 The following additional data files need to be downloaded and placed in `_targets/user/data_raw`:
 
 - Supplemental Data 1 (1-s2.0-S1055790316302287-mmc2.xlsx) from [Testo and Sundue (2016) Mol. Phylogenetics Evol.](https://doi.org/10.1016/j.ympev.2016.09.003)
-- NCBI taxonomy database dump 2022-02-01 (taxdmp_2022-02-01.zip) can be downloaded from the [NCBI FTP server](https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-02-01.zip).
-- [ferncal](https://github.com/fernphy/ferncal) fern fossils database v1.0.0 (fern_fossils.csv) can be downloaded from [here](https://github.com/fernphy/ferncal/archive/refs/tags/v1.0.0.zip).
+- Supplemental Data 1 (44201appS1.xlsx) from [Patel et al. (2019) Int. J. Plant Sci.](https://doi.org/10.1086/705588)
 ## Running the code
 
 There are actually two `targets` plans:

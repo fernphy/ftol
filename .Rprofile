@@ -1,5 +1,8 @@
 source("renv/activate.R")
 
+# Increase time-limit for downloads
+options(timeout = max(1000, getOption("timeout")))
+
 # Resolve conflicts
 conflicted::conflict_prefer("filter", "dplyr", quiet = TRUE)
 conflicted::conflict_prefer("select", "dplyr", quiet = TRUE)

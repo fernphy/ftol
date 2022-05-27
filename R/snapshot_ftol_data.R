@@ -24,39 +24,10 @@ write_cc0 <- function(path) {
   path
 }
 
-#' Provide the `contentid` hashes for input data files
-#'
-#' The hashes in the list should match those of the corresponding data files
-#' obtained with `contentid::content_id()` for the dataset at the DOI given.
-#'
-#' For code to register URLs to hashes, see ./R/register.R
-#'
-#' @param doi DOI for FTOL input data repository
-#' @return List of hashes.
-doi_to_hashes <- function(doi) {
-  switch(
-    doi,
-    "10.6084/m9.figshare.19474316.v1" = list(
-      accs_exclude = "hash://sha256/e8e215870706a03e74f21a7e117246d77ff1029d91599cda53ec14ea7fbcc1ab", #nolint
-      equisetum_subgenera = "hash://sha256/a93ec0663a65d687921af3c412279034786fba769d73408c432bd9b738bd37ad", #nolint
-      plastome_outgroups = "hash://sha256/36bf35dbe61c4f133ba5b7112681316b4338480fb6b1299b762f893d5e89c6d1", #nolint
-      ppgi_taxonomy_mod = "hash://sha256/d94cf3b3230a4fafaadf76b355a9d989cc1645467aab47934a73cba2920fff3f", #nolint
-      target_coding_genes = "hash://sha256/304cd16b67e1d4f180624bed3b683c848c42b6ad5d8250cda1f0425e58831ccf", #nolint
-      ref_aln_tar_gz = "hash://sha256/3c37fb9478a8d6d1d5cf12652f01e04c3187db64923be824ca689d924facde18" #nolint
-    ),
-    "Not a valid DOI"
-  )
-}
-
 # Load targets ----
 tar_load(
   c(
     # paths to input data files
-    accs_exclude_path,
-    equisteum_subgen_path,
-    plastome_outgroups_path,
-    ppgi_taxonomy_path,
-    target_plastome_genes_path,
     ref_aln_archive,
     # docker tag
     image_tag,
@@ -91,23 +62,12 @@ assert_that(
 # - Check code status (no uncommited changes should be present)
 code_status <- tar_git_status_code()
 
-assert_that(
-  nrow(code_status) == 0,
-  msg = "Code repo not clean.")
-
 # - Check data
-# Expect data hashes to match those registered with contentid for this DOI
-# For code to register data, see ./R/register.R
-data_doi <- "10.6084/m9.figshare.19474316.v1"
-hashes <- doi_to_hashes(data_doi)
-
-assert_that(content_id(accs_exclude_path) == hashes$"accs_exclude")
-assert_that(content_id(equisteum_subgen_path) == hashes$equisetum_subgenera)
-assert_that(content_id(plastome_outgroups_path) == hashes$plastome_outgroups)
-assert_that(content_id(ppgi_taxonomy_path) == hashes$ppgi_taxonomy_mod)
+# Only need to check data files that are archived outside of this repo
+# and subject to change
 assert_that(
-  content_id(target_plastome_genes_path) == hashes$target_coding_genes)
-assert_that(content_id(ref_aln_archive) == hashes$ref_aln_tar_gz)
+  content_id(ref_aln_archive) == "hash://sha256/3c37fb9478a8d6d1d5cf12652f01e04c3187db64923be824ca689d924facde18" # nolint
+  )
 
 # - Check renv status (lock file is synchronized with library)
 assert_that(

@@ -1,43 +1,38 @@
-library(contentid)
+# Register local input data for contentid
+# Registration only needs to be done once (ever)
 
-# register fern fossil input data
+library(contentid)
+conflicted::conflict_prefer("register", "contentid")
+
+# local registry ----
+
+# Local data files that aren't available via download (or FTP files)
+# need to be registered to a local file (./utils/local.tsv).
+
+# - Patel et al. 2019 SI
+register("_targets/user/data_raw/44201appS1.xlsx",
+  registries = "utils/local.tsv")
+# "hash://sha256/5bef560a9c02e1fb99ea15f008ea371de49fef0d29a4528d48ebcca4dad9cfc0" # nolint
+
+# - Testo and Sundue 2016 SI
+register("_targets/user/data_raw/1-s2.0-S1055790316302287-mmc2.xlsx",
+  registries = "utils/local.tsv")
+# "hash://sha256/3438efbd1fbc3513dd6bebe2cd474f59f8db0009bd6cda290190f5b5364ee6b0" # nolint
+
+# online registry -----
+
+# - NCBI taxonomy v 2022-05-01
+
+register("https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2022-05-01.zip") # nolint
+# "hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23" # nolint
+
+# - fern fossil data
 
 # fern_fossils.csv v1.0.0
 register("https://raw.githubusercontent.com/fernphy/ferncal/6beb6b59c007d94d58f35658732ff561a9d6a537/fern_fossils.csv") # nolint
 # "hash://sha256/55fd2f21d8e26e4604d9128871f9435ede08f75efc8ae64ce56c671f8d605a1e" # nolint
 
-# register FTOL input data on figshare
-#
-# obtain URLs by navigating to
-# https://doi.org/10.6084/m9.figshare.19474316 #nolint
-# in broswer, and copying URL from "Download" link
-# for each file
-#
-# make sure to select a different version (DOI) if needed
-#
-# registration only needs to be done once (ever)
-
-# DOI: 10.6084/m9.figshare.19474316.v1 ----
-
-# accs_exclude.csv
-register("https://figshare.com/ndownloader/files/34604039")
-# "hash://sha256/e8e215870706a03e74f21a7e117246d77ff1029d91599cda53ec14ea7fbcc1ab" #nolint
-
-# equisetum_subgenera.csv
-register("https://figshare.com/ndownloader/files/34604045")
-# "hash://sha256/a93ec0663a65d687921af3c412279034786fba769d73408c432bd9b738bd37ad" #nolint
-
-# plastome_outgroups.csv
-register("https://figshare.com/ndownloader/files/34604051")
-# "hash://sha256/36bf35dbe61c4f133ba5b7112681316b4338480fb6b1299b762f893d5e89c6d1" #nolint
-
-# ppgi_taxonomy_mod.csv
-register("https://figshare.com/ndownloader/files/34604054")
-# "hash://sha256/d94cf3b3230a4fafaadf76b355a9d989cc1645467aab47934a73cba2920fff3f" #nolint
-
-# target_coding_genes.txt
-register("https://figshare.com/ndownloader/files/34604060")
-# "hash://sha256/304cd16b67e1d4f180624bed3b683c848c42b6ad5d8250cda1f0425e58831ccf" #nolint
+# reference alignments on FigShare
 
 # ref_aln.tar.gz
 register("https://figshare.com/ndownloader/files/34604057")
