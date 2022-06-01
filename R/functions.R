@@ -253,7 +253,8 @@ create_patel_inclusion_list <- function(
         "Amauropelta_beddomei", # accession num is wrong
         "Amauropelta_angustifrons", # rbcL AB575009 seq is hybrid Thelypteris angustifrons x Thelypteris cystopteroides # nolint
         "Pelazoneuron_augescens", # accession num KR816701 is mis-id (rogue)
-        "Pseudophegopteris_tibetana" # accession num JN168050 is mis-id (rogue)
+        "Pseudophegopteris_tibetana", # accession num JN168050 is mis-id (rogue)
+        "Reholttumia_ecallosa" # possibly a mis-ID as per SF 2022-05-31, add to exclusion list # nolint
         ))
 }
 
