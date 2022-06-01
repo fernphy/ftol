@@ -11,7 +11,7 @@
 #' @return String
 format_all_fern_query <- function(start_date = "1980/01/01", end_date) {
   glue::glue(
-    'Polypodiopsida[ORGN] AND 10:200000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND GenBank[filter]' # nolint
+    'Polypodiopsida[ORGN] AND 10:200000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])' # nolint
   )
 }
 
@@ -101,7 +101,8 @@ if (strict) {
 #'
 #' @return Tibble with three columns, `accession`, `def`, and `slen`
 #'
-gb_slen_get <- function(accessions, restez_path = "/data_raw", na_rm = TRUE) {
+gb_slen_get <- function(
+  accessions, restez_path = "_targets/user/data_raw", na_rm = TRUE) {
 
   accessions <- unique(accessions)
   assertthat::assert_that(assertthat::is.flag(na_rm))

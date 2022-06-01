@@ -1107,7 +1107,7 @@ clean_extract_res <- function(extract_from_ref_blast_res, blast_flavor_select) {
 #' @return Tibble with column 'accession': GenBank accession (id) of all
 #' sequences in database
 #'
-gb_get_all_ids <- function(restez_path = "/data_raw") {
+gb_get_all_ids <- function(restez_path = "_targets/user/data_raw") {
   # Connect to restez database
   suppressMessages(restez::restez_path_set(restez_path))
   suppressMessages(restez::restez_connect())
@@ -1133,7 +1133,7 @@ gb_get_all_ids <- function(restez_path = "/data_raw") {
 #' @return Tibble with one row per sequence
 #'
 gb_dnabin_get <- function(
-  id, restez_path = "/data_raw",
+  id, restez_path = "_targets/user/data_raw",
   name_col = "accession", seq_col = "seq") {
   # Connect to restez database
   suppressMessages(restez::restez_path_set(restez_path))

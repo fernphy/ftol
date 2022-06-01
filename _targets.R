@@ -136,7 +136,11 @@ tar_plan(
     # Limit to accession in local GenBank database
     inner_join(accs_in_local_db, by = "accession"),
   # Fetch sequences from local GenBank database
-  fern_sanger_seqs_raw = load_seqs_from_local_db(raw_meta),
+  tar_target(
+    fern_sanger_seqs_raw,
+    load_seqs_from_local_db(raw_meta),
+    deployment = "main" # to avoid simultaneous processes connecting to db
+  ),
   # Extract target regions with superCRUNCH
   tar_target(
     fern_sanger_extract_res,
@@ -361,7 +365,11 @@ tar_plan(
   # Download plastome sequences
   # FASTA files for each accession in seqtbl format
   target_plastome_accessions = unique(plastome_metadata_renamed$accession),
-  plastome_fasta = gb_dnabin_get(target_plastome_accessions),
+  tar_target(
+    plastome_fasta,
+    gb_dnabin_get(target_plastome_accessions),
+    deployment = "main" # to avoid simultaneous processes connecting to db
+  ),
   # Extract target genes and spacers with superCRUNCH
   tar_target(
     fern_plastome_loci_extract_res,
