@@ -307,9 +307,7 @@ tar_plan(
 
   # Process Thelypteridaceae inclusion list from Patel el al. (2019)
   patel_inclusion_list = create_patel_inclusion_list(
-    path_to_patel_data = contentid::resolve(
-      "hash://sha256/5bef560a9c02e1fb99ea15f008ea371de49fef0d29a4528d48ebcca4dad9cfc0", # nolint
-       registries = "utils/local.tsv"),
+    path_to_patel_data = contentid::resolve("hash://sha256/233607dc3945dc0f764c44d1171f8bd8bdfe50c4028c9c44e82965e5a5f11fdc"), # nolint
     pteridocat = pteridocat
   ),
   # Load manual inclusion list
@@ -705,8 +703,7 @@ tar_plan(
   # (consensus tree only)
   ts_fossil_calibration_points = parse_ts_calibrations(
     testo_sundue_2016_si_path = contentid::resolve(
-      "hash://sha256/3438efbd1fbc3513dd6bebe2cd474f59f8db0009bd6cda290190f5b5364ee6b0", # nolint
-      registries = "utils/local.tsv"
+      "hash://sha256/c629f4617e7e2329a10cb1b207b82a6720653a67eafcaaa97cc6ee891ae7fdf7" # nolint
     )
   ),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
