@@ -18,6 +18,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # git-lfs for gittargets
 # pandoc-citeproc for rendering Rmarkdown
 # libarchive-dev for archive
+# librdf0-dev for redland
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -52,6 +53,7 @@ RUN apt-get update \
     git-lfs \
     pandoc-citeproc \
     libarchive-dev \
+    librdf0-dev \
   && apt-get clean
 
 ########################

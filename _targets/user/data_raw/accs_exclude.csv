@@ -1,6 +1,7 @@
 accession,gene,note
 NC_040204,plastome,Supposed to be Pteris but sequences match Ceratopteris
 NC_040212,plastome,Supposed to be Ceratopteris but sequences match Pteris
+NC_003386,plastome,Refseq sequence that duplicates KC117179
 MT130555,plastome,Supposed to be Grypothrix megacuspis but almost exact match to Abacopteris gymnopteridifrons
 MW557379,plastome,Supposed to be Dryopteris but blasts to Polystichum
 MW042681,plastome,Drynaria acuminata lacks author can't distinguish between Drynaria acuminata Brack. = Lemmaphyllum accedens (Blume) Donk and Drynaria acuminata Fée = Microgramma thurnii (Baker) R.M.Tryon & Stolze

@@ -2713,10 +2713,10 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ropensci",
       "RemoteRepo": "restez",
-      "RemoteRef": "master",
-      "RemoteSha": "7b58c4993496f9691b38557daa5f4718b1cb12f6",
+      "RemoteRef": "512c69ba6d72576a0d51d38c624560811a6116e7",
+      "RemoteSha": "512c69ba6d72576a0d51d38c624560811a6116e7",
       "Remotes": "hannesmuehleisen/MonetDBLite-R",
-      "Hash": "119002f5c3081d2bffcc7618ac0283c0",
+      "Hash": "2f8a1a5ba00e799dba8dc1103138aba9",
       "Requirements": [
         "DBI",
         "cli",

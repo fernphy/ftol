@@ -3,13 +3,16 @@ library(tarchetypes)
 source("R/packages.R")
 source("R/functions.R")
 
+Sys.setenv(TAR_PROJECT = "prep_ref_seqs")
+
 # Specify path to folder with raw data
 data_raw <- "_targets/user/data_raw"
 
 # Set parallel back-end
 plan(callr)
 
-# Use targets workspaces for debugging
+# Set options:
+# - Use targets workspaces for debugging
 tar_option_set(workspace_on_error = TRUE)
 
 tar_plan(
@@ -20,17 +23,22 @@ tar_plan(
     "atpA", "atpB", "matK", "rbcL", "rps4",
     "trnL-trnF", "rps4-trnS"),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2021/12/31",
+  date_cutoff = "2022/04/15",
   # - Manually curated list of GenBank accessions to exclude from analysis
   tar_file(
     accs_exclude_path,
     path(data_raw, "accs_exclude.csv")),
   accs_exclude = read_csv(accs_exclude_path),
+  # - Path to local genbank database
+  tar_files_input(
+    restez_db,
+    "_targets/user/data_raw/restez/sql_db"
+  ),
 
   # Sanger: Assemble initial reference sequences by parsing flatfiles ----
   # These will be used for extracting target regions with superCRUNCH
 
-  # Download raw gene sequences for each target locus from GenBank
+  # Fetch raw gene sequences for each target locus from local GenBank db
   tar_target(
     fern_ref_seqs_raw,
     fetch_fern_ref_seqs(
@@ -39,8 +47,9 @@ tar_plan(
       # Only require intron for trnL-trnF
       req_intron = str_detect(target_loci, "trnL-trnF"),
       strict = FALSE,
-      accs_exclude = accs_exclude$accession,
-      workers = 48),
+      accs_exclude = accs_exclude,
+      workers = 48,
+      restez_path = restez_db),
     pattern = map(target_loci),
     deployment = "main"
   ),
@@ -72,21 +81,21 @@ tar_plan(
     pattern = map(fern_ref_seqs_trimmed)
   ),
 
-  # Sanger: Download and extract sequences with superCRUNCH ----
+  # Sanger: Extract sequences with superCRUNCH ----
 
-  # Download raw fasta files
+  # Fetch raw sequences from local GenBank DB
   tar_target(
     fern_sanger_seqs_raw,
     fetch_fern_sanger_seqs(
       target_loci,
       end_date = date_cutoff,
-      accs_exclude = accs_exclude$accession,
-      strict = FALSE),
+      accs_exclude = accs_exclude,
+      strict = FALSE,
+      restez_path = restez_db),
     pattern = map(target_loci),
-    # don't run in parallel, or will get HTTP status 429 errors
     deployment = "main"
   ),
-  # Extract target regions
+  # Extract target regions from raw sequences with superCRUNCH
   tar_target(
     fern_sanger_extract_res,
     extract_from_ref_blast(
@@ -179,34 +188,23 @@ tar_plan(
   target_plastome_genes = target_plastome_genes_all[
     !target_plastome_genes_all %in% target_loci
   ],
-  # Load pteridocat taxonomic reference
-  # FIXME: temporary work-around for loading pteridocat data
-  # until {pteridocat} package is live
-  tar_file(pteridocat_file, "working/pteridocat_2022-01-07.csv"),
-  pteridocat = read_csv(pteridocat_file),
-  # Parse reference names
-  pc_ref_names = ts_parse_names(unique(pteridocat$scientificName)),
 
   # Plastome: extract genes to use as reference ----
 
-  # Download metadata (accession numbers and species names) from GenBank
+  # Download metadata from GenBank
   plastome_metadata_raw = download_plastome_metadata(
     end_date = date_cutoff,
     outgroups = plastome_outgroups,
     strict = TRUE,
     accs_exclude = accs_exclude$accession),
-  # Resolve species names in metadata
-  # (will drop accession if name could not be resolved)
-  plastome_metadata_renamed = resolve_pterido_plastome_names(
-    plastome_metadata_raw, plastome_outgroups, pc_ref_names, pteridocat
-  ),
-  # Download plastome gene sequences from GenBank
-  target_plastome_accessions = unique(plastome_metadata_renamed$accession),
+  # Fetch plastome gene sequences from local GenBank db
+  target_plastome_accessions = unique(plastome_metadata_raw$accession),
   tar_target(
     plastome_genes_raw,
     fetch_fern_genes_from_plastome(
       genes = target_plastome_genes,
-      accession = target_plastome_accessions),
+      accession = target_plastome_accessions,
+      restez_path = restez_db),
     pattern = map(target_plastome_accessions),
     deployment = "main"),
   # Rename accessions (to 'species_accession'),
@@ -214,9 +212,9 @@ tar_plan(
   # group by gene
   tar_group_by(
     plastome_genes_unaligned,
-    rename_and_filter_raw_plastome_seqs(
+    filter_raw_fasta_by_genus(
       plastome_genes_raw,
-      plastome_metadata_renamed
+      plastome_metadata_raw
       ),
     target # here, 'target' refers to the gene
   ),
