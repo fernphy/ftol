@@ -1,28 +1,19 @@
 # GenBank ----
 
-#' Format a query string to search for fern sequences from GenBank
-#'
-#' Returns string to query GenBank for fern (Polypodiopsida) sequences between
-#' 10 and 200,000 bp within the given time window
-#' 
-#' @param start_date String; start date to include sequences
-#' @param end_date String; end date to include sequences
-#'
-#' @return String
-format_all_fern_query <- function(start_date = "1980/01/01", end_date) {
-  glue::glue(
-    'Polypodiopsida[ORGN] AND 10:200000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])' # nolint
-  )
-}
-
 #' Retrieve GenBank accessions
 #'
-#' @param query Character vector of length 1; query string to search GenBank
+#' The query string can be formatted using [GenBank advanced query terms](
+#' https://www.ncbi.nlm.nih.gov/nuccore/advanced) to obtain accession numbers
+#' corresponding to a specific set of criteria.
+#'
+#' @param query Character vector of length 1; query string to search GenBank.
 #' @param strict Logical vector of length 1; should an error be issued if
-#' the number of accessions retrieved does not match the number of hits
-#' from GenBank
-#' @return Character vector; accession numbers resulting from query
-gb_fetch_accs <- function(query, strict = TRUE) {
+#' the number of unique accessions retrieved does not match the number of hits
+#' from GenBank? Default TRUE.
+#' @param drop_ver Logical vector of length 1; should the version part of the
+#' accession number (e.g., '.1' in 'AB001538.1') be dropped? Default TRUE.
+#' @return Character vector; accession numbers resulting from query.
+gb_fetch_accs <- function(query, strict = TRUE, drop_ver = TRUE) {
 
   # Conduct search and keep results on server,
   # don't download anything yet
@@ -34,14 +25,14 @@ gb_fetch_accs <- function(query, strict = TRUE) {
   )
 
   # Make sure something is in there
-  assertthat::assert_that(
-    search_res$count > 0,
-    msg = "Query resulted in no hits"
-  )
+  if (search_res$count < 1) {
+    warning("Query resulted in no hits")
+    return(NA_character_)
+  }
 
   # Number of hits NCBI allows us to download at once.
   # This should not need to be changed
-  max_hits <- 10000
+  max_hits <- 9999
 
   # NCBI won't return more than 10,000 results at a time.
   # So download in chunks to account for this
@@ -52,6 +43,7 @@ gb_fetch_accs <- function(query, strict = TRUE) {
 
     # Set vector of start values: each chunk
     # will be downloaded starting from that point
+    # Note NCBI indexing is zero-based
     start_vals <- c(0, seq_len(n_chunks) * max_hits)
 
     # Loop over start values and download up to max_hits for each,
@@ -76,18 +68,28 @@ gb_fetch_accs <- function(query, strict = TRUE) {
 
   # NCBI returns accessions as single string, so split into vector
   accessions <- strsplit(x = accessions, split = "\\n")[[1]]
-  accessions <- sub(pattern = "\\.[0-9]+", replacement = "", x = accessions)
 
-if (strict) {
-  n_accs <- length(accessions)
-  assertthat::assert_that(
-    search_res$count == n_accs,
-    msg = glue::glue(
-      "Number of accessions ({n_accs}) not equal to number of GenBank hits ({search_res$count})" # nolint
+  # Remove accession version number
+  if (drop_ver) {
+    accessions <- sub(pattern = "\\.[0-9]+$", replacement = "", x = accessions)
+  }
+
+  if (strict) {
+    n_accs <- length(accessions)
+    assertthat::assert_that(
+      search_res$count == n_accs,
+      msg = glue::glue(
+        "Number of accessions ({n_accs}) not equal to number of GenBank hits ({search_res$count})" # nolint
+      )
     )
-  )
-}
-
+    n_uniq <- length(unique(accessions))
+    assertthat::assert_that(
+      search_res$count == n_uniq,
+      msg = glue::glue(
+        "Number of unique accessions ({n_uniq}) not equal to number of GenBank hits ({search_res$count})" # nolint
+      )
+    )
+  }
   accessions
 }
 
