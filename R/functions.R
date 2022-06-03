@@ -8024,6 +8024,17 @@ get_fossil_calibration_tips <- function(
     assert(not_na, node_calibrated) %>%
     select(-num_tips_check)
 
+  # Find and remove redundant calibration points
+  redundant_points <- find_redundant_constraints(
+    spanning_tips, sanger_tree_rooted
+  )
+  
+  spanning_tips <- 
+    spanning_tips %>%
+    anti_join(
+      redundant_points,
+      by = c(node_calibrated = "anc_node_calibrated"))
+
   ## Check results ##
   # Double check that there are no redundant tip sets
   spanning_tips %>%
@@ -8059,6 +8070,11 @@ get_fossil_calibration_tips <- function(
       success_fun = success_logical,
       error_fun = err_msg("At least one crown age is older than stem age"))
   }
+
+  # Check for redundant constraints
+  find_redundant_constraints(spanning_tips, sanger_tree_rooted) %>%
+    verify(nrow(.) == 0, success_fun = success_logical,
+    error_fun = err_msg("At least one redundant constraint detected"))
 
   # Run final checks and output results
   spanning_tips %>%
@@ -8146,6 +8162,51 @@ format_calibrations_for_treepl <- function(
     assert(not_na, mrca, taxon_1, taxon_2) %>%
     assert(is_uniq, mrca) %>%
     select(mrca, min, max, taxon_1, taxon_2)
+}
+
+#' Remove redundant fossil constraints
+#'
+#' Redundant constraints are those that have a descendent
+#' node that is calibrated to be the same age or older.
+#'
+#' @param fossil_calibration_tips Tibble of fossil calibration points.
+#' @param sanger_tree_rooted Rooted tree.
+#'
+#' @return Tibble of fossil calibration points with redundant constraints
+#' removed
+#'
+find_redundant_constraints <- function(
+  fossil_calibration_tips,
+  sanger_tree_rooted
+) {
+  # Make tibble with node number for each calibration point
+  nodes <-
+    fossil_calibration_tips %>%
+    transmute(
+      node_calibrated,
+      node = map2_dbl(
+        tip_1, tip_2, ~ape::getMRCA(sanger_tree_rooted, c(.x, .y))),
+      minimum_age
+    ) %>%
+    assert(not_na, everything()) %>%
+    assert(is_uniq, node_calibrated)
+
+  # Identify redundant points: any ancestral node that has a younger
+  # (or equal time) compared to a descendant node
+  nodes %>%
+    mutate(ancestors = map(
+      node,
+      ~phangorn::Ancestors(sanger_tree_rooted, .x))
+    ) %>%
+    unnest(ancestors) %>%
+    inner_join(
+      select(
+        nodes, ancestors = node,
+        anc_age = minimum_age, anc_node_calibrated = node_calibrated),
+      by = "ancestors"
+    ) %>%
+    filter(anc_age <= minimum_age) %>%
+    count(anc_node_calibrated)
 }
 
 # Etc ----

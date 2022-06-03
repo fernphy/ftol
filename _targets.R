@@ -679,7 +679,8 @@ tar_plan(
     sanger_con_tree_rooted, fossil_calibration_points,
     ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
     include_algaomorpha = TRUE),
-  # Get pairs of tips that define fossil groups
+  # Get pairs of tips that define fossil groups.
+  # Also drops redundant calibration points.
   # - ML tree
   ml_fossil_calibration_tips = get_fossil_calibration_tips(
     ml_fossil_node_species_map, sanger_mlr_tree_rooted,
