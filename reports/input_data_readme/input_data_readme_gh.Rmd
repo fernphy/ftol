@@ -77,6 +77,7 @@ Links/relationships to ancillary data sets:
 
 - ferncal (https://github.com/fernphy/ferncal)
 - pteridocat (https://github.com/fernphy/pteridocat)
+- FTOL input data on FigShare (https://doi.org/10.6084/m9.figshare.19474316.v1)
 
 Was data derived from another source?
 
