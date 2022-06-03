@@ -1585,7 +1585,7 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
 #'
 trim_align_by_motif <- function(
   aln_tbl, aln_col = "align_trimmed",
-  target_select = "rps4-trnS", motif = "CTTAATGA",
+  target_select = "rps4-trnS", motif = "ATTAAGAA",
   expect_start = 500,
   expect_end = 700) {
 
