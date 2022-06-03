@@ -377,8 +377,8 @@ fetch_gb_raw <- function(query, ret_type = c("gb", "fasta"), clean_names = TRUE)
 #'
 #' Helper function for fetch_fern_ref_seqs()
 #'
-#' @param gb_raw String (character vector of length 1);
-#' GenBank flatfile, possibly including multiple entries
+#' @param gb_raw Character vector;
+#' GenBank flatfile split into one element per entry
 #' @param target String; name of spacer to extract (e.g., "trnL-trnF")
 #' @param req_intron Logical; should the intron in the left-side
 #' flanking gene be included?
@@ -390,20 +390,15 @@ parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
   # Change back to sequential when done (including on failure)
   on.exit(future::plan(future::sequential), add = TRUE)
 
-  assertthat::assert_that(assertthat::is.string(gb_raw))
+  assertthat::assert_that(is.character(gb_raw))
   assertthat::assert_that(assertthat::is.number(workers))
 
   # Set backend for parallelization
   future::plan(future::multisession, workers = workers)
 
   seqs_and_errors <-
-    # Start with raw GenBank flat-file as single text string
+    # Start with raw GenBank as vector
     gb_raw %>%
-    # '\\' is delimiter between entries; split up into one string each
-    stringr::str_split("\n\\/\\/\n") %>%
-    unlist %>%
-    # Drop the last item, as it is just an empty line (after the last '\\')
-    magrittr::extract(-length(.)) %>%
     # Can't start with any empty lines
     map(~str_remove(., "^[\n]+")) %>%
     # Loop over entries and extract spacer
@@ -419,6 +414,7 @@ parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
   # Convert results to tibble
   seqs <- seqs_and_errors[["result"]] %>%
     purrr::compact() %>%
+    set_names(NULL) %>%
     do.call(c, .) %>%
     dnabin_to_seqtbl() %>%
     separate(accession, c("accession", "species"), sep = "__", fill = "right")
@@ -435,8 +431,8 @@ parse_gb_spacer <- function(gb_raw, target, req_intron = FALSE, workers) {
 #'
 #' Helper function for fetch_fern_ref_seqs()
 #'
-#' @param gb_raw String (character vector of length 1);
-#' GenBank flatfile, possibly including multiple entries
+#' @param gb_raw Character vector;
+#' GenBank flatfile split into one element per entry
 #' @param target String; name of gene to extract
 #' @param workers Number of CPUs to run in parallel during parsing
 #'
@@ -446,21 +442,15 @@ parse_gb_gene <- function(gb_raw, target, workers) {
   # Change back to sequential when done (including on failure)
   on.exit(future::plan(future::sequential), add = TRUE)
 
-  assertthat::assert_that(assertthat::is.string(gb_raw))
+  # assertthat::assert_that(assertthat::is.string(gb_raw))
   assertthat::assert_that(assertthat::is.number(workers))
 
   # Set backend for parallelization
   future::plan(future::multisession, workers = workers)
 
   seqs_and_errors <-
-    # Start with raw GenBank flat-file as single text string
+    # Start with raw GenBank flat-file as character vector
     gb_raw %>%
-    # '\\' is delimiter between entries; split up into one string each
-    stringr::str_split("\n\\/\\/\n") %>%
-    unlist %>%
-    # Drop the last item, as it is just an empty line (after the last '\\')
-    magrittr::extract(-length(.)) %>%
-    # Can't start with any empty lines
     map(~str_remove(., "^[\n]+")) %>%
     # Loop over entries and extract gene
     # genbankr::readGenBank() is slow, so do in parallel
@@ -475,7 +465,7 @@ parse_gb_gene <- function(gb_raw, target, workers) {
     purrr::compact() %>%
     do.call(c, .) %>%
     dnabin_to_seqtbl()
-   
+
   # Split accession and species columns
   if(nrow(seqs > 0)) {
   seqs <-
@@ -672,7 +662,7 @@ extract_gene_fragile <- function(gb_entry, target) {
 
 extract_gene <- purrr::safely(extract_gene_fragile)
 
-#' Download fern DNA sequences to use as reference for extracting
+#' Load fern DNA sequences to use as reference for extracting
 #' target sequences with BLAST
 #'
 #' @param target Name of target locus (e.g, "rbcL", "trnL-trnF")
@@ -680,32 +670,37 @@ extract_gene <- purrr::safely(extract_gene_fragile)
 #' @param end_date End date for filtering GenBank accessions
 #' @param req_intron Logical; should the intronic region be included?
 #' Only applies to trnL-trnF
-#' @param workers Number of CPUs to run in parallel during parsing of GenBank flatfile
+#' @param workers Number of CPUs to run in parallel during parsing of GenBank 
+#' flatfile
 #' @param strict Logical; use strict version of search string or not?
-#' @param accs_exclude Character vector of GenBank accessions to exclude
-#' from results
+#' @param accs_exclude Tibble with column "accession" of accessions to
+#'   exclude
+#' @param restez_path Path to directory containing restez database;
+#' should either be path to folder `sql_db` or the path to the folder
+#' containing `sql_db`.
 #'
 #' @return Tibble of DNA sequences
 fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date,
-  req_intron = FALSE, workers, strict = FALSE, accs_exclude = NULL) {
+  req_intron = FALSE, workers, strict = FALSE, accs_exclude = NULL,
+  restez_path) {
 
    # Check if query target is a spacer region
   is_spacer <- str_detect(target, "-")
 
   # Download sequences in GenBank flatfile format (plain text)
-  gb_raw <-
-  # Format query
-  format_fern_query(
+  query <- format_fern_query(
     target = target,
     start_date = start_date,
     end_date = end_date,
-    strict = strict) %>%
-  # Fetch raw GenBank flatfile
-  fetch_gb_raw(query = ., ret_type = "gb")
+    strict = strict)
+  accs <- gb_fetch_accs(query)
+  # Fetch raw GenBank flatfile text as vector from local db
+  gb_raw <- gb_dnabin_get(
+    id = accs, restez_path = restez_path, format = "raw")
 
   # Parse features
   # Result will be sequences in a tibble
-  if(is_spacer) {
+  if (is_spacer) {
     res <- parse_gb_spacer(
         gb_raw = gb_raw, target = target, req_intron = req_intron,
         workers = workers
@@ -719,7 +714,7 @@ fetch_fern_ref_seqs <- function(target, start_date = "1980/01/01", end_date,
 
   # Remove accessions in exclude list
   if (!is.null(accs_exclude)) {
-    res$seq[[1]] <- filter(res$seq[[1]], !accession %in% accs_exclude)
+    res$seq[[1]] <- anti_join(res$seq[[1]], accs_exclude, by = "accession")
   }
 
   res
@@ -756,39 +751,40 @@ filter_ref_seqs <- function(fern_ref_seqs_raw) {
 #' @param target Name of target
 #' @param start_date Earliest date to download
 #' @param end_date Most recent date to download
-#' @param accs_exclude Character vector of accessions to exclude
-#' @param terms_remove GREP string to remove from `target` when querying
+#' @param accs_exclude Tibble with column "accession" of accessions to
+#'   exclude
 #' @param strict Logical; should the search be strict with regards to gene name?
-#'
+#' @param restez_path Path to directory containing restez database.
+#' 
 #' @return Dataframe with one row per sequence and columns
 #' for the sequence and accession
 #'
-#' fetch_fern_sanger_seqs("rbcL", start_date = "2018/01/01", end_date = "2018/01/10")
 fetch_fern_sanger_seqs <- function(
   target, start_date = "1980/01/01", end_date, accs_exclude = NULL,
-  strict = FALSE) {
+  strict = FALSE, restez_path) {
 
   assertthat::assert_that(assertthat::is.string(target))
   assertthat::assert_that(assertthat::is.string(end_date))
   assertthat::assert_that(assertthat::is.string(start_date))
 
- seqs <-
-  # Format query
-  format_fern_query(
+  # Specify accessions to include by querying genbank
+  query <- format_fern_query(
     target = target,
     start_date = start_date,
     end_date = end_date,
-    strict = strict) %>%
-  # Download sequences
-  fetch_gb_raw(ret_type = "fasta")
+    strict = strict)
+  accs <- gb_fetch_accs(query)
+
+  # Fetch sequences as tibble from local db
+  seqs <- gb_dnabin_get(
+    id = accs, restez_path = restez_path, format = "seqtbl")
 
   # Exclude any accessions in exclusion list
-  if (!is.null(accs_exclude)) seqs <- seqs[!seqs %in% accs_exclude]
+  if (!is.null(accs_exclude)) seqs <- anti_join(
+    seqs, accs_exclude, by = "accession")
 
-  # Convert to tibble
-  tibble::tibble(
-    seq = split(seqs, seq_along(seqs)), accession = names(seqs), gene = target)
-
+  # Add name of target
+  mutate(seqs, gene = target)
 }
 
 #' Extract sequences by querying against a reference library
@@ -1201,7 +1197,9 @@ gb_fetch_accs <- function(query, strict = TRUE, drop_ver = TRUE) {
 #' @return Tibble with column 'accession': GenBank accession (id) of all
 #' sequences in database
 #'
-gb_get_all_ids <- function(restez_path = "_targets/user/data_raw") {
+gb_get_all_ids <- function(restez_path) {
+  # {restez} wants the path containing restez/sql_db
+  restez_path <- str_remove_all(restez_path, "restez/sql_db")
   # Connect to restez database
   suppressMessages(restez::restez_path_set(restez_path))
   suppressMessages(restez::restez_connect())
@@ -1220,40 +1218,66 @@ gb_get_all_ids <- function(restez_path = "_targets/user/data_raw") {
 #' Database must be created using {restez}. See ./R/setup_gb.R
 #'
 #' @param id Character vector of genbank accession numbers.
-#' @param restez_path Path to directory containing restez database.
+#' @param restez_path Path to directory containing restez database;
+#' should either be path to folder `sql_db` or the path to the folder
+#' containing `sql_db`.
+#' @param format Format to return sequences; must be "seqtbl" (tibble),
+#' "raw" (plain text of full GenBank record), or "dnabin" (DNAbin)
 #' @param name_col Name of column to use for sequence name
 #' @param seq_col Name of column to use for sequences (list-column)
 #'
 #' @return Tibble with one row per sequence
 #'
 gb_dnabin_get <- function(
-  id, restez_path = "_targets/user/data_raw",
+  id, restez_path,
+  format = "seqtbl",
   name_col = "accession", seq_col = "seq") {
+  assertthat::assert_that(assertthat::is.string(format))
+  assertthat::assert_that(
+    format %in% c("seqtbl", "raw", "dnabin"),
+    msg = "`format` must be one of 'seqtbl', 'raw', or 'dnabin'"
+  )
+  
+  # {restez} wants the path containing restez/sql_db
+  restez_path <- str_remove_all(restez_path, "restez/sql_db")
   # Connect to restez database
   suppressMessages(restez::restez_path_set(restez_path))
   suppressMessages(restez::restez_connect())
   # Disconnect from restez database when done
   on.exit(restez::restez_disconnect())
 
-  # Extract sequences as character
-  seqs <- restez::gb_sequence_get(id)
+  # Extract sequences in desired format
+  if (format == "raw") {
+    seqs <- restez::gb_record_get(id)
+  }  
+  if (format == "seqtbl" | format == "dnabin") {
+    seqs <- restez::gb_sequence_get(id)
+    # Convert from text to DNAbin
+    seqs <- ape::as.DNAbin(stringr::str_split(seqs, "")) %>%
+      set_names(names(seqs))
+  }
+  if (format == "seqtbl") {
+    seqs <- dnabin_to_seqtbl(seqs, name_col = name_col, seq_col = seq_col)
+  }
 
-  # Convert to seqtbl
-  ape::as.DNAbin(stringr::str_split(seqs, "")) %>%
-    set_names(names(seqs)) %>%
-    dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col)
+  seqs
 }
 
 #' Load sequences from local GenBank database using raw metadata
 #'
 #' @param raw_meta Tibble; metadata of Sanger sequences including NCBI
 #' taxonomic ID (taxid) and GenBank accession number.
-#'
+#' @param restez_path Path to directory containing restez database;
+#' should either be path to folder `sql_db` or the path to the folder
+#' containing `sql_db`.
+#' 
 #' @return Tibble with three columns: sequence, accession, and gene
 #'
-load_seqs_from_local_db <- function(raw_meta) {
+load_seqs_from_local_db <- function(raw_meta, restez_path) {
   # Load all DNA sequences as seqtbl
-  dna_seqs <- gb_dnabin_get(unique(raw_meta$accession))
+  dna_seqs <- gb_dnabin_get(
+    id = unique(raw_meta$accession),
+    restez_path = restez_path)
   # Add gene names from metadata
   raw_meta %>%
     select(gene = target, accession) %>%
@@ -1465,7 +1489,8 @@ fetch_fern_metadata <- function(
   # Fetch standard metadata
   metadata <- fetch_metadata(
     query = query,
-    # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
+    # don't fetch `slen`
+    # (length of accession; will calculate length of actual sequence later)
     col_select = c("gi", "caption", "taxid", "title", "subtype", "subname")) %>%
     rename(accession = caption) %>%
     # GenBank accession should be non-missing, unique
@@ -1485,7 +1510,8 @@ fetch_fern_metadata <- function(
   ref_data <- fetch_genbank_refs(query) %>%
     transmute(
       accession,
-      publication = str_replace_all(title, "Direct Submission", NA_character_)) %>%
+      publication = str_replace_all(
+        title, "Direct Submission", NA_character_)) %>%
     # GenBank accession should be non-missing, unique
     assert(not_na, accession) %>%
     assert(is_uniq, accession)
@@ -1494,7 +1520,6 @@ fetch_fern_metadata <- function(
   left_join(metadata, ref_data, by = "accession") %>%
     assert(is_uniq, accession) %>%
     mutate(target = target)
-
 
 }
 
@@ -1560,10 +1585,9 @@ filter_raw_fasta_by_genus <- function(raw_fasta, raw_meta) {
     inner_join(meta_with_ncbi_names, by = "accession") %>%
     mutate(seqln = map_dbl(seq, ~length(.[[1]]))) %>%
     group_by(target, genus) %>%
-    slice_max(order_by = "seqln", n = 1, with_ties = FALSE) %>%
+    slice_max(order_by = seqln, n = 1, with_ties = FALSE) %>%
     ungroup()
 }
-
 
 #' Trim a DNA alignment by removing sequences prior to a motif
 #'
@@ -3095,34 +3119,17 @@ download_plastome_metadata <- function(start_date = "1980/01/01", end_date,
 #' @param accession Genbank accession number (of a plastome)
 #' @param max_length Maximum length to accept for genes. Used to filter
 #' out any abnormally (probably erroneously) long genes.
-#'
+#' @param restez_path Path to directory containing restez database.
+#' 
 #' @return Dataframe with columns for `accession`, `gene`, and `seq`
 #'
-#' test <- fetch_fern_genes_from_plastome(
-#' accession = "AY178864",
-#' max_length = 10000,
-#' genes = read_lines("data_raw/wei_2017_coding_genes.txt")
-#' )
-fetch_fern_genes_from_plastome <- function(genes, accession, max_length = 10000) {
-
-  # Get GenBank ID for the accession
-  uid <- reutils::esearch(term = accession, db = "nucleotide", usehistory = TRUE)
-
-  # Make sure there is only 1 hit for that accession
-  num_hits <- reutils::content(uid, as = "text") %>% str_match("<eSearchResult><Count>([:digit:]+)<\\/Count>") %>% magrittr::extract(,2)
-
-  assertthat::assert_that(
-    num_hits == 1,
-    msg = "Did not find exactly one accession")
-
-  # Download complete GenBank record and write it to a temporary file
-  temp_file <- tempfile(pattern = "gb_records_", fileext = ".txt")
-  if(fs::file_exists(temp_file)) fs::file_delete(temp_file)
-
-  reutils::efetch(uid, "nucleotide", rettype = "gb", retmode = "text", outfile = temp_file)
-
-  # Parse flatfile
-  gb_entry <- readr::read_file(temp_file)
+fetch_fern_genes_from_plastome <- function(
+  genes, accession, max_length = 10000,
+  restez_path) {
+  
+  # Fetch flatfile from local database
+  gb_entry <- gb_dnabin_get(id = accession, restez_path = restez_path,
+    format = "raw")
 
   # get the results (includes NULL if errored)
   extracted_genes <- map(genes, ~extract_sequence(gb_entry, .)) %>%
@@ -3160,47 +3167,8 @@ fetch_fern_genes_from_plastome <- function(genes, accession, max_length = 10000)
   # Return as a dataframe, so the results can be combined later
   tibble(
     accession = accession,
-    gene = names(extracted_genes_filtered),
+    target = names(extracted_genes_filtered),
     seq = extracted_genes_filtered
-    )
-}
-
-#' Rename plastome sequences
-#'
-#' Renames plastome sequences downloaded from GenBank by their resolved names
-#' from pteridocat, filters to one best (longest) sequence per genus
-#'
-#' @param plastome_genes_raw Tibble (seqtbl); gene sequences downloaded from
-#' GenBank
-#' @param plastome_metadata_renamed Tibble; metadata of sequences
-#' including resolved names.
-#'
-#' @return Tibble (seqtbl); gene sequences downloaded from
-#' GenBank with column "accession" including species_accession
-#'
-rename_and_filter_raw_plastome_seqs <- function(plastome_genes_raw, plastome_metadata_renamed) {
-  plastome_genes_raw %>%
-    # Add resolved names 
-    left_join(
-      select(plastome_metadata_renamed, species, accession),
-      by = "accession"
-    ) %>%
-    verify(nrow(.) == nrow(plastome_genes_raw)) %>%
-    assert(not_na, everything()) %>%
-    # Add sequence length
-    mutate(
-      seqln = map_dbl(seq, ~length(.[[1]])),
-      genus = str_split(species, "_") %>% map_chr(1)) %>%
-    verify(all(str_detect(genus, " ", negate = TRUE))) %>%
-    assert(not_na, everything()) %>%
-    group_by(gene, genus) %>%
-    # Filter to longest sequence per genus
-    slice_max(order_by = "seqln", n = 1, with_ties = FALSE) %>%
-    ungroup() %>%
-    transmute(
-      accession = glue::glue("{species}_{accession}") %>% as.character(),
-      seq,
-      target = gene
     )
 }
 
