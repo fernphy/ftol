@@ -531,29 +531,6 @@ tar_plan(
       )
     )
   ),
-  # Sanger ML tree: first try (one replicate)
-  tar_target(
-    sanger_ml_tree,
-    iqtree(
-      sanger_alignment,
-      m = "MFP", bb = 1000, nt = 6, seed = 20220129,
-      redo = FALSE, # FIXME: change to TRUE on next run
-      echo = TRUE, wd = path(int_dir, "iqtree/sanger"),
-      other_args = c(
-        "-mset", "GTR",
-        "-mrate", "E,I,G,I+G",
-        "-t", "PARS",
-        "-g", path_abs(constraint_tree_file),
-        "-nm", "2000", # changed from 1000 when bs didn't converge
-        "--undo" # FIXME: delete this on next run
-      ),
-      # Return best ML tree and consensus
-      tree_path = c(
-        ml_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.treefile"),
-        con_tree = path(int_dir, "iqtree/sanger/sanger_alignment.phy.contree")
-      )
-    )
-  ),
   # Sanger ML tree: best of 10 replicates
   # - set 10 different seeds
   iqtree_sanger_seeds = 220307 + 1:10,
@@ -563,21 +540,18 @@ tar_plan(
     sanger_ml_tree_rep,
     iqtree(
       sanger_alignment,
-      # model same as determined by ML search with 1 replicate
-      # (see _targets/user/intermediates/iqtree/sanger)
-      # Next time, change to
-      # "-mset", "GTR", "-mrate", "E,I,G,I+G"
-      # to test models directly
-      m = "GTR+F+I+G4",
-      bb = 1000,
-      nt = 6, # Run 6 cores in parallel
-      seed = iqtree_sanger_seeds,
-      redo = FALSE, # change to TRUE when starting pipeline from new data
-      wd = iqtree_sanger_dirs,
+      m = "MFP", # run modelfinder and use best model
       other_args = c(
+        "-mset", "GTR", # only test GTR family of models
+        "-mrate", "E,I,G,I+G",
         "-t", "PARS",
         "-g", path_abs(constraint_tree_file)
       ),
+      bb = 1000,
+      nt = 6, # run 6 cores in parallel for each replicate
+      seed = iqtree_sanger_seeds,
+      redo = FALSE, # change to TRUE when starting pipeline from new data
+      wd = iqtree_sanger_dirs,
       tree_path = c(
         ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
         con_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.contree")
