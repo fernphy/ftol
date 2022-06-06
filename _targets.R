@@ -102,6 +102,9 @@ tar_plan(
       store = TRUE
     )
   ),
+  # Path to local genbank database
+  # (don't track as file because hash changes each time used)
+  restez_db = "_targets/user/data_raw/restez/sql_db",
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
@@ -116,11 +119,11 @@ tar_plan(
   # - Most recent date cutoff for sampling genes
   date_cutoff = "2022/04/15",
 
-  # Download and extract Sanger sequences ----
+  # Extract Sanger sequences ----
 
   # Load tibble of all accessions in local GenBank database.
   # (requires setting up database first; see R/setup_gb.R)
-  accs_in_local_db = gb_get_all_ids(),
+  accs_in_local_db = gb_get_all_ids(restez_db),
   # Fetch metadata
   tar_target(
     raw_meta_all,
@@ -138,7 +141,7 @@ tar_plan(
   # Fetch sequences from local GenBank database
   tar_target(
     fern_sanger_seqs_raw,
-    load_seqs_from_local_db(raw_meta),
+    load_seqs_from_local_db(raw_meta, restez_db),
     deployment = "main" # to avoid simultaneous processes connecting to db
   ),
   # Extract target regions with superCRUNCH
@@ -339,7 +342,7 @@ tar_plan(
     sanger_seqs_with_voucher_data, mpcheck_monophy,
     manually_selected_seqs = inclusion_list),
 
-  # Download core set of plastid genes from plastomes ----
+  # Extract core set of plastid genes from plastomes ----
   # Download plastome metadata (accessions and species)
   plastome_metadata_raw_all = download_plastome_metadata(
     end_date = date_cutoff,
@@ -360,12 +363,14 @@ tar_plan(
     plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
     ref_names_parsed = pc_ref_names, ref_names_data = pteridocat
   ),
-  # Download plastome sequences
+  # Extract plastome sequences
   # FASTA files for each accession in seqtbl format
   target_plastome_accessions = unique(plastome_metadata_renamed$accession),
   tar_target(
     plastome_fasta,
-    gb_dnabin_get(target_plastome_accessions),
+    gb_dnabin_get(
+      id = target_plastome_accessions,
+      restez_path = restez_db),
     deployment = "main" # to avoid simultaneous processes connecting to db
   ),
   # Extract target genes and spacers with superCRUNCH
