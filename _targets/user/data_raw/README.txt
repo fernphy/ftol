@@ -1,4 +1,4 @@
-This README.txt file was generated on 2022-05-27 by Joel Nitta
+This README.txt file was generated on 2022-06-04 by Joel Nitta
 
 --------------------------------------------------------------------------------
 
@@ -16,7 +16,7 @@ University of Tokyo, Chiba, Japan. joelnitta@gmail.com
 Associate or Co-investigators: Eric Schuettpelz, Santiago Ramírez-Barahona,
 Wataru Iwasaki
 
-Date of data collection: 1990 - 2021
+Date of data collection: 1990 - 2022
 
 Geographic location of data collection: Global
 
@@ -45,6 +45,8 @@ Links/relationships to ancillary data sets:
 
 -   ferncal (https://github.com/fernphy/ferncal)
 -   pteridocat (https://github.com/fernphy/pteridocat)
+-   FTOL input data on FigShare
+    (https://doi.org/10.6084/m9.figshare.19474316.v1)
 
 Was data derived from another source?
 
@@ -133,7 +135,7 @@ accs_exclude.csv: GenBank accessions to exclude from analysis.
 
 Number of variables: 3
 
-Number of cases/rows: 47
+Number of cases/rows: 52
 
 Variable list:
 
@@ -145,7 +147,7 @@ Missing data codes: No missing data.
 
 Specialized formats or other abbreviations used: None.
 
-MD5 checksum: d4579c490115564ed456ad36a815fca5
+MD5 checksum: 5e376ae347b33d879bafac06b415c856
 
 --------------------------------------------------------------------------------
 
