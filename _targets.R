@@ -571,22 +571,22 @@ tar_plan(
   ),
   # Read in log file from Sanger ML tree analysis
   sanger_ml_log = get_best_tree(sanger_ml_log_rep, "log"),
-  # Load Sanger ML tree (call 'mlr' to distinguish from ML tree with 2000 reps)
-  sanger_mlr_tree = get_best_tree(sanger_ml_log_rep, "ml"),
-  # Load Sanger consensus tree
+  # Get best ML tree from ML tree replicates
+  sanger_ml_tree = get_best_tree(sanger_ml_log_rep, "ml"),
+  # Get best consensus tree from ML tree replicates
   sanger_con_tree = get_best_tree(sanger_ml_log_rep, "con"),
   # Check monophyly ----
   # Root tree on Zygnema
   # - rapid ML tree
   sanger_fast_tree_rooted = root_fern_tree(sanger_tree_fast),
   # - ML tree
-  sanger_mlr_tree_rooted = root_fern_tree(sanger_mlr_tree),
+  sanger_ml_tree_rooted = root_fern_tree(sanger_ml_tree),
   # - consensus tree
   sanger_con_tree_rooted = root_fern_tree(sanger_con_tree),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path,
-    sanger_mlr_tree_rooted), # ML or consensus doesn't matter
+    sanger_ml_tree_rooted), # ML or consensus doesn't matter
   # Define groups for checking monophyly
   taxa_levels_check = c(
     "order", "suborder", "family",
@@ -594,7 +594,7 @@ tar_plan(
   # Make tibble mapping species to putatively monophyletic groups
   sanger_sampling = make_sanger_sampling_tbl(
     plastome_metadata_renamed,
-    sanger_tree = sanger_mlr_tree_rooted, # ML or consensus doesn't matter
+    sanger_tree = sanger_ml_tree_rooted, # ML or consensus doesn't matter
     ppgi_taxonomy = ppgi_taxonomy) %>%
     # Add Equisetum subgenera
     left_join(equisetum_subgen, by = "species"),
@@ -603,7 +603,7 @@ tar_plan(
   # - ML tree
   ml_mono_test = assess_monophy(
     taxon_sampling = sanger_sampling,
-    tree = sanger_mlr_tree_rooted,
+    tree = sanger_ml_tree_rooted,
     tax_levels = taxa_levels_check
   ),
   ml_monophy_by_clade = map_df(
@@ -640,7 +640,7 @@ tar_plan(
   manual_spanning_tips = define_manual_spanning_tips("this_study"),
   # Specify calibration point for root
   ml_root_calibration = calibrate_root_node(
-    sanger_mlr_tree_rooted, "land_plants", 475,
+    sanger_ml_tree_rooted, "land_plants", 475,
     "Anthoceros_angustus", "Polypodium_virginianum"
   ),
   con_root_calibration = calibrate_root_node(
@@ -650,7 +650,7 @@ tar_plan(
   # Map species in the tree to their fossil groups
   # - ML tree
   ml_fossil_node_species_map = make_fossil_species_map(
-    sanger_mlr_tree_rooted, fossil_calibration_points,
+    sanger_ml_tree_rooted, fossil_calibration_points,
     ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
     include_algaomorpha = TRUE),
   # - consensus tree
@@ -662,7 +662,7 @@ tar_plan(
   # Also drops redundant calibration points.
   # - ML tree
   ml_fossil_calibration_tips = get_fossil_calibration_tips(
-    ml_fossil_node_species_map, sanger_mlr_tree_rooted,
+    ml_fossil_node_species_map, sanger_ml_tree_rooted,
     fossil_calibration_points, manual_spanning_tips
   ),
   # - consensus tree
@@ -699,8 +699,8 @@ tar_plan(
   ),
   # Dating with treePL ----
   # - ML tree, FernCal calibrations
-  sanger_mlr_tree_dated = run_treepl_combined(
-    phy = sanger_mlr_tree_rooted,
+  sanger_ml_tree_dated = run_treepl_combined(
+    phy = sanger_ml_tree_rooted,
     alignment = sanger_alignment,
     calibration_dates = ml_fossil_calibrations_for_treepl,
     cvstart = 1000,
@@ -796,7 +796,7 @@ tar_plan(
   tar_file(
     sanger_ml_tree_ftolr,
     write_tree_tar(
-      sanger_mlr_tree_rooted,
+      sanger_ml_tree_rooted,
       "ftol_data/ftol_sanger_ml.tre"
     )
   ),
@@ -804,7 +804,7 @@ tar_plan(
   tar_file(
     sanger_ml_tree_dated_ftolr,
     write_tree_tar(
-      sanger_mlr_tree_dated,
+      sanger_ml_tree_dated,
       "ftol_data/ftol_sanger_ml_dated.tre"
       )
   ),
