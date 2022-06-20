@@ -44,8 +44,8 @@ tar_load(
     sanger_parts_table,
     sanger_con_tree_dated,
     sanger_con_tree_rooted,
-    sanger_mlr_tree_dated,
-    sanger_mlr_tree_rooted
+    sanger_ml_tree_dated,
+    sanger_ml_tree_rooted
   )
 )
 ```
@@ -439,7 +439,7 @@ ftol_plastome_alignment.fasta.gz. Rooted on bryophytes. Divergence times
 estimated with fossil calibration points (ftol_sanger_con_fossils.csv) using
 treePL. In newick format.
 
-Number of tips: `r ape::Ntip(sanger_mlr_tree_dated)`
+Number of tips: `r ape::Ntip(sanger_ml_tree_dated)`
 
 Specialized formats or other abbreviations used: None.
 
@@ -477,7 +477,7 @@ MD5 checksum: `r tools::md5sum(ml_fossil_calibration_tips_ftolr)`
 Inferred using maximum-likelihood from DNA sequences in
 ftol_plastome_alignment.fasta.gz. Rooted on bryophytes. In newick format.
 
-Number of tips: `r ape::Ntip(sanger_mlr_tree_rooted)`
+Number of tips: `r ape::Ntip(sanger_ml_tree_rooted)`
 
 Specialized formats or other abbreviations used: None.
 
