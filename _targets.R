@@ -583,6 +583,12 @@ tar_plan(
   sanger_ml_tree_rooted = root_fern_tree(sanger_ml_tree),
   # - consensus tree
   sanger_con_tree_rooted = root_fern_tree(sanger_con_tree),
+  # Drop Zygnema for dating
+  og_to_drop = "Zygnema_circumcarinatum",
+  sanger_ml_tree_rooted_pruned = ape::drop.tip(
+    sanger_ml_tree_rooted, og_to_drop),
+  sanger_con_tree_rooted_pruned = ape::drop.tip(
+    sanger_con_tree_rooted, og_to_drop),
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path,
@@ -623,10 +629,10 @@ tar_plan(
   # Prepare fossil calibrations ----
   # Load fossil calibration points
   # Fossil calibration points
-  # ferncal v1.0.0
+  # ferncal v1.0.1
   fossil_ferns_raw = read_csv(
     contentid::resolve(
-      "hash://sha256/55fd2f21d8e26e4604d9128871f9435ede08f75efc8ae64ce56c671f8d605a1e" # nolint
+      "hash://sha256/153139fbb560442ad46770a04be370f5884cd6396e0eaf05d6875513f80d072c" # nolint
     )
   ),
   # Drop MD formatting (asterisks) from data
@@ -640,34 +646,37 @@ tar_plan(
   manual_spanning_tips = define_manual_spanning_tips("this_study"),
   # Specify calibration point for root
   ml_root_calibration = calibrate_root_node(
-    sanger_ml_tree_rooted, "land_plants", 475,
-    "Anthoceros_angustus", "Polypodium_virginianum"
+    sanger_ml_tree_rooted_pruned, "land_plants", 475,
+    "Marchantia_polymorpha", "Polypodium_virginianum"
   ),
   con_root_calibration = calibrate_root_node(
-    sanger_con_tree_rooted, "land_plants", 475,
-    "Anthoceros_angustus", "Polypodium_virginianum"
+    sanger_con_tree_rooted_pruned, "land_plants", 475,
+    "Marchantia_polymorpha", "Polypodium_virginianum"
   ),
   # Map species in the tree to their fossil groups
   # - ML tree
   ml_fossil_node_species_map = make_fossil_species_map(
-    sanger_ml_tree_rooted, fossil_calibration_points,
-    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
+    sanger_ml_tree_rooted_pruned, fossil_calibration_points,
+    ppgi_taxonomy, equisetum_subgen,
+    # don't include pruned outgroup in metadata
+    filter(plastome_metadata_renamed, species != og_to_drop),
     include_algaomorpha = TRUE),
   # - consensus tree
   con_fossil_node_species_map = make_fossil_species_map(
-    sanger_con_tree_rooted, fossil_calibration_points,
-    ppgi_taxonomy, equisetum_subgen, plastome_metadata_renamed,
+    sanger_con_tree_rooted_pruned, fossil_calibration_points,
+    ppgi_taxonomy, equisetum_subgen,
+    filter(plastome_metadata_renamed, species != og_to_drop),
     include_algaomorpha = TRUE),
   # Get pairs of tips that define fossil groups.
   # Also drops redundant calibration points.
   # - ML tree
   ml_fossil_calibration_tips = get_fossil_calibration_tips(
-    ml_fossil_node_species_map, sanger_ml_tree_rooted,
+    ml_fossil_node_species_map, sanger_ml_tree_rooted_pruned,
     fossil_calibration_points, manual_spanning_tips
   ),
   # - consensus tree
   con_fossil_calibration_tips = get_fossil_calibration_tips(
-    con_fossil_node_species_map, sanger_con_tree_rooted,
+    con_fossil_node_species_map, sanger_con_tree_rooted_pruned,
     fossil_calibration_points, manual_spanning_tips
   ),
   # Format fossil calibration points for treePL
@@ -687,11 +696,15 @@ tar_plan(
     )
   ),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
-    sanger_con_tree_rooted, ts_fossil_calibration_points, ppgi_taxonomy,
-    plastome_metadata_renamed),
+    sanger_con_tree_rooted_pruned,
+    ts_fossil_calibration_points,
+    ppgi_taxonomy,
+    # don't include pruned outgroup in metadata
+    filter(plastome_metadata_renamed, species != og_to_drop)
+  ),
   ts_manual_spanning_tips = define_manual_spanning_tips("ts2016"),
   ts_fossil_calibration_tips = get_fossil_calibration_tips(
-    ts_fossil_node_species_map, sanger_con_tree_rooted,
+    ts_fossil_node_species_map, sanger_con_tree_rooted_pruned,
     ts_fossil_calibration_points, ts_manual_spanning_tips
   ),
   ts_fossil_calibrations_for_treepl = format_calibrations_for_treepl(
@@ -700,7 +713,7 @@ tar_plan(
   # Dating with treePL ----
   # - ML tree, FernCal calibrations
   sanger_ml_tree_dated = run_treepl_combined(
-    phy = sanger_ml_tree_rooted,
+    phy = sanger_ml_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = ml_fossil_calibrations_for_treepl,
     cvstart = 1000,
@@ -714,7 +727,7 @@ tar_plan(
   ),
   # - ML tree, Testo and Sundue calibrations
   ts_sanger_tree_dated = run_treepl_combined(
-    phy = sanger_con_tree_rooted,
+    phy = sanger_con_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = ts_fossil_calibrations_for_treepl,
     cvstart = 1000,
@@ -728,7 +741,7 @@ tar_plan(
   ),
   # - Consensus tree, FernCal calibrations
   sanger_con_tree_dated = run_treepl_combined(
-    phy = sanger_con_tree_rooted,
+    phy = sanger_con_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = con_fossil_calibrations_for_treepl,
     cvstart = 1000,
