@@ -716,27 +716,13 @@ tar_plan(
     phy = sanger_ml_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = ml_fossil_calibrations_for_treepl,
-    cvstart = 1000,
-    cvstop = 0.000001,
+    cvstart = 1,
+    cvstop = 0.000000001,
     cvsimaniter = 5000,
     plsimaniter = 200000, # preliminary output suggested > 100000
     nthreads = 5,
-    seed = 7168,
+    seed = 2808,
     wd = path(int_dir, "treepl/ml"),
-    thorough = TRUE
-  ),
-  # - ML tree, Testo and Sundue calibrations
-  ts_sanger_tree_dated = run_treepl_combined(
-    phy = sanger_con_tree_rooted_pruned,
-    alignment = sanger_alignment,
-    calibration_dates = ts_fossil_calibrations_for_treepl,
-    cvstart = 1000,
-    cvstop = 0.000001,
-    cvsimaniter = 5000,
-    plsimaniter = 200000,
-    nthreads = 5,
-    seed = 7167,
-    wd = path(int_dir, "treepl/ts"),
     thorough = TRUE
   ),
   # - Consensus tree, FernCal calibrations
@@ -744,13 +730,44 @@ tar_plan(
     phy = sanger_con_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = con_fossil_calibrations_for_treepl,
-    cvstart = 1000,
-    cvstop = 0.000001,
+    cvstart = 1,
+    cvstop = 0.000000001,
     cvsimaniter = 5000,
     plsimaniter = 200000,
     nthreads = 5,
-    seed = 7167,
+    seed = 3732,
     wd = path(int_dir, "treepl/con"),
+    thorough = TRUE
+  ),
+  # - Consensus tree, Testo and Sundue calibrations
+  # use CV results from consensus tree
+  sanger_con_cv = read_lines_tar(
+    path(int_dir, "treepl/con/treepl_cv_out.txt"),
+    depends = sanger_con_tree_dated
+  ),
+  ts_sanger_tree_prime = run_treepl_prime(
+    phy = sanger_con_tree_rooted_pruned,
+    alignment = sanger_alignment,
+    calibration_dates = ts_fossil_calibrations_for_treepl,
+    cv_results = sanger_con_cv,
+    cvsimaniter = 5000,
+    plsimaniter = 200000,
+    nthreads = 5,
+    seed = 7970,
+    wd = path(int_dir, "treepl/ts"),
+    thorough = TRUE
+  ),
+  ts_sanger_tree_dated = run_treepl(
+    phy = sanger_con_tree_rooted_pruned,
+    alignment = sanger_alignment,
+    calibration_dates = ts_fossil_calibrations_for_treepl,
+    cv_results = sanger_con_cv,
+    priming_results = ts_sanger_tree_prime,
+    cvsimaniter = 5000,
+    plsimaniter = 200000,
+    nthreads = 5,
+    seed = 7970,
+    wd = path(int_dir, "treepl/ts"),
     thorough = TRUE
   ),
   # Format data for ftolr ----
