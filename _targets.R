@@ -94,14 +94,6 @@ tar_plan(
       full.names = TRUE)
   ),
   fern_ref_seqs = load_ref_aln(ref_aln_files),
-  # Download and cache NCBI taxonomic database v2022-05-01
-  tar_file(
-    taxdump_zip_file,
-    contentid::resolve(
-      "hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23", # nolint
-      store = TRUE
-    )
-  ),
   # Path to local genbank database
   # (don't track as file because hash changes each time used)
   restez_db = "_targets/user/data_raw/restez/sql_db",
@@ -168,7 +160,8 @@ tar_plan(
   tar_target(
     ncbi_names_raw,
     extract_ncbi_names(
-      taxdump_zip_file, taxid_keep = raw_meta,
+      taxdump_zip_file = contentid::resolve("hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23"), # nolint
+      taxid_keep = raw_meta,
       names_exclude = ncbi_db_names_to_exclude(),
       workers = 20),
     deployment = "main"),
@@ -354,7 +347,8 @@ tar_plan(
   ),
   # Extract species names in plastome data from NCBI taxonomy
    plastome_ncbi_names_raw = extract_ncbi_names(
-     taxdump_zip_file, taxid_keep = plastome_metadata_raw,
+     taxdump_zip_file = contentid::resolve("hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23"), # nolint
+     taxid_keep = plastome_metadata_raw,
      names_exclude = plastome_ncbi_db_names_to_exclude(),
      workers = 2),
   # Resolve species names in plastome metadata
