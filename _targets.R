@@ -671,12 +671,14 @@ tar_plan(
   # Also drops redundant calibration points.
   # - ML tree
   ml_fossil_calibration_tips = get_fossil_calibration_tips(
-    ml_fossil_node_species_map, sanger_ml_tree_rooted_pruned,
+    fossil_node_species_map = ml_fossil_node_species_map,
+    sanger_tree_rooted = sanger_ml_tree_rooted_pruned,
     fossil_calibration_points, manual_spanning_tips
   ),
   # - consensus tree
   con_fossil_calibration_tips = get_fossil_calibration_tips(
-    con_fossil_node_species_map, sanger_con_tree_rooted_pruned,
+    fossil_node_species_map = con_fossil_node_species_map,
+    sanger_tree_rooted = sanger_con_tree_rooted_pruned,
     fossil_calibration_points, manual_spanning_tips
   ),
   # Format fossil calibration points for treePL

@@ -7812,6 +7812,8 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
   switch(
     data_set,
     "this_study" = tribble(
+      # IMPORTANT: tip_1_manual and tip_2_manual should define the **crown**
+      # group, regardless of `affinities_group`
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
@@ -7819,7 +7821,11 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata",
       # FIXME: remove Dryopteridaceae after fixing
       # https://github.com/fernphy/ftol/issues/16
-      "Dryopteridaceae", "stem", "Stigmatopteris_heterophlebia", "Elaphoglossum_amygdalifolium" # nolint
+      "Dryopteridaceae", "stem", "Stigmatopteris_heterophlebia", "Elaphoglossum_amygdalifolium", # nolint
+      # FIXME: remove Cyathea manual tips after fixing
+      # https://github.com/fernphy/ftol/issues/18
+      "Cyathea", "crown", "Alsophila_crinita", "Cyathea_robertsiana",
+      "Cyathea", "stem", "Alsophila_crinita", "Cyathea_robertsiana"
       ),
     "ts2016" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
@@ -7857,6 +7863,11 @@ get_fossil_calibration_tips <- function(
 ) {
   # Make sure phylogeny is rooted
   assertthat::assert_that(ape::is.rooted(sanger_tree_rooted))
+
+  # Add `node_calibrated` column to manual_spanning_tips
+  manual_spanning_tips <-
+    manual_spanning_tips %>%
+    mutate(node_calibrated = paste(affinities_group, affinities))
 
   # Check monophyly of each group
   fossil_node_monophy <-
@@ -7954,8 +7965,19 @@ get_fossil_calibration_tips <- function(
     select(-monotypic_stem_mrca) %>%
     # Add MRCA and stem MRCA for manually specified groups
     left_join(
-      manual_mrca,
-      by = c("affinities", "affinities_group")
+      select(manual_mrca, node_calibrated, contains("mrca")),
+      by = "node_calibrated"
+    ) %>%
+      # use only manual value if both manual and automatic are available
+    mutate(
+      mrca = case_when(
+        !is.na(mrca_manual) ~ NA_real_,
+        TRUE ~ mrca
+      ),
+      stem_mrca = case_when(
+        !is.na(stem_mrca_manual) ~ NA_real_,
+        TRUE ~ stem_mrca
+      )
     ) %>%
     mutate(
       mrca = coalesce(mrca, mrca_manual),
@@ -7990,6 +8012,8 @@ get_fossil_calibration_tips <- function(
   # or no MRCA exists in case of monotypic groups
   spanning_tips_long %>%
     filter(monophyly %in% c("Yes", "Monotypic")) %>%
+    # don't apply check to manually calibrated nodes
+    filter(!node_calibrated %in% manual_spanning_tips$node_calibrated) %>%
     verify(
       all(number_tips == num_tips_check | is.na(mrca)),
       error_fun = err_msg("Spanning tips do not match fossil group"),
