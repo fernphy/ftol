@@ -2004,10 +2004,10 @@
     },
     "languageserver": {
       "Package": "languageserver",
-      "Version": "0.3.12",
+      "Version": "0.3.13",
       "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "f62ed8b09fd56cd70291bd077bc52c4b",
+      "Repository": "RSPM",
+      "Hash": "ee396ad16694fbb3fca42646c6349dd3",
       "Requirements": [
         "R6",
         "callr",
@@ -2660,7 +2660,7 @@
       "Package": "renv",
       "Version": "0.15.4",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Hash": "c1078316e1d4f70275fc1ea60c0bc431",
       "Requirements": []
     },
@@ -2716,7 +2716,7 @@
       "RemoteRef": "main",
       "RemoteSha": "86935afb4da5215be5205a8170ea9f45ef639acd",
       "Remotes": "hannesmuehleisen/MonetDBLite-R",
-      "Hash": "2512e28361a25f61da632b0e47da4fc5",
+      "Hash": "ceae72be7466a9814fe769f2817ccc6a",
       "Requirements": [
         "DBI",
         "cli",
