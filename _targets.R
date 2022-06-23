@@ -896,6 +896,7 @@ tar_plan(
     )
   ),
   # Compress data for FigShare
+  # - ref alignments
   tar_file(
     ref_aln_archive,
     archive_dir(
@@ -906,14 +907,32 @@ tar_plan(
       depends = ref_aln_files
     )
   ),
-  # Fetch docker image tag
-  # This only works if plan is made with run.sh
-  # otherwise, will be empty string ("")
-  image_tag = Sys.getenv("IMAGE_TAG"),
+  # - restez db (already compressed by setup_gb.R)
+  tar_file(
+    restez_sql_db_archive,
+    path(data_raw, "restez_sql_db.tar.gz")
+  ),
   # Render READMEs
   # - input data
   input_data_readme_tar,
   input_data_readme_gh_tar,
   # - FTOL (output) data
-  ftol_data_readme_tar
+  ftol_data_readme_tar,
+  # Document software versions
+  # - R package versions
+  tar_file_read(
+    renv_pkg_versions,
+    "renv.lock",
+    get_renv_pkg_versions(!!.x)),
+  # - Other software versions
+  tar_file_read(
+    sw_versions,
+    "Dockerfile",
+    get_sw_versions(!!.x)),
+  # - Current R version
+  ftol_r_ver = paste(R.Version()[c("major", "minor")], collapse = "."),
+  # - Fetch docker image tag
+  #   This only works if plan is made with run.sh
+  #   otherwise, will be empty string ("")
+  image_tag = Sys.getenv("IMAGE_TAG")
 )

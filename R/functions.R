@@ -8456,3 +8456,67 @@ roxy_to_tbl <- function(metadat) {
     mutate(raw = stringr::str_replace_all(raw, fixed("}{"), "_SPLIT_HERE_")) %>%
     tidyr::separate(raw, c("col", "desc"), sep = "_SPLIT_HERE_")
 }
+
+#' Make a tibble with all current package versions from renv.lock file
+#'
+#' @param renv_lock_path Path to renv .lock file
+#' @return Tibble
+get_renv_pkg_versions <- function(renv_lock_path = "renv.lock") {
+  # Helper function to convert renv package list to tibble with name
+  # and version
+  pkg_list_to_df <- function(pkg_list) {
+    pkg_list[c("Package", "Version")] %>%
+      as_tibble()
+  }
+
+  jsonlite::fromJSON(renv_lock_path) %>%
+    purrr::pluck("Packages") %>%
+    purrr::map_df(pkg_list_to_df) %>%
+    janitor::clean_names()
+}
+
+#' Make a tibble with all current software versions
+#'
+#' by asking the software itself as much as possible; by checking
+#' Dockerfile if not
+#'
+#' @param dockerfile_path Path to Dockerfile
+#' @return Tibble
+get_sw_versions <- function(dockerfile_path = "Dockerfile") {
+  docker_lines <- read_lines(dockerfile_path)
+  list(
+    blast = system("blastn -version", intern = TRUE) %>%
+      pluck(1) %>%
+      str_match("[0-9]\\.[0-9]\\.[^ ]+") %>%
+      magrittr::extract(, 1),
+    fasttree = system("apt-cache policy fasttree", intern = TRUE) %>%
+      magrittr::extract(str_detect(., "Installed")) %>%
+      str_match("[0-9]\\.[0-9]\\.[^ ]+") %>%
+      magrittr::extract(, 1),
+    iqtree2 = system("iqtree2 --version", intern = TRUE) %>%
+      pluck(1) %>%
+      str_match("[0-9]\\.[0-9]\\.[0-9]") %>%
+      magrittr::extract(, 1),
+    mafft = system("apt-cache policy mafft", intern = TRUE) %>%
+      magrittr::extract(str_detect(., "Installed")) %>%
+      str_match("[0-9]\\.[^ ]+") %>%
+      magrittr::extract(, 1),
+    trimal = system("trimal --version", intern = TRUE) %>%
+      pluck(2) %>%
+      str_match("[0-9]\\.[0-9]\\.[^ ]+") %>%
+      magrittr::extract(, 1),
+    supercrunch = docker_lines[str_detect(docker_lines, "SC_VERSION")] %>%
+      pluck(1) %>%
+      str_match("[0-9]\\.[0-9]\\.[^ ]+") %>%
+      magrittr::extract(, 1),
+    # treePL version hasn't been updated since 2014, so use
+    # first eight chars of installed commit
+    treepl = docker_lines[str_detect(docker_lines, "TPL_VERSION")] %>%
+      pluck(1) %>%
+      str_match("=([a-zA-Z0-9]+)$") %>%
+      magrittr::extract(, 2) %>%
+      substr(1,8)
+  ) %>%
+    as_tibble() %>%
+    pivot_longer(names_to = "package", values_to = "version", everything())
+}
