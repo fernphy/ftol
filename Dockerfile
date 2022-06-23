@@ -81,7 +81,12 @@ RUN wget https://github.com/git-lfs/git-lfs/releases/download/v3.1.2/git-lfs-lin
   && bash install.sh
 
 ### treePL ###
+# many commits have been made since last release (v1.0)
+# so checkout most recent commit (2022-04-07) 551cbde1a530adad7986c530ca1f254e3ffd42c7
+ENV TPL_VERSION=551cbde1a530adad7986c530ca1f254e3ffd42c7
 RUN git clone https://github.com/blackrim/treePL.git \
+  && cd $APPS_HOME/treePL/ \
+  && git checkout $TPL_VERSION \
   && cd $APPS_HOME/treePL/deps/ \
   && tar xvzf adol-c_git_saved.tar.gz \
   && cd $APPS_HOME/treePL/deps/adol-c/ \
@@ -98,33 +103,37 @@ RUN git clone https://github.com/blackrim/treePL.git \
 
 ### gnparser ###
 ENV APP_NAME=gnparser
-ENV VERSION=1.4.0
-ENV DEST=$APPS_HOME/$APP_NAME/$VERSION
-RUN wget https://github.com/gnames/gnparser/releases/download/v$VERSION/gnparser-v$VERSION-linux.tar.gz \
-  && tar xf $APP_NAME-v$VERSION-linux.tar.gz \
-  && rm $APP_NAME-v$VERSION-linux.tar.gz \
+ENV GNP_VERSION=1.4.0
+ENV DEST=$APPS_HOME/$APP_NAME/$GNP_VERSION
+RUN wget https://github.com/gnames/gnparser/releases/download/v$GNP_VERSION/gnparser-v$GNP_VERSION-linux.tar.gz \
+  && tar xf $APP_NAME-v$GNP_VERSION-linux.tar.gz \
+  && rm $APP_NAME-v$GNP_VERSION-linux.tar.gz \
   && mv "$APP_NAME" /usr/local/bin/
 
 ### IQ Tree v2 ###
 ENV APP_NAME=iqtree
-ENV VERSION=2.1.3
-RUN wget https://github.com/iqtree/iqtree2/releases/download/v$VERSION/iqtree-$VERSION-Linux.tar.gz \
-  && tar xf $APP_NAME-$VERSION-Linux.tar.gz \
-  && rm $APP_NAME-$VERSION-Linux.tar.gz \
-  && mv $APP_NAME-$VERSION-Linux/bin/iqtree2 /usr/local/bin/
+ENV IQT_VERSION=2.1.3
+RUN wget https://github.com/iqtree/iqtree2/releases/download/v$IQT_VERSION/iqtree-$IQT_VERSION-Linux.tar.gz \
+  && tar xf $APP_NAME-$IQT_VERSION-Linux.tar.gz \
+  && rm $APP_NAME-$IQT_VERSION-Linux.tar.gz \
+  && mv $APP_NAME-$IQT_VERSION-Linux/bin/iqtree2 /usr/local/bin/
 
 ### trimAL ###
 ENV APP_NAME=trimal
+ENV TRIMAL_VERSION=2afb5b54645d484731b62740fddf7bbc0b290355
 RUN git clone https://github.com/scapella/$APP_NAME.git && \
-	cd $APP_NAME/source && \
+	cd $APP_NAME && \
+  git checkout $TRIMAL_VERSION && \
+  cd $APP_NAME/source && \
 	make && \
 	cp trimal /usr/local/bin
 
 ### taxon-tools ###
 ENV APP_NAME=taxon-tools
+ENV TAXONTOOLS_VERSION=8f8b5e2611b6fdef1998b7878e93e60a9bc7c130
 RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 	cd $APP_NAME && \
-  git checkout 8f8b5e2611b6fdef1998b7878e93e60a9bc7c130 && \
+  git checkout $TAXONTOOLS_VERSION && \
 	make check && \
 	make install
 
@@ -153,17 +162,17 @@ RUN conda init bash
 ### SuperCRUNCH ###
 # Needs to run in a conda env
 ENV APPNAME supercrunch
-ENV VERSION 1.3.1
+ENV SC_VERSION 1.3.1
 ENV ENV_PREFIX /env/$APPNAME
 
 # - Download SuperCRUNCH (python scripts and env.yaml)
-RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$VERSION.tar.gz && \
-  tar -xzf v$VERSION.tar.gz && \
-  rm v$VERSION.tar.gz
+RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$SC_VERSION.tar.gz && \
+  tar -xzf v$SC_VERSION.tar.gz && \
+  rm v$SC_VERSION.tar.gz
 
 # - Create conda environment
 RUN conda update --name base --channel defaults conda && \
-  conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$VERSION/$APPNAME-conda-env.yml --force && \
+  conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$SC_VERSION/$APPNAME-conda-env.yml --force && \
   conda clean --all --yes
 
 # - Make shell script to run conda app
@@ -171,7 +180,7 @@ RUN conda update --name base --channel defaults conda && \
 RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "source $CONDA_DIR/etc/profile.d/conda.sh" >> /usr/local/bin/$APPNAME && \
   echo "conda activate /env/$APPNAME" >> /usr/local/bin/$APPNAME && \
-  echo "python /apps/SuperCRUNCH-$VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
+  echo "python /apps/SuperCRUNCH-$SC_VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
 
 ####################################
