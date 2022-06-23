@@ -27,6 +27,7 @@ tar_option_set(
 
 # Define Rmd targets outside of main workflow
 # to avoid meaningless warnings
+# - input data README for figshare
 input_data_readme_tar <- tar_render(
     input_data_readme,
     "reports/input_data_readme/input_data_readme.Rmd",
@@ -34,7 +35,7 @@ input_data_readme_tar <- tar_render(
     output_format = "readmedown::plain_document",
     knit_root_dir = "reports/input_data_readme"
   )
-
+# - input data README for github
 input_data_readme_gh_tar <- tar_render(
     input_data_readme_gh,
     "reports/input_data_readme/input_data_readme_gh.Rmd",
@@ -43,7 +44,7 @@ input_data_readme_gh_tar <- tar_render(
     output_format = "readmedown::plain_document",
     knit_root_dir = "reports/input_data_readme"
   )
-
+# - output data README for ftolr package
 ftol_data_readme_tar <- tar_render(
     ftol_data_readme,
     "reports/ftol_data_readme/ftol_data_readme.Rmd",
@@ -712,8 +713,8 @@ tar_plan(
     phy = sanger_ml_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = ml_fossil_calibrations_for_treepl,
-    cvstart = 1,
-    cvstop = 0.000000001,
+    cvstart = 1e-6,
+    cvstop = 1e-12,
     cvsimaniter = 5000,
     plsimaniter = 200000, # preliminary output suggested > 100000
     nthreads = 5,
@@ -726,8 +727,8 @@ tar_plan(
     phy = sanger_con_tree_rooted_pruned,
     alignment = sanger_alignment,
     calibration_dates = con_fossil_calibrations_for_treepl,
-    cvstart = 1,
-    cvstop = 0.000000001,
+    cvstart = 1e-6,
+    cvstop = 1e-12,
     cvsimaniter = 5000,
     plsimaniter = 200000,
     nthreads = 5,
