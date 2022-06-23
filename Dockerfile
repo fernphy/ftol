@@ -124,7 +124,7 @@ ENV TRIMAL_VERSION=2afb5b54645d484731b62740fddf7bbc0b290355
 RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	cd $APP_NAME && \
   git checkout $TRIMAL_VERSION && \
-  cd $APP_NAME/source && \
+  cd source && \
 	make && \
 	cp trimal /usr/local/bin
 
