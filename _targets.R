@@ -780,11 +780,7 @@ tar_plan(
     plastome_alignment_tbl, plastome_alignment),
   sanger_parts_table = make_parts_table(
     sanger_alignment_tbl, sanger_alignment),
-  plastome_tree_rooted = phytools::reroot(
-    plastome_tree,
-    getMRCA(plastome_tree,
-      c("Physcomitrium_patens", "Marchantia_polymorpha", "Anthoceros_angustus"))
-  ),
+  plastome_tree_rooted = root_fern_tree(plastome_tree),
   # Write out data for ftolr ----
   # - Accessions
   tar_file(

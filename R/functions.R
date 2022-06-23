@@ -7280,23 +7280,24 @@ assess_monophy <- function(
 
 #' Root the fern tree
 #'
-#' Roots a tree with Zygnema circumcarinatum as the outgroup, placed
-#' at the node.
+#' Roots a tree with Zygnema circumcarinatum as the outgroup (default)
 #'
 #' @param phy List of class "phylo"
 #'
 #' @return List of class "phylo": the rooted tree
 #'
-root_fern_tree <- function(phy) {
+root_fern_tree <- function(phy, outgroup = "Zygnema_circumcarinatum") {
   # ape::root() does not pass ape::is.rooted(),
   # so use reroot() instead
   assertthat::assert_that(
-    "Zygnema_circumcarinatum" %in% phy$tip.label,
+    outgroup %in% phy$tip.label,
     msg = 'Outgroup taxon "Zygnema_circumcarinatum" missing from tips'
   )
+  assertthat::assert_that(assertthat::is.string(outgroup))
+
   phytools::reroot(
       tree = phy,
-      node.number = which(phy$tip.label == "Zygnema_circumcarinatum")
+      node.number = which(phy$tip.label == outgroup)
     )
 }
 
