@@ -2489,15 +2489,15 @@
     },
     "pteridocat": {
       "Package": "pteridocat",
-      "Version": "0.0.1",
+      "Version": "1.0.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "b607e2f0c1374ca1a15c75fcaf1dae493308c40f",
-      "Hash": "cf024d4eb982fc6ce4e36cd1d6f1278d",
+      "RemoteSha": "5cdece6497cc1fc37d555639a39d445babdd2ea6",
+      "Hash": "55493ce9763ea46b674c9abb0713b7f4",
       "Requirements": []
     },
     "purrr": {
@@ -3241,16 +3241,16 @@
     },
     "taxastand": {
       "Package": "taxastand",
-      "Version": "0.0.0.9000",
+      "Version": "1.0.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "joelnitta",
       "RemoteRepo": "taxastand",
       "RemoteRef": "main",
-      "RemoteSha": "ad8cd07dd3cd568ee9fb2c894a0674fadd97af44",
+      "RemoteSha": "c78eb9da19eb6aa9e73b31d987c7bb24e39e4d70",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "cc99efa08fe64d95d3b4c5dbc6af781e",
+      "Hash": "477e97f7c56e19a3106c4b9eef831171",
       "Requirements": [
         "assertr",
         "assertthat",
