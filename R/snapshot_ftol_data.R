@@ -46,7 +46,7 @@ tar_load(
     # - fossils
     con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr,
     # - README
-    ftolr_readme
+    ftol_data_readme
   )
 )
 
@@ -101,7 +101,7 @@ ftol_data_files <-
     # fossils
     con_fossil_calibration_tips_ftolr, ml_fossil_calibration_tips_ftolr,
     # README
-    ftolr_readme[[1]],
+    ftol_data_readme[[1]],
     "LICENSE"
     )
   )

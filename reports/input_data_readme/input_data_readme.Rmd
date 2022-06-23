@@ -22,6 +22,7 @@ knitr::opts_chunk$set(
 # Load objects from targets workflow (all paths to data files)
 tar_load(
   c(
+    restez_sql_db_archive,
     ref_aln_archive,
     ref_aln_files)
   )
@@ -88,6 +89,7 @@ DATA & FILE OVERVIEW
 
 File List:
 
+- restez_sql_db.tar.gz: Compressed file archive including database of fern DNA sequences from GenBank release 249.
 - ref_aln.tar.gz: Compressed file archive including one fasta file per target plastid locus.
 
 --------------------------
@@ -100,21 +102,23 @@ The data included here are used in a pipeline that (mostly) automatically
 generates a maximally sampled fern phylogenetic tree based on plastid sequences
 in GenBank (https://github.com/fernphy/ftol).
 
-The first step is to generate a set of reference FASTA files for 79 target loci
-(one per locus; ref_aln.tar.gz). These include 77 protein-coding genes based on
-a list of 83 genes [@Wei2017a] that was filtered to only genes that show no
-evidence of duplication, plus two spacer regions
-(trnL-trnF and rps4-trnS). Each FASTA file in ref_aln.tar.gz includes one
-representative (longest) sequence per avaialable fern genus. This is done with
-custom R scripts contained in https://github.com/fernphy/ftol, in particular 
-prep_ref_seqs_plan.R (https://github.com/fernphy/ftol/blob/main/prep_ref_seqs_plan.R).
+The first step is to download the latest release of GenBank data from the NCBI
+GenBank FTP site (https://ftp.ncbi.nlm.nih.gov/genbank/) and use it to create a
+local database of fern sequences. This is done with custom R scripts contained
+in https://github.com/fernphy/ftol, in particular setup_gb.R
+(https://github.com/fernphy/ftol/blob/main/R/setup_gb.R).
 
-Next, all available fern accessions for seven target "Sanger loci" (plastid regions
-typically sequenced using Sanger technology) and all available fern plastomes
-(accessions >7000 bp) are downloaded from GenBank. Sequences matching the target
-loci are then extracted from each accesion using the FASTA files contained in
-ref_aln.tar.gz as references with the "Reference_Blast_Extract.py" script of
-superCRUNCH [@Portik2020].
+Next, a set of reference FASTA files for 79 target loci (one per locus;
+ref_aln.tar.gz) is generated. These include 77 protein-coding genes based on a
+list of 83 genes [@Wei2017a] that was filtered to only genes that show no
+evidence of duplication, plus two spacer regions (trnL-trnF and rps4-trnS). Each
+FASTA file in ref_aln.tar.gz includes one representative (longest) sequence per
+avaialable fern genus. This is done with prep_ref_seqs_plan.R
+(https://github.com/fernphy/ftol/blob/main/prep_ref_seqs_plan.R).
+
+Sequences matching the target loci are then extracted from each accession in the
+local database using the FASTA files contained in ref_aln.tar.gz as references
+with the "Reference_Blast_Extract.py" script of superCRUNCH [@Portik2020].
 
 The extracted sequences are aligned with MAFFT [@Katoh2002], phylogenetic
 analysis is done using IQ-TREE [@Nguyen2015] and divergence times estimated with
@@ -131,6 +135,20 @@ DATA-SPECIFIC INFORMATION
 
 --------------------------
 
+`r path_file(restez_sql_db_archive)`: Compressed file archive including fern DNA
+sequences downloaded from the NCBI GenBank FTP site (release 249,
+https://ftp.ncbi.nlm.nih.gov/genbank/) formatted as a MonetDB database
+(https://www.monetdb.org/), created with restez R package
+v1.1.0 (https://github.com/ropensci/restez). The sequences can also be accessed
+with restez. To do so, the contents of the archive (folders "bat" and
+"sql_logs") need to be extracted to a folder "restez/sql_db". Then, run the
+restez function restez_path_set() with the folder containing "restez/sql_db" as
+input.
+
+MD5 checksum: `r tools::md5sum(restez_sql_db_archive)`
+
+--------------------------
+
 `r path_file(ref_aln_archive)`: Compressed file archive including one fasta file
 per target platid locus (`r length(ref_aln_files)` loci total). Each FASTA file
 is named by the locus. Sequences within each FASTA file named by species and
@@ -142,6 +160,10 @@ MD5 checksum: `r tools::md5sum(ref_aln_archive)`
 --------------------------
 
 CHANGE LOG
+
+2022-06-23
+
+- Add fern GenBank database
 
 2022-05-27
 
