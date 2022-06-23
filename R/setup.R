@@ -1,10 +1,10 @@
 # Setup folders and data for analysis
 library(fs)
-library(contentid)
 
 # Set up folders ----
 
 dir_create("_targets/user/data_raw/ref_aln")
+dir_create("_targets/user/data_raw/restez/sql_db")
 dir_create("_targets/user/intermediates/blast_sanger")
 dir_create("_targets/user/intermediates/iqtree")
 dir_create("_targets/user/intermediates/ref_seqs")
@@ -20,10 +20,18 @@ dir_create("ftol_data")
 
 # Fetch data ----
 
-# Download and unzip reference alignments
-utils::untar(
+# Download and unzip reference alignments from figshare
+archive::archive_extract(
   contentid::resolve(
-    "hash://sha256/3c37fb9478a8d6d1d5cf12652f01e04c3187db64923be824ca689d924facde18" # nolint
+    "hash://sha256/388b53201a8626d4b41851e716505e7904d24ee3730de25310cb82cd3a1e6e71" # nolint
   ),
-  exdir = "_targets/user/data_raw/ref_aln"
-  )
+  dir = "_targets/user/data_raw/ref_aln"
+)
+
+# Download and unzip local fern GenBank database (release 249) from figshare
+archive::archive_extract(
+  contentid::resolve(
+    "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410" # nolint
+  ),
+  dir = "_targets/user/data_raw/restez/sql_db"
+)
