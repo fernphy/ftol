@@ -27,4 +27,13 @@ db_create(acc_filter = keep_accs, scan = TRUE)
 # Copy database to FTOL folder ----
 fs::dir_create("_targets/user/data_raw/restez")
 fs::dir_copy("/data_raw/restez/sql_db", "_targets/user/data_raw/restez/sql_db")
+
+# Also compress to tar archive for figshare
+archive::archive_write_dir(
+  archive = "_targets/user/data_raw/restez_sql_db.tar.gz",
+  dir = "/data_raw/restez/sql_db/",
+  format = "tar",
+  filter = "gzip"
+)
+
 restez_disconnect()
