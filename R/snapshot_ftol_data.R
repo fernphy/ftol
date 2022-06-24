@@ -1,7 +1,7 @@
 # snapshot_ftol_data.R ----
 #
 # Update ftol_data (**output** of ftol workflow), commit,
-# and push to github
+# and push to github remote https://github.com/fernphy/ftol_data
 #
 # This should be run after the targets workflow is done and all
 # code changes have been committed.
