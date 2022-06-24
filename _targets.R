@@ -623,12 +623,10 @@ tar_plan(
   ),
   # Prepare fossil calibrations ----
   # Load fossil calibration points
-  # Fossil calibration points
-  # ferncal v1.0.1
+  # Fossil calibration points (ferncal v1.0.1)
+  ferncal_version = "1.0.1",
   fossil_ferns_raw = read_csv(
-    contentid::resolve(
-      "hash://sha256/153139fbb560442ad46770a04be370f5884cd6396e0eaf05d6875513f80d072c" # nolint
-    )
+    resolve_fern_fossils(ferncal_version)
   ),
   # Drop MD formatting (asterisks) from data
   fossil_ferns_all = mutate(

@@ -266,6 +266,22 @@ combine_inclusion_lists <- function(...) {
   assert(not_na, species)
 }
 
+#' Download the ferncal csv file at a specific version
+#' 
+#' @param version Version to download
+#' @return Path to temporary file with the ferncal database (CSV)
+#' 
+resolve_fern_fossils <- function(version) {
+  assertthat::assert_that(assertthat::is.string(version))
+  switch(
+    version,
+    "1.0.1" = contentid::resolve(
+      "hash://sha256/153139fbb560442ad46770a04be370f5884cd6396e0eaf05d6875513f80d072c" # nolint
+    ),
+    stop("must provide valid ferncal version")
+  )
+}
+
 # Download Sanger sequences from GenBank----
 
 #' Format a query string to download fern sequences from GenBank
