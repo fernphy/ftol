@@ -29,6 +29,7 @@ tar_load(
   c(
     # paths to input data files
     ref_aln_archive,
+    restez_sql_db_archive,
     # docker tag
     image_tag,
     # output data to commit
@@ -64,9 +65,16 @@ code_status <- tar_git_status_code()
 
 # - Check data
 # Only need to check data files that are archived outside of this repo
-# and subject to change
+# (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
+# If this fails, run content_id(ref_aln_archive) to obtain new hash.
 assert_that(
-  content_id(ref_aln_archive) == "hash://sha256/3c37fb9478a8d6d1d5cf12652f01e04c3187db64923be824ca689d924facde18" # nolint
+  content_id(ref_aln_archive) == "hash://sha256/388b53201a8626d4b41851e716505e7904d24ee3730de25310cb82cd3a1e6e71", # nolint
+  msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
+  )
+assert_that(
+  content_id(restez_sql_db_archive) == "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410", # nolint
+  msg = glue::glue(
+    "Contents of {restez_sql_db_archive} have changed; update hash")
   )
 
 # - Check renv status (lock file is synchronized with library)
