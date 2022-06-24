@@ -67,16 +67,19 @@ assert_that(
   nrow(code_status) == 0,
   msg = "Code repo is not clean.")
 
-# - Check data
+# - Check data versions
 # Only need to check data files that are archived outside of this repo
 # (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
 # If this fails, run content_id(ref_aln_archive) to obtain new hash.
+ref_aln_hash <- "hash://sha256/388b53201a8626d4b41851e716505e7904d24ee3730de25310cb82cd3a1e6e71" # nolint
 assert_that(
-  content_id(ref_aln_archive) == "hash://sha256/388b53201a8626d4b41851e716505e7904d24ee3730de25310cb82cd3a1e6e71", # nolint
+  content_id(ref_aln_archive) == ref_aln_hash,
   msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
   )
+
+restez_sql_db_hash <- "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410" # nolint
 assert_that(
-  content_id(restez_sql_db_archive) == "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410", # nolint
+  content_id(restez_sql_db_archive) == restez_sql_db_hash,
   msg = glue::glue(
     "Contents of {restez_sql_db_archive} have changed; update hash")
   )
@@ -130,7 +133,8 @@ if (nrow(added) > 0) {
   # commit hash of code repo
   # plus comment of code repo
   msg <- glue::glue("code={git_commit_info()$id}
-  data={data_doi}
+  data_ref_aln={ref_aln_hash}
+  data_restez_sql_db={restez_sql_db_hash}
   docker={image_tag}")
   # Commit
   git_commit(
