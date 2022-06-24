@@ -63,6 +63,10 @@ assert_that(
 # - Check code status (no uncommited changes should be present)
 code_status <- tar_git_status_code()
 
+assert_that(
+  nrow(code_status) == 0,
+  msg = "Code repo is not clean.")
+
 # - Check data
 # Only need to check data files that are archived outside of this repo
 # (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
