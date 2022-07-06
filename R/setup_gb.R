@@ -7,7 +7,7 @@ on.exit(restez_disconnect())
 
 # Download data ----
 # Specify location to download GenBank database
-restez_path_set("/data_raw")
+restez_path_set("scratch")
 # Download plant database
 db_download(preselection = 1)
 
@@ -25,15 +25,29 @@ restez_connect()
 db_create(acc_filter = keep_accs, scan = TRUE)
 
 # Copy database to FTOL folder ----
+# will overwrite old data
 fs::dir_create("_targets/user/data_raw/restez")
-fs::dir_copy("/data_raw/restez/sql_db", "_targets/user/data_raw/restez/sql_db")
+fs::dir_copy(
+  "scratch/restez/sql_db",
+  "_targets/user/data_raw/restez/sql_db",
+  overwrite = TRUE)
+fs::file_copy(
+  "scratch/restez/gb_release.txt",
+  "_targets/user/data_raw/restez/gb_release.txt",
+  overwrite = TRUE)
 
 # Also compress to tar archive for figshare
 archive::archive_write_dir(
   archive = "_targets/user/data_raw/restez_sql_db.tar.gz",
-  dir = "/data_raw/restez/sql_db/",
+  dir = "scratch/restez/sql_db/",
   format = "tar",
   filter = "gzip"
+)
+
+# Include genbank release file
+archive::archive_write_files(
+  archive = "_targets/user/data_raw/restez_sql_db.tar.gz",
+  "scratch/restez/gb_release.txt"
 )
 
 restez_disconnect()
