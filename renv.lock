@@ -1326,6 +1326,16 @@
         "vctrs"
       ]
     },
+    "duckdb": {
+      "Package": "duckdb",
+      "Version": "0.4.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "3d560512cf9db0ecbb2c624f7a3132d6",
+      "Requirements": [
+        "DBI"
+      ]
+    },
     "ellipsis": {
       "Package": "ellipsis",
       "Version": "0.3.2",
@@ -2006,7 +2016,7 @@
       "Package": "languageserver",
       "Version": "0.3.13",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Hash": "ee396ad16694fbb3fca42646c6349dd3",
       "Requirements": [
         "R6",
@@ -2707,21 +2717,21 @@
     },
     "restez": {
       "Package": "restez",
-      "Version": "1.1.0",
+      "Version": "2.0.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ropensci",
       "RemoteRepo": "restez",
       "RemoteRef": "main",
-      "RemoteSha": "86935afb4da5215be5205a8170ea9f45ef639acd",
-      "Remotes": "hannesmuehleisen/MonetDBLite-R",
-      "Hash": "ceae72be7466a9814fe769f2817ccc6a",
+      "RemoteSha": "b37261f9711d746e9b291b053427cacb40154cf5",
+      "Hash": "cf5a8ac453e75195a0449262fc669f4c",
       "Requirements": [
         "DBI",
         "cli",
         "crayon",
         "curl",
+        "duckdb",
         "rentrez",
         "stringi"
       ]
@@ -3250,7 +3260,7 @@
       "RemoteRef": "main",
       "RemoteSha": "c78eb9da19eb6aa9e73b31d987c7bb24e39e4d70",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "477e97f7c56e19a3106c4b9eef831171",
+      "Hash": "bd929d4f71a463d19127a0c58b682700",
       "Requirements": [
         "assertr",
         "assertthat",
