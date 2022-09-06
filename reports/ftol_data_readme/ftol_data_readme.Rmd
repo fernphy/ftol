@@ -37,6 +37,9 @@ tar_load(
     ferncal_version,
     con_fossil_calibration_tips_ftolr,
     ml_fossil_calibration_tips_ftolr,
+    # gb version and date
+    date_cutoff,
+    gb_release,
     # other
     plastome_alignment,
     plastome_parts_table,
@@ -69,7 +72,7 @@ The University of Tokyo, Chiba, Japan. joelnitta@gmail.com
 Associate or Co-investigators: Eric Schuettpelz, Santiago Ramírez-Barahona,
 Wataru Iwasaki
 
-Date of data collection: 1990 - 2022
+Date of data collection: 1990 - `r lubridate::year(lubridate::ymd(date_cutoff))`
 
 Geographic location of data collection: Global
 
@@ -89,7 +92,8 @@ Licenses/restrictions placed on the data: CC0 v1.0 license
 Links to publications that cite or use the data:
 
 Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
-continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+continuously updated fern tree of life. Frontiers in Plant Sciences 13
+https://doi.org/10.3389/fpls.2022.909768.
 
 Links to other publicly accessible locations of the data: none.
 
@@ -104,7 +108,8 @@ which places no restrictions on its use or distribution.
 
 Recommended citation for this dataset: 
 
-FTOL Working Group (2022). Fern Tree of Life (FTOL) data. https://doi.org/10.5281/zenodo.6413218
+FTOL Working Group (`r lubridate::year(Sys.Date())`). Fern Tree of Life (FTOL) data.
+https://doi.org/10.5281/zenodo.6413218
 
 --------------------
 
@@ -173,8 +178,9 @@ ftol_sanger_con_dated.tre, respectively).
 
 For additional methodological details, see:
 
-Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and
-continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
+continuously updated fern tree of life. Frontiers in Plant Sciences 13
+https://doi.org/10.3389/fpls.2022.909768.
 
 --------------------------
 
@@ -270,7 +276,7 @@ MD5 checksum: `r tools::md5sum(acc_table_wide_ftolr)`
 build FTOL. In compressed (tar.gz) FASTA format. Includes 
 `r n_distinct(plastome_parts_table$locus)` concatenated loci. The start and end
 position (column) of each locus is given in ftol_plastome_parts.csv. DNA
-sequences obtained from GenBank release 249
+sequences obtained from GenBank release `r gb_release`
 (https://ftp.ncbi.nlm.nih.gov/genbank/).
 
 Number of bases (columns): `r ncol(plastome_alignment)`
@@ -336,7 +342,7 @@ MD5 checksum: `r tools::md5sum(plastome_parts_table_ftolr)`
 used to build FTOL. In compressed (tar.gz) FASTA format. Includes 
 `r n_distinct(sanger_parts_table$locus)` concatenated loci. The start and end
 position (column) of each locus is given in ftol_sanger_parts.csv. DNA sequences
-obtained from GenBank release 249 (https://ftp.ncbi.nlm.nih.gov/genbank/).
+obtained from GenBank release `r gb_release` (https://ftp.ncbi.nlm.nih.gov/genbank/).
 
 Number of bases (columns): `r ncol(sanger_alignment)`
 
@@ -568,6 +574,11 @@ MD5 checksum: `r tools::md5sum(sanger_sampling_ftolr)`
 --------------------------
 
 CHANGE LOG
+
+2022-09-06
+
+- Load GenBank version from targets cache
+- Update references
 
 2022-06-24
 
