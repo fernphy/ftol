@@ -451,17 +451,27 @@ tar_plan(
   # Align genes ----
   # Combine Sanger and plastome genes into single dataframe, group by gene
   tar_group_by(
-    plastid_genes_unaligned,
+    plastid_genes_unaligned_full,
     combine_sanger_plastome(
       # Exclude spacer regions (spacer regions have hyphen in name)
-      sanger_accessions_selection %>%
+      sanger_accessions_selection = sanger_accessions_selection %>%
         select(-contains("-")),
-      sanger_seqs_combined_filtered %>%
+      sanger_seqs_combined_filtered = sanger_seqs_combined_filtered %>%
         filter(str_detect(target, "-", negate = TRUE)),
-      plastome_seqs_combined_filtered %>%
+      plastome_seqs_combined_filtered = plastome_seqs_combined_filtered %>%
         filter(str_detect(target, "-", negate = TRUE))
       ),
     target),
+  # Filter out any species not meeting custom requirements
+  # (minimum seq length and num loci for certain species)
+  filter_tibble = load_filter_tibble(),
+  species_to_remove_custom = make_custom_species_filter(
+    plastid_genes_unaligned_full,
+    filter_tibble
+  ),
+  plastid_genes_unaligned = anti_join(
+    plastid_genes_unaligned_full,
+    species_to_remove_custom, by = "species"),
   # Align sequences by gene
   tar_target(
     plastid_genes_aligned,

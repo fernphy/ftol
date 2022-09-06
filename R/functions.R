@@ -3476,6 +3476,58 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 
 # Combine and align Sanger and plastome sequences ----
 
+#' Load a tibble of conditions for filtering combined plastid sequences
+#'
+#' The species name should match that after name resolution
+#'
+#' - min_loci is the minimum number of loci needed to be included
+#' - min_len is the minimum total sequence length *across all loci* to be
+#' included
+#' 
+#' The species will be flagged for removal by make_custom_species_filter()
+#' if it fails to meet BOTH conditions (that is, it will pass if it meets
+#' EITHER condition)
+#'
+#' @return A tibble
+load_filter_tibble <- function() {
+  tibble(
+    species = "Alsophila_crinita",
+    min_loci = 2,
+    min_len = 600
+  ) %>%
+    assert(is_uniq, species) %>%
+    assert(not_na, everything())
+}
+
+#' Make a custom filter table for removing species from plastid data
+#'
+#' @param plastid_genes Output of combine_sanger_plastome; tibble with 
+#' "species", "target" (locus name), "accession", and "seq" (DNA sequence).
+#' @param filter_tibble Output of load_filter_tibble(); tibble with "species",
+#' "min_loci", and "min_len".
+#'
+#' @return Tibble of species to remove that did not pass conditions in
+#' filter_tibble (only need to pass at least one condition, not all)
+#' 
+make_custom_species_filter <- function(
+  plastid_genes, filter_tibble
+) {
+  plastid_genes %>%
+    mutate(seq_len = map_dbl(seq, ~length(.[[1]]))) %>%
+    group_by(species) %>%
+    mutate(n_loci = n_distinct(target)) %>%
+    mutate(seq_len_species = sum(seq_len)) %>%
+    ungroup() %>%
+    left_join(filter_tibble, by = "species") %>%
+    mutate(
+      remove = case_when(
+        n_loci < min_loci & seq_len_species < min_len ~ TRUE,
+        TRUE ~ FALSE
+      )
+    ) %>%
+    filter(remove)
+}
+
 #' Assign taxonomic clusters to sequences
 #'
 #' @param sanger_accessions_selection Selected GenBank (Sanger) sequences to use
@@ -7899,11 +7951,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
-      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata",
-      # FIXME: remove Cyathea manual tips after fixing
-      # https://github.com/fernphy/ftol/issues/18
-      "Cyathea", "crown", "Alsophila_crinita", "Cyathea_robertsiana",
-      "Cyathea", "stem", "Alsophila_crinita", "Cyathea_robertsiana"
+      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"
       ),
     "ts2016" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
