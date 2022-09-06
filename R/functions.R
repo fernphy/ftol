@@ -7900,9 +7900,6 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
       "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata",
-      # FIXME: remove Dryopteridaceae after fixing
-      # https://github.com/fernphy/ftol/issues/16
-      "Dryopteridaceae", "stem", "Stigmatopteris_heterophlebia", "Elaphoglossum_amygdalifolium", # nolint
       # FIXME: remove Cyathea manual tips after fixing
       # https://github.com/fernphy/ftol/issues/18
       "Cyathea", "crown", "Alsophila_crinita", "Cyathea_robertsiana",
