@@ -2717,21 +2717,24 @@
     },
     "restez": {
       "Package": "restez",
-      "Version": "2.0.0",
+      "Version": "2.1.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ropensci",
       "RemoteRepo": "restez",
       "RemoteRef": "main",
-      "RemoteSha": "b37261f9711d746e9b291b053427cacb40154cf5",
-      "Hash": "cf5a8ac453e75195a0449262fc669f4c",
+      "RemoteSha": "628d09e490f2d691a3b0e98b94edd5d354817721",
+      "Hash": "4f6548ed0f59d2067f5742041737d75f",
       "Requirements": [
         "DBI",
+        "ape",
+        "assertthat",
         "cli",
         "crayon",
         "curl",
         "duckdb",
+        "fs",
         "rentrez",
         "stringi"
       ]

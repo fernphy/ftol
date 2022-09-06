@@ -96,8 +96,15 @@ tar_plan(
   ),
   fern_ref_seqs = load_ref_aln(ref_aln_files),
   # Path to local genbank database
-  # (don't track as file because hash changes each time used)
-  restez_db = "_targets/user/data_raw/restez/sql_db",
+  # build with ./R/setup_gb.R
+  tar_file(restez_db, path(data_raw, "restez/sql_db")),
+  tar_file_read(
+    gb_release,
+    path(data_raw, "restez/gb_release.txt"),
+    as.numeric(readLines(!!.x))
+    ),
+  # Path to GenBank README
+  tar_file(gb_readme_path, path(data_raw, "restez/README.genbank")),
 
   # Prep for assembling Sanger plastid regions ----
   # Define variables used in plan:
@@ -110,7 +117,7 @@ tar_plan(
   # - Target plastome loci (full set of plastome genes plus spacers)
   target_plastome_loci = c(target_plastome_genes, target_spacers),
   # - Most recent date cutoff for sampling genes
-  date_cutoff = "2022/04/15",
+  date_cutoff = get_gb_cutoff(gb_release, gb_readme_path),
 
   # Extract Sanger sequences ----
 
@@ -134,10 +141,8 @@ tar_plan(
   # Fetch sequences from local GenBank database
   tar_target(
     fern_sanger_seqs_raw,
-    load_seqs_from_local_db(raw_meta, restez_db),
-    deployment = "main" # to avoid simultaneous processes connecting to db
+    load_seqs_from_local_db(raw_meta, restez_db)
   ),
-  # Extract target regions with superCRUNCH
   tar_target(
     fern_sanger_extract_res,
     extract_from_ref_blast(
@@ -365,8 +370,7 @@ tar_plan(
     plastome_fasta,
     gb_dnabin_get(
       id = target_plastome_accessions,
-      restez_path = restez_db),
-    deployment = "main" # to avoid simultaneous processes connecting to db
+      restez_path = restez_db)
   ),
   # Extract target genes and spacers with superCRUNCH
   tar_target(

@@ -1204,6 +1204,19 @@ gb_fetch_accs <- function(query, strict = TRUE, drop_ver = TRUE) {
   accessions
 }
 
+# Check assumption that restez path ends in 'sql_db'
+check_restez_path <- function(restez_path) {
+  assertthat::assert_that(
+      isTRUE(all.equal(
+        str_split(restez_path, "\\/")[[1]] %>%
+          dplyr::last(),
+        "sql_db"
+      )),
+      msg = "Path does not end in 'sql_db'"
+    )
+  invisible(TRUE)
+}
+
 #' Load a tibble of all accession numbers in local GenBank database
 #'
 #' Database must be created using {restez}. See ./R/setup_gb.R
@@ -1214,14 +1227,12 @@ gb_fetch_accs <- function(query, strict = TRUE, drop_ver = TRUE) {
 #' sequences in database
 #'
 gb_get_all_ids <- function(restez_path) {
+  # Check assumption that path ends in 'sql_db'
+  check_restez_path(restez_path)
   # {restez} wants the path containing restez/sql_db
-  restez_path <- str_remove_all(restez_path, "restez/sql_db")
-  # Connect to restez database
-  suppressMessages(restez::restez_path_set(restez_path))
-  suppressMessages(restez::restez_connect())
-  # Disconnect from restez database when done
-  on.exit(restez::restez_disconnect())
-
+  restez_path <- stringr::str_remove_all(restez_path, "restez/sql_db")
+  # Set restez path
+  restez::restez_path_set(restez_path)
   # Output ids (accessions) as tibble
   restez::list_db_ids(n = NULL) %>%
     tibble(accession = .) %>%
@@ -1253,30 +1264,83 @@ gb_dnabin_get <- function(
     format %in% c("seqtbl", "raw", "dnabin"),
     msg = "`format` must be one of 'seqtbl', 'raw', or 'dnabin'"
   )
-  
+  # Check assumption that path ends in 'sql_db'
+  check_restez_path(restez_path)
   # {restez} wants the path containing restez/sql_db
-  restez_path <- str_remove_all(restez_path, "restez/sql_db")
-  # Connect to restez database
-  suppressMessages(restez::restez_path_set(restez_path))
-  suppressMessages(restez::restez_connect())
-  # Disconnect from restez database when done
-  on.exit(restez::restez_disconnect())
+  restez_path <- stringr::str_remove_all(restez_path, "restez/sql_db")
+  # Set restez path
+  restez::restez_path_set(restez_path)
 
   # Extract sequences in desired format
   if (format == "raw") {
     seqs <- restez::gb_record_get(id)
-  }  
+  }
   if (format == "seqtbl" | format == "dnabin") {
-    seqs <- restez::gb_sequence_get(id)
-    # Convert from text to DNAbin
-    seqs <- ape::as.DNAbin(stringr::str_split(seqs, "")) %>%
-      set_names(names(seqs))
+    seqs <- restez::gb_sequence_get(id, dnabin = TRUE)
   }
   if (format == "seqtbl") {
     seqs <- dnabin_to_seqtbl(seqs, name_col = name_col, seq_col = seq_col)
   }
 
   seqs
+}
+
+#' Get the cutoff date for a GenBank release
+#'
+#' For full information for each GenBank release, see the FTP site
+#' https://ftp.ncbi.nlm.nih.gov/genbank/
+#'
+#' The readme file can be downloaded from
+#' https://ftp.ncbi.nlm.nih.gov/genbank/README.genbank
+#'
+#' @param gb_release Numeric vector of length 1; current GenBank release.
+#' @param gb_readme_path Character vector of length 1; path to README.genbank
+#' file for the current GenBank release.
+#'
+#' @return Date in format YYYY/MM/DD corresponding to the last date of data
+#' (Close-of-data) in the current GenBank release
+get_gb_cutoff <- function(gb_release, gb_readme_path) {
+
+  # Extract lines with release number and close-of-data date
+  gb_readme <- readLines(gb_readme_path)
+  release_line <- gb_readme[str_detect(gb_readme, "^GenBank Flat File Release")]
+  cutoff_line <- gb_readme[str_detect(gb_readme, "Close-Of-Data")]
+
+  assertthat::assert_that(
+    length(release_line) > 0,
+    msg = "GenBank release line note not found"
+  )
+
+  assertthat::assert_that(
+    length(cutoff_line) > 0,
+    msg = "GenBank cutoff date not found"
+  )
+
+  release_line <- release_line[[1]]
+  current_ver <- readr::parse_number(release_line)
+
+  cutoff_date <-
+  cutoff_line %>%
+    lubridate::mdy() %>%
+    str_replace_all("-", "/")
+
+  assertthat::assert_that(
+    lubridate::ymd(Sys.Date()) >= lubridate::ymd(cutoff_date),
+    msg = "Cutoff date is younger than current date. Check parsing."
+  )
+
+  assertthat::assert_that(
+    isTRUE(
+      all.equal(
+        gb_release,
+        current_ver
+      )
+    ),
+    msg = "gb_release does not match release in current GenBank README" # nolint
+  )
+
+  cutoff_date
+
 }
 
 #' Load sequences from local GenBank database using raw metadata
@@ -1286,7 +1350,7 @@ gb_dnabin_get <- function(
 #' @param restez_path Path to directory containing restez database;
 #' should either be path to folder `sql_db` or the path to the folder
 #' containing `sql_db`.
-#' 
+#'
 #' @return Tibble with three columns: sequence, accession, and gene
 #'
 load_seqs_from_local_db <- function(raw_meta, restez_path) {
