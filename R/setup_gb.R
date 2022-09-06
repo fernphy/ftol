@@ -53,7 +53,10 @@ file_copy(
 # Also compress to tar archive for figshare
 archive::archive_write_files(
   archive = "_targets/user/data_raw/restez_sql_db.tar.gz",
-  files = c("scratch/restez/sql_db", "scratch/restez/gb_release.txt"),
+  files = c(
+    "scratch/restez/sql_db",
+    "scratch/restez/gb_release.txt",
+    "scratch/restez/README.genbank"),
   format = "tar",
   filter = "gzip"
 )

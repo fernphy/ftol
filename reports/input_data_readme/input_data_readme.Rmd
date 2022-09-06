@@ -22,6 +22,9 @@ knitr::opts_chunk$set(
 # Load objects from targets workflow (all paths to data files)
 tar_load(
   c(
+    date_cutoff,
+    gb_release,
+    gb_readme_path,
     restez_sql_db_archive,
     ref_aln_archive,
     ref_aln_files)
@@ -45,14 +48,14 @@ The University of Tokyo, Chiba, Japan. joelnitta@gmail.com
 
 Associate or Co-investigators: Eric Schuettpelz, Santiago Ramírez-Barahona, Wataru Iwasaki
 
-Date of data collection: 1990 - 2022
+Date of data collection: 1990 - `r lubridate::year(lubridate::ymd(date_cutoff))`
 
 Geographic location of data collection: Global
 
 Information about funding sources that supported the collection of the data:
 Funding provided in part by the Japan Society for the Promotion of Science
-(Kakenhi) Grant Number 16H06279 and the Smithsonian National Museum of Natural
-History Peter Buck Fellowship (JHN).
+(Kakenhi) Grant Numbers 16H06279, 22H04925, and 22K15171 and the Smithsonian
+National Museum of Natural History Peter Buck Fellowship (JHN).
 
 --------------------------
 
@@ -65,7 +68,8 @@ Licenses/restrictions placed on the data: CC0 v1.0 license
 Links to publications that cite or use the data:
 
 Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
-continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+continuously updated fern tree of life. Frontiers in Plant Sciences 13
+https://doi.org/10.3389/fpls.2022.909768.
 
 Links to other publicly accessible locations of the data: none.
 
@@ -79,7 +83,8 @@ which places no restrictions on its use or distribution.
 
 Recommended citation for this dataset (click FigShare "Cite" button for specific DOI version): 
 
-FTOL Working Group (2022). Fern Tree of Life (FTOL) input data. https://doi.org/10.6084/m9.figshare.19474316
+FTOL Working Group (`r lubridate::year(Sys.Date())`). Fern Tree of Life (FTOL) input data.
+https://doi.org/10.6084/m9.figshare.19474316
 
 --------------------
 
@@ -89,7 +94,8 @@ DATA & FILE OVERVIEW
 
 File List:
 
-- restez_sql_db.tar.gz: Compressed file archive including database of fern DNA sequences from GenBank release 249.
+- README.genbank: Text file including information about GenBank release `r gb_release`.
+- restez_sql_db.tar.gz: Compressed file archive including database of fern DNA sequences from GenBank release `r gb_release`.
 - ref_aln.tar.gz: Compressed file archive including one fasta file per target plastid locus.
 
 --------------------------
@@ -126,8 +132,9 @@ treePL [@Smith2012].
 
 For additional methodological details, see:
 
-Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and
-continuously updated fern tree of life (FTOL). https://doi.org/10.1101/2022.03.31.486640
+Nitta JH, Schuettpelz E, Ramírez-Barahona S, Iwasaki W. 2022. An open and 
+continuously updated fern tree of life. Frontiers in Plant Sciences 13
+https://doi.org/10.3389/fpls.2022.909768.
 
 --------------------------
 
@@ -135,15 +142,23 @@ DATA-SPECIFIC INFORMATION
 
 --------------------------
 
+`r path_file(gb_readme_path)`: Text file including information about GenBank
+release `r gb_release` downloaded from the NCBI GenBank FTP site
+(https://ftp.ncbi.nlm.nih.gov/genbank/).
+
+MD5 checksum: `r tools::md5sum(gb_readme_path)`
+
+--------------------------
+
 `r path_file(restez_sql_db_archive)`: Compressed file archive including fern DNA
-sequences downloaded from the NCBI GenBank FTP site (release 249,
-https://ftp.ncbi.nlm.nih.gov/genbank/) formatted as a MonetDB database
-(https://www.monetdb.org/), created with restez R package
-v1.1.0 (https://github.com/ropensci/restez). The sequences can also be accessed
-with restez. To do so, the contents of the archive (folders "bat" and
-"sql_logs") need to be extracted to a folder "restez/sql_db". Then, run the
-restez function restez_path_set() with the folder containing "restez/sql_db" as
-input.
+sequences downloaded from the NCBI GenBank FTP site (release `r gb_release`,
+https://ftp.ncbi.nlm.nih.gov/genbank/) formatted as a duckDB database
+(https://duckdb.org/), created with restez R package
+v`r as.character(packageVersion("restez"))` (https://github.com/ropensci/restez).
+The sequences can also be accessed with restez. To do so, the contents of the
+archive ("sql_db" file) needs to be extracted to a folder "restez". Then, run
+the restez function restez_path_set() with the folder containing "restez/sql_db"
+as input.
 
 MD5 checksum: `r tools::md5sum(restez_sql_db_archive)`
 
@@ -160,6 +175,13 @@ MD5 checksum: `r tools::md5sum(ref_aln_archive)`
 --------------------------
 
 CHANGE LOG
+
+2022-09-06
+
+- Load GenBank version from targets cache
+- Update references
+- Add GenBank README
+- Update description of restez_sql_db.tar.gz to reflect restez > v2.0.0
 
 2022-06-23
 
