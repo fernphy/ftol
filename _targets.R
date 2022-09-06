@@ -603,7 +603,7 @@ tar_plan(
   # Load Equisetum data (only group with subgenera in fossils)
   equisetum_subgen = load_equisetum_subgen(
     equisteum_subgen_path,
-    sanger_ml_tree_rooted), # ML or consensus doesn't matter
+    sanger_fast_tree_rooted), # fast or final OK
   # Define groups for checking monophyly
   taxa_levels_check = c(
     "order", "suborder", "family",
@@ -611,12 +611,22 @@ tar_plan(
   # Make tibble mapping species to putatively monophyletic groups
   sanger_sampling = make_sanger_sampling_tbl(
     plastome_metadata_renamed,
-    sanger_tree = sanger_ml_tree_rooted, # ML or consensus doesn't matter
+    sanger_tree = sanger_fast_tree_rooted, # fast or final OK
     ppgi_taxonomy = ppgi_taxonomy) %>%
     # Add Equisetum subgenera
     left_join(equisetum_subgen, by = "species"),
   ,
   # Check monophyly
+  # - Fast tree
+  fast_mono_test = assess_monophy(
+    taxon_sampling = sanger_sampling,
+    tree = sanger_fast_tree_rooted,
+    tax_levels = taxa_levels_check
+  ),
+  fast_monophy_by_clade = map_df(
+    seq_along(taxa_levels_check),
+    ~get_result_monophy(fast_mono_test, .)
+  ),
   # - ML tree
   ml_mono_test = assess_monophy(
     taxon_sampling = sanger_sampling,
