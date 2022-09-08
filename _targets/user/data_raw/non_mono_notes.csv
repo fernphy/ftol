@@ -1,0 +1,45 @@
+taxon,rank,notes,action
+Gleicheniales,order,Known polyphyletic [@Du2022],Revise Gleicheniales
+Polypodioideae,subfamily,Known paraphyletic relative to Grammitidoideae [@Schneider2004; @PteridophytePhylogenyGroupI2016],nothing
+Anogramma,genus,Known polyphyletic,Revise cheilanthoids
+Grammitis,genus,Known polyphyletic,Revise grammitids
+Ceradenia,genus,Rendered paraphyletic by Enterosora_barbatula (in part) but no combination available [@Bauret2017],Combine Enterosora_barbatula (in part) in Ceradenia
+Enterosora,genus,See Ceradenia,See Ceradenia
+Oreogrammitis,genus,Known polyphyletic,Revise grammitids
+Archigrammitis,genus,Known polyphyletic,Revise grammitids
+Prosaptia,genus,Prosaptia_nutans is outlier but not sure if due to misID or taxonomy,Investigate Prosaptia_nutans
+Calymmodon,genus,Calymmodon_curtus is outlier but not sure if due to misID or taxonomy,Investigate Calymmodon_curtus
+Ctenopterella,genus,Known polyphyletic,Revise grammitids
+Pleopeltis,genus,Polypodium_ensiforme needs to be made Pleopeltis but no combination available,Combine Polypodium_ensiforme in Pleopeltis
+Polypodium,genus,See Pleopelits,See Pleopeltis
+Pichisermollodes,genus,See Selliguea,See Selliguea.
+Selliguea,genus,"Rendered paraphyletic by Pichisermollodes, Gymnogrammitis","Combine Pichisermollodes, Gymnogrammitis in Selliguea"
+Lepisorus,genus,See Microsorum,See Microsorum
+Microsorum,genus,Outlier Micorosorum_pappei in Lepisorus,Combine Micorosorum_pappei in Lepisorus
+Sphaerostephanos,genus,Outlier Sphaerostephanos_elatus in Abacopteris,Investigate Sphaerostephanos_elatus
+Christella,genus,"Outlier Christella_euphlebia could be synonymized to Pronephrium_articulatum, but not sister to the only other Pronephrium, Pronephrium_aoristisorum",Revise Thelypteridaceae
+Plesioneuron,genus,"Rendered paraphyletic by Chingia, but sister in @Fawcett2021a",Revise Thelypteridaceae
+Grypothrix,genus,Grypothrix_cuspidata and Grypothrix_ramosii are outliers; other four are monophyletic,Investigate Grypothrix_cuspidata and Grypothrix_ramosii
+Pelazoneuron,genus,"Rendered paraphyletic by Pakau, but close in @Fawcett2021a",Revise Thelypteridaceae
+Steiropteris,genus,"Steiropteris_pennellii is outlier, but not clear if mis-ID or due to taxonomy",Investigate Steiropteris_pennellii
+Leptogramma,genus,Rendered paraphyletic by Hoiokula,Revise Thelypteridaceae
+Oceaniopteris,genus,"Outlier Oceaniopteris_gibba in small clade with Doodia_maxima, Neoblechnum_brasiliense",Investigate Oceaniopteris
+Doodia,genus,"Parablechnum_lineatum in Doodia, leave for now; Doodia_maxima showing up outside of Doodia",Investigate Doodia_maxima
+Parablechnum,genus,See Doodia,See Doodia
+Gymnocarpium,genus,Rendered paraphyletic by nothogenus Cystocarpium,nothing
+Dennstaedtia,genus,Known polyphyletic [@PteridophytePhylogenyGroupI2016],Revise Dennstaedtia
+Microlepia,genus,"Includes Dennstaedtia flaccida MT657694; could be mis-ID, but not sure",Investigate Dennstaedtia flaccida MT657694
+Alsophila,genus,Rendered paraphyletic by Cyathea,Separate Gymnosphaera from Alsophila
+Gymnosphaera,genus,"pteridocat does not yet fully recognize Gymnosphaera, so a few taxa with no synonyms in Alsophila are currently rendering Alsophila paraphyletic",Separate Gymnosphaera from Alsophila
+Sphaeropteris,genus,Alsophila_crenulata should be Sphaeropteris but no combination available,Combine Alsophila_crenulata in Sphaeropteris
+Plenasium,genus,Includes nothogenus Osmunasium between Plenasium and Osmunda,nothing
+Lindsaea,genus,Known paraphyletic by northogenus Lindsaeosoria,nothing
+Cheilanthes,genus,Known paraphyletic,Revise cheilanthoids
+Pellaea,genus,Known paraphyletic,Revise cheilanthoids
+Notholaena,genus,Known paraphyletic,Revise cheilanthoids
+Doryopteris,genus,Known paraphyletic,Revise cheilanthoids
+Aspidotis,genus,Known paraphyletic,Revise cheilanthoids
+Aleuritopteris,genus,Known paraphyletic,Revise cheilanthoids
+Oeosporangium,genus,Known paraphyletic,Revise cheilanthoids
+Paragymnopteris,genus,Known paraphyletic,Revise cheilanthoids
+Bommeria,genus,"Rendered paraphyletic by Baja; conflicts with @George2019, who found Baja sister to remaining Bommeria",Investigate Baja relative to other Bommeria
