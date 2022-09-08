@@ -5,6 +5,10 @@
 .Renviron
 .gitignore
 _targets
+_supp_store
+.vscode
+ftol_data
+scratch
 docs
 intermediates
 prep_ref_seqs_store
