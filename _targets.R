@@ -220,11 +220,12 @@ tar_plan(
       match_results_resolved_round_1,
       match_results_resolved_round_2,
       match_results_resolved_round_3),
+  # CHECKPOINT: Inspect unmatched and fuzzily matched names
+  # If any names need to be inspected, make_ncbi_accepted_names_map() will error
+  pterido_names_to_inspect = inspect_ts_results(match_results_resolved_all),
   # Map NCBI names to accepted names
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(
-    match_results_resolved_all),
-  # Inspect name resolution results
-  pterido_names_to_inspect = inspect_ts_results(match_results_resolved_all),
+    match_results_resolved_all, pterido_names_to_inspect),
 
   # Remove rogues from Sanger sequences ----
   # Combine sanger sequences and metadata, filter to resolved names

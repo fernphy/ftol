@@ -6803,13 +6803,26 @@ combined_match_results <- function(ncbi_names_query, ...) {
 #' Map resolved, accepted names to NCBI names
 #'
 #' @param match_results_resolved_all Dataframe; output of combined_match_results()
+#' @param pterido_names_to_inspect Dataframe; output of inspect_ts_results().
+#'   Should be zero rows (if no names to inspect)
+#' @param strict Logical; if TRUE, require that pterido_names_to_inspect have
+#'   zero rows
 #'
 #' @return Dataframe; NCBI names mapped to the accepted name in World Ferns
 #' Does not include names that could not be matched to a single accepted name
 #' @export
 #'
 #' @examples
-make_ncbi_accepted_names_map <- function(match_results_resolved_all) {
+make_ncbi_accepted_names_map <- function(match_results_resolved_all,
+  pterido_names_to_inspect, strict = TRUE) {
+
+  if (strict == TRUE) {
+    assertthat::assert_that(
+      nrow(pterido_names_to_inspect) == 0,
+      msg = "Name resolution results include fuzzily matched and/or non-matching names, check pterido_names_to_inspect" # nolint
+    )
+  }
+
   match_results_resolved_all %>%
     filter(!is.na(resolved_name)) %>%
     select(taxid, resolved_name) %>%
