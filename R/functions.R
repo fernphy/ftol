@@ -2880,7 +2880,7 @@ filter_out_plastome_species <- function(plastome_genes_unaligned, plastome_metad
 
 }
 
-#' Inspect rogue sequences
+#' Check rogue sequence taxonomy
 #'
 #' Sanger rogue sequences were assessed by checking the top BLAST hit from
 #' an all-by-all BLAST. Those whose families don't match were flagged as
@@ -2897,14 +2897,11 @@ filter_out_plastome_species <- function(plastome_genes_unaligned, plastome_metad
 #'
 #' @return Tibble with potential "real rogue" sequences flagged as 1
 #'
-inspect_rogues <- function(
+check_rogue_taxonomy <- function(
   sanger_seqs_rogues,
   raw_meta_all,
   ncbi_names_query,
   ppgi_taxonomy) {
-
-  # Check that input names match arguments
-  check_args(match.call())
 
   # Group small families by order
   # to avoid false-positives
@@ -2957,6 +2954,41 @@ inspect_rogues <- function(
     assert(isTRUE, real_rogue) %>%
     select(species, accession, target = gene, q_family, s_family)
 
+}
+
+#' Verify rogue Sanger sequences
+#'
+#' Compares candidate rogue Sangers sequences against list of manually inspected
+#' rogues. If any are missing from manually inspected list, issues error.
+#'
+#' The manually inspected rogues live at
+#' _targets/user/data_raw/rogues_inspected.csv, and should be updated as needed.
+#'
+#' @param sanger_seqs_rogues_candidates Candidate rogue sequences, output of
+#' check_rogue_taxonomy().
+#' @param sanger_seqs_rogues_inspected Dataframe read in from manually inspected
+#' and annotated rogue sequences. Same columns as sanger_seqs_rogues_candidates,
+#' but adds `true_rogue` and `note`: some automatically detected candidate
+#' rogues may not be true rogues upon inspection. These will be removed from the
+#' list of rogues
+#'
+#' @return Dataframe (rogue sequences to be excluded); or error if not all
+#' rogues have been inspected.
+#'
+verify_rogues <- function(sanger_seqs_rogues_candidates,
+  sanger_seqs_rogues_inspected) {
+  left_join(
+    sanger_seqs_rogues_candidates, sanger_seqs_rogues_inspected,
+    by = c("species", "accession", "target", "q_family", "s_family")) %>%
+    assert(
+      not_na,
+      true_rogue,
+      error_fun = err_msg(
+        "Not all rogues have been manually inspected. Compare sanger_seqs_rogues_inspected and sanger_seqs_rogues_candidates, then update rogues_inspected.csv" # nolint
+        )
+      ) %>%
+    filter(true_rogue) %>%
+    select(species, accession, target, q_family, s_family)
 }
 
 # Check for species monophyly in Sanger loci ----
@@ -6844,6 +6876,72 @@ make_ncbi_accepted_names_map <- function(match_results_resolved_all,
 }
 
 # Phylogenetic analysis ----
+
+#' Verify rogue Sanger sequences
+#'
+#' Compares candidate rogue Sangers sequences against list of manually verified
+#' rogues. If any are missing from manually verified list, issues error.
+#' 
+#' The manually inspected rogues live at 
+#' _targets/user/data_raw/rogues_inspected.csv, and should be updated as needed.
+#'
+#' @param sanger_seqs_rogues_candidates Candidate rogue sequences, output of
+#' check_rogue_taxonomy().
+#' @param rogues_notes Dataframe read in from manually inspected and annotated
+#' rogue sequences. Same columns as sanger_seqs_rogues_candidates, but adds
+#' `true_rogue` and `note`: some automatically detected candidate rogues may not
+#' be true rogues upon inspection. These will be removed from the list of rogues
+#'
+#' @return Dataframe (rogue sequences to be excluded); or error if not all
+#' rogues have been inspected.
+
+#' Verify non-monophyletic taxa in fast tree
+#'
+#' Compares non-monophyletic taxa in fast (initial) tree against list of
+#' manually inspected non-monophyletic taxa. If any are missing from manually 
+#' inspected list, issues error.
+#' 
+#' The manually inspected non-monophyletic taxa live at 
+#' _targets/user/data_raw/non_mono_notes.csv, and should be updated as needed.
+#'
+#' @param fast_monophy_by_clade Output of get_result_monophy(); automatically
+#' detected non-monophyletic taxa.
+#' @param non_mono_notes Dataframe read in from manually inspected and annotated
+#' non-monophyletic taxa.
+#' @param taxa_exclude Dataframe of taxa that were automatically detected as
+#' non-monophyletic in fast (initial) tree, but can be safely ignored since
+#' they are likely artifacts.
+#'
+#' @return Tibble with zero rows, or error if verification doesn't pass
+#'
+verify_non_mono_taxa <- function(
+  fast_monophy_by_clade, non_mono_notes, taxa_exclude = NULL) {
+
+  assert(non_mono_notes, is_uniq, taxon, success_fun = success_logical)
+
+  if (!is.null(taxa_exclude)) {
+    assert(taxa_exclude, not_na, taxon, success_fun = success_logical)
+    assert(taxa_exclude, is_uniq, taxon, success_fun = success_logical)
+  }
+
+  if (is.null(taxa_exclude)) {
+    taxa_exclude <- bind_rows(taxon = "taxon")[0, ]
+  }
+
+  check <- fast_monophy_by_clade %>%
+    assert(is_uniq, taxon) %>%
+    filter(monophyly == "No") %>%
+    anti_join(non_mono_notes, by = "taxon") %>%
+    anti_join(taxa_exclude, by = "taxon")
+  
+  assertthat::assert_that(
+    nrow(check) == 0,
+    msg = "Non-monophyletic taxa detected that have are not in exclusion list or non_mono_notes.csv"
+  )
+
+  check
+
+}
 
 #' Run IQ-TREE
 #'

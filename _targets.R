@@ -235,7 +235,7 @@ tar_plan(
   sanger_seqs_combined_filtered = combine_and_filter_sanger(
     raw_meta, raw_fasta, ncbi_accepted_names_map,
     min_gene_len, min_spacer_len),
-  # Make BLAST database including all fern sequences
+  # - Make BLAST database including all fern sequences
   tar_file(
     sanger_blast_db,
     make_fern_blast_db(
@@ -243,12 +243,12 @@ tar_plan(
       blast_db_dir = path(int_dir, "blast_sanger"),
       out_name = "ferns_sanger")
   ),
-  # Group query sequences for parallel computing
+  # - Group query sequences for parallel computing
   tar_group_count(
     sanger_blast_query,
     dplyr::select(sanger_seqs_combined_filtered, seq, otu),
     count = 30), # number of jobs to run in parallel
-  # Conduct all-by-all blast in parallel
+  # - Conduct all-by-all blast in parallel
   tar_target(
     all_by_all_blast,
     blast_seqtbl(
@@ -257,19 +257,30 @@ tar_plan(
     ),
     pattern = map(sanger_blast_query)
   ),
-  # Identify rogues (sequences matching wrong family)
-  sanger_seqs_rogues = detect_rogues(
+  # - Identify rogues automatically (sequences matching wrong family)
+  sanger_seqs_rogues_raw = detect_rogues(
     metadata_with_seqs = sanger_seqs_combined_filtered,
     blast_results = all_by_all_blast,
     ppgi_taxonomy),
-  sanger_seqs_rogues_inspected = inspect_rogues(
-    sanger_seqs_rogues,
+  # - Make sure family taxonomy is correct
+  sanger_seqs_rogues_candidates = check_rogue_taxonomy(
+    sanger_seqs_rogues_raw,
     raw_meta_all,
     ncbi_names_query,
     ppgi_taxonomy),
+  # - CHECKPOINT: verify that all candidate rogues have been manually inspected
+  tar_file_read(
+    sanger_seqs_rogues_inspected,
+    path(data_raw, "rogues_inspected.csv"),
+    read_csv(!!.x)),
+  sanger_seqs_rogues_verified = verify_rogues(
+    sanger_seqs_rogues_candidates,
+    sanger_seqs_rogues_inspected
+  ),
+  # - Remove rogues
   sanger_seqs_rogues_removed = anti_join(
     sanger_seqs_combined_filtered,
-    sanger_seqs_rogues_inspected,
+    sanger_seqs_rogues_verified,
     by = c("accession", "target")
   ),
 
@@ -543,6 +554,20 @@ tar_plan(
       )
     )
   ),
+  # CHECKPOINT: verify non-monophyletic taxa in fast tree
+  # All non-monophyletic taxa should be in notes, except for taxa_exclude
+  # If error issued, update non_mono_notes or taxa_exclude
+  tar_file_read(
+    non_mono_notes,
+    path(data_raw, "non_mono_notes.csv"),
+    read_csv(!!.x)),
+  non_mono_check = verify_non_mono_taxa(
+    fast_monophy_by_clade,
+    non_mono_notes,
+    taxa_exclude = tibble(
+      taxon = c("Dryopteridoideae", "Sceptridium", "Adiantopsis")
+    )
+  ),
   # Sanger ML tree: best of 10 replicates
   # - set 10 different seeds
   iqtree_sanger_seeds = 220307 + 1:10,
@@ -568,6 +593,7 @@ tar_plan(
         ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
         con_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.contree")
       ),
+      depends = non_mono_check
     ),
     pattern = map(iqtree_sanger_seeds, iqtree_sanger_dirs),
     iteration = "list"
@@ -618,7 +644,7 @@ tar_plan(
     left_join(equisetum_subgen, by = "species"),
   ,
   # Check monophyly
-  # - Fast tree
+  # - Fast tree (runs before final tree)
   fast_mono_test = assess_monophy(
     taxon_sampling = sanger_sampling,
     tree = sanger_fast_tree_rooted,
