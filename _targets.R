@@ -565,7 +565,13 @@ tar_plan(
     fast_monophy_by_clade,
     non_mono_notes,
     taxa_exclude = tibble(
-      taxon = c("Dryopteridoideae", "Sceptridium", "Adiantopsis")
+      taxon = c(
+        "Dryopteridoideae",
+        "Polybotryoideae",
+        "Sceptridium",
+        "Adiantopsis",
+        "Notogrammitis",
+        "Polystichum")
     )
   ),
   # Sanger ML tree: best of 10 replicates
