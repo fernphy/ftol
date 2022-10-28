@@ -7622,15 +7622,12 @@ filter_fossil_calibration_points <- function(fossil_ferns_all) {
 #' @param equisetum_subgen Subgenera of Equisetum and their species.
 #' @param plastome_metadata_renamed Metada for plastome sequences, including
 #' species and outgroup status.
-#' @param include_algaomorpha Logical; should the Aglaomorpha subclade of
-#' Drynaria be included?
 #'
 #' @return Tibble with two columns, "affinities" and "species"
 #'
 make_fossil_species_map <- function(
   tree, fossil_calibration_points, ppgi_taxonomy,
-  equisetum_subgen, plastome_metadata_renamed,
-  include_algaomorpha = TRUE) {
+  equisetum_subgen, plastome_metadata_renamed) {
 
   # Make tibble of tips with genus and species
   tip_tbl <- tibble(species = tree$tip.label) %>%
@@ -7706,24 +7703,6 @@ make_fossil_species_map <- function(
     assert(not_na, everything()) %>%
     assert(is_uniq, species)
 
-  # Make tibble of Aglaomorpha (subclade of Drynaria) for Aglaomorpha fossil
-  if (include_algaomorpha == TRUE) {
-    aglaomorpha_tbl <-
-    ape::getMRCA(
-      tree, c("Drynaria_meyeniana", "Drynaria_novoguineensis")) %>%
-      get_children(tree, .) %>%
-      tibble(
-        species = .,
-        genus = "Aglaomorpha"
-      ) %>%
-    # Make sure Aglaomorpha is formatted as expected:
-    # check that immediate sister species
-    # *outside* Aglaomorpha are *not* included
-    verify(!"Drynaria_mollis" %in% .$species) %>%
-    verify(!"Drynaria_fortunei" %in% .$species)
-    tip_tbl <- bind_rows(tip_tbl, aglaomorpha_tbl)
-  }
-   
   fossil_calibration_points %>%
     select(affinities) %>%
     # Split affinities that are composed of multiple taxa separated by '+'

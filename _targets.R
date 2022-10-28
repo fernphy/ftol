@@ -711,14 +711,14 @@ tar_plan(
     sanger_ml_tree_rooted_pruned, fossil_calibration_points,
     ppgi_taxonomy, equisetum_subgen,
     # don't include pruned outgroup in metadata
-    filter(plastome_metadata_renamed, species != og_to_drop),
-    include_algaomorpha = TRUE),
+    filter(plastome_metadata_renamed, species != og_to_drop)
+  ),
   # - consensus tree
   con_fossil_node_species_map = make_fossil_species_map(
     sanger_con_tree_rooted_pruned, fossil_calibration_points,
     ppgi_taxonomy, equisetum_subgen,
-    filter(plastome_metadata_renamed, species != og_to_drop),
-    include_algaomorpha = TRUE),
+    filter(plastome_metadata_renamed, species != og_to_drop)
+  ),
   # Get pairs of tips that define fossil groups.
   # Also drops redundant calibration points.
   # - ML tree
