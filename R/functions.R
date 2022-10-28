@@ -3522,10 +3522,10 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 #'
 #' @return A tibble
 load_filter_tibble <- function() {
-  tibble(
-    species = "Alsophila_crinita",
-    min_loci = 2,
-    min_len = 600
+  tibble::tribble(
+    ~species, ~min_loci, ~min_len,
+    "Alsophila_crinita", 2, 600,
+    "Phanerophlebia_macrosora", 2, 600
   ) %>%
     assert(is_uniq, species) %>%
     assert(not_na, everything())
