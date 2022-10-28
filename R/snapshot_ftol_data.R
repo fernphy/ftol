@@ -77,7 +77,8 @@ assert_that(
   msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
   )
 
-restez_sql_db_hash <- "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410" # nolint
+# If this fails, run content_id(restez_sql_db_archive) to obtain new hash
+restez_sql_db_hash <- "hash://sha256/ec689bcf9e97328d5aa200559367f894f4c475a342e33e797a87140c7ca372f0" # nolint
 assert_that(
   content_id(restez_sql_db_archive) == restez_sql_db_hash,
   msg = glue::glue(
