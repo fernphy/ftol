@@ -1,6 +1,5 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=32
-#PBS -l walltime=10:00:00:00
+#PBS -l select=1:ncpus=60
 #PBS -p 0
 #PBS -N make
 #PBS -j oe
@@ -8,4 +7,4 @@
 #PBS -M joelnitta@gmail.com
 #PBS -V
 cd ftol
-docker run --rm -v /home/joelnitta/ftol:/wd -v /mnt/synology2/joelnitta/project_data/ftol:/data_raw -w /wd joelnitta/ftol:latest Rscript -e "targets::tar_make()"
+docker run --rm -v ${PWD}:/wd -w /wd joelnitta/ftol:latest Rscript -e "targets::tar_make_future(workers = 10)"
