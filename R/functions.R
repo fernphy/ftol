@@ -7566,16 +7566,16 @@ filter_fossil_calibration_points <- function(fossil_ferns_all) {
     filter(
       str_detect(
         node_calibrated,
-        regex("Incertae sedis", ignore.case = TRUE),
+        stringr::regex("Incertae sedis", ignore_case = TRUE),
         negate = TRUE)
     ) %>%
-    # Fix taxonomy to match pteridocat
+    # Fix taxonomy to match pteridocat FIXME: need to correct in ferncal
     # Athyrium s.s. *is* Athyrium sensu pteridocat
-    # Note that fossil ferns still includes Aglaomorpha, which is
-    # actually a subclade of Drynaria
+    # Aglaomorpha is a subclade of Drynaria
     mutate(
       across(c(node_calibrated, affinities),
-      ~str_replace_all(., "Athyrium s.s.", "Athyrium"))
+      ~str_replace_all(., "Athyrium s.s.", "Athyrium") %>%
+         str_replace_all("Aglaomorpha", "Drynaria"))
     ) %>%
     # Exclude non-monophyletic groups: Dennstaedtia, Dicksonia+Calochlaena
     filter(!affinities %in%
@@ -8041,8 +8041,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
-      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"
-      ),
+      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"),
     "ts2016" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Alsophila+Cyathea", "stem", "Cyathea_minuta", "Alsophila_capensis",
