@@ -873,6 +873,13 @@ tar_plan(
       "ftol_data/ftol_sanger_sampling.csv"
     )
   ),
+  tar_file(
+    match_results_ftolr,
+    write_csv_tar(
+      match_results_resolved_all,
+      "ftol_data/ftol_match_results.csv"
+    )
+  ),
   # - Trees (all trees should be rooted)
   # -- plastome consensus
   tar_file(

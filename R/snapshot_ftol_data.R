@@ -37,6 +37,7 @@ tar_load(
     acc_table_long_ftolr, acc_table_wide_ftolr,
     # - taxonomy
     sanger_sampling_ftolr,
+    match_results_ftolr,
     # - trees
     plastome_tree_ftolr,
     sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
@@ -109,6 +110,7 @@ ftol_data_files <-
     acc_table_long_ftolr, acc_table_wide_ftolr,
     # taxonomy
     sanger_sampling_ftolr,
+    match_results_ftolr,
     # trees
     plastome_tree_ftolr,
     sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
