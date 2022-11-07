@@ -556,7 +556,7 @@ tar_plan(
   ),
   # CHECKPOINT: verify non-monophyletic taxa in fast tree
   # All non-monophyletic taxa should be in notes, except for taxa_exclude
-  # If error issued, update non_mono_notes or taxa_exclude
+  # If error issued, update non_mono_notes or taxa_exclude after inspection
   tar_file_read(
     non_mono_notes,
     path(data_raw, "non_mono_notes.csv"),
@@ -571,7 +571,14 @@ tar_plan(
         "Sceptridium",
         "Adiantopsis",
         "Notogrammitis",
-        "Polystichum")
+        "Polystichum",
+        "Arachniodes",
+        "Dryopteris",
+        "Pseudocyclosorus",
+        "Strophocaulon",
+        "Goniopteris",
+        "Calochlaena",
+        "Didymoglossum")
     )
   ),
   # Sanger ML tree: best of 10 replicates
@@ -596,7 +603,7 @@ tar_plan(
       # redo settings:
       # - FALSE to re-start incomplete iqtree run on same data
       # - TRUE when starting pipeline from new data
-      redo = FALSE,
+      redo = TRUE,
       wd = iqtree_sanger_dirs,
       tree_path = c(
         ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),

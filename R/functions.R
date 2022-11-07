@@ -3132,11 +3132,26 @@ tidy_genbank_metadata <- function(data) {
 #' @return String
 format_fern_plastome_query <- function(start_date = "1980/01/01", end_date, strict = FALSE) {
   if(isTRUE(strict)) {
-    # require "partial or complete" "genome" if strict
+    # for "strict" version of search:
+    # require "plastid OR chloroplast" and "partial or complete" "genome"
     # exclude one accession that causes problems for extracting genes AP004638
-    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7001:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND (partial OR complete) AND genome NOT AP004638') # no lint
+    query <- glue(
+      'Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND \\
+      7001:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT]) AND \\
+      (partial OR complete) AND genome NOT AP004638')
   } else {
-    query <- glue('Polypodiopsida[ORGN] AND (plastid OR chloroplast) AND 7001:500000[SLEN] AND ("{start_date}"[PDAT]:"{end_date}"[PDAT])') # no lint
+    # but "strict" will miss many accessions.
+    # for non-strict:
+    # Some plastome sequences do not include "plastome" or "chloro" etc
+    # anywhere in the title (e.g., OM419375).
+    # So have to search by exclusion: don't include
+    # chromosomes, individual genes, mitochondria, etc.
+    query <- glue(
+      'Polypodiopsida[ORGN] AND 7001:500000[SLEN] AND \\
+      ("{start_date}"[PDAT]:"{end_date}"[PDAT]) \\
+      NOT (chromosome[Title] OR "whole genome shotgun"[Title] OR \\
+      mitochondrion[Title] OR transcriptome[Title] OR gene[Title] \\
+      OR RNA[Title] OR mRNA[Title])')
   }
   query
 }
@@ -3167,13 +3182,14 @@ download_plastome_metadata <- function(start_date = "1980/01/01", end_date,
   # Format GenBank query: all ferns plastomes within specified dates
   # There is no formal category for "whole plastome" in genbank, so use size
   # cutoff: >7000 and < 500000 bp
-  ingroup_query = format_fern_plastome_query(start_date = start_date,
+  ingroup_query <- format_fern_plastome_query(start_date = start_date,
     end_date = end_date, strict = strict)
 
   # Fetch standard metadata
   ingroup_metadata_raw <- fetch_metadata(
     query = ingroup_query,
-    col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
+    col_select = c(
+      "gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
 
   ingroup_metadata <-
     ingroup_metadata_raw %>%
@@ -3197,13 +3213,17 @@ download_plastome_metadata <- function(start_date = "1980/01/01", end_date,
 
   # Download outgroup metadata: use one representative of each major
   # seed plant, lycophyte, and bryo group
-  og_query <- outgroups %>% pull(accession) %>% paste(collapse = "[accession] OR ") %>%
+  og_query <- outgroups %>%
+    pull(accession) %>%
+    paste(collapse = "[accession] OR ") %>%
     paste("[accession]", collapse = "", sep = "")
 
   outgroup_metadata_raw <- fetch_metadata(
     query = og_query,
-    # don't fetch `slen` (length of accession; will calculate length of actual sequence later)
-    col_select = c("gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
+    # don't fetch `slen`
+    # (length of accession; will calculate length of actual sequence later)
+    col_select = c(
+      "gi", "caption", "taxid", "title", "subtype", "subname", "slen"))
 
   # Combine ingroup and outgroup data
   outgroup_metadata <-
