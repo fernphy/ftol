@@ -1007,7 +1007,7 @@ tar_plan(
   #   otherwise, will be empty string ("")
   tar_target(
     image_tag,
-    Sys.getenv("IMAGE_TAG"),
+    get_docker_tag(),
     cue = tar_cue(mode = "always")
   )
 )

@@ -8755,3 +8755,21 @@ get_sw_versions <- function(dockerfile_path = "Dockerfile") {
     as_tibble() %>%
     pivot_longer(names_to = "package", values_to = "version", everything())
 }
+
+#' Get the docker image tag used for analysis
+#' 
+#' This is provided via the IMAGE_TAG environmental variable,
+#' which is set when running the plan in docker via run.sh or one of the
+#' make_pbs*.job files.
+#' 
+get_docker_tag <- function() {
+  tag <- Sys.getenv("IMAGE_TAG")
+  assertthat::assert_that(
+    tag != "",
+    msg = paste(
+      "Environmental variable 'IMAGE_TAG' not set. Be sure to use run.sh",
+      "or one of the make_pbs*.job files."
+    )
+  )
+  return(tag)
+}
