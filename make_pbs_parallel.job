@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -l select=1:ncpus=60
+#PBS -p 0
+#PBS -N make
+#PBS -j oe
+#PBS -m abe 
+#PBS -M joelnitta@gmail.com
+#PBS -V
+# Run workflow and pass in current docker image tag
+IMAGE_TAG=joelnitta/ftol:1.2.0
+cd ftol
+docker run --rm -v ${PWD}:/wd -w /wd \
+  --env IMAGE_TAG=$IMAGE_TAG \
+  $IMAGE_TAG Rscript -e "targets::tar_make_future(workers = 10)"

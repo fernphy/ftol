@@ -54,7 +54,9 @@ tar_load(
 # Pre-commit checks ----
 
 # - Check targets status (no targets should be outdated)
-targets_status <- tar_git_status_targets()
+targets_status <- tar_git_status_targets() |>
+  # image_tag always runs, so image_tag is always outdated
+  dplyr::filter(outdated != "image_tag")
 
 assert_that(
   nrow(targets_status) == 0,

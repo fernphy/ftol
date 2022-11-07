@@ -998,5 +998,9 @@ tar_plan(
   # - Fetch docker image tag
   #   This only works if plan is made with run.sh
   #   otherwise, will be empty string ("")
-  image_tag = Sys.getenv("IMAGE_TAG")
+  tar_target(
+    image_tag,
+    Sys.getenv("IMAGE_TAG"),
+    cue = tar_cue(mode = "always")
+  )
 )
