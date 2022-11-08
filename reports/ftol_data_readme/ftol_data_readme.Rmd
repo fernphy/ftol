@@ -26,6 +26,7 @@ tar_load(
     acc_table_long_ftolr, acc_table_wide_ftolr,
     # taxonomy
     sanger_sampling_ftolr,
+    match_results_ftolr,
     # trees
     plastome_tree_ftolr,
     sanger_ml_tree_ftolr, sanger_ml_tree_dated_ftolr,
@@ -121,6 +122,7 @@ File List:
 
 - ftol_acc_table_long.csv: GenBank accessions used in the FTOL, long format.
 - ftol_acc_table_wide.csv: GenBank accessions used in FTOL, wide format.
+- ftol_match_results.csv: Results of taxonomic name matching and resolution.
 - ftol_plastome_alignment.fasta.gz: Aligned plastome DNA sequences used to build FTOL.
 - ftol_plastome_con.tre: FTOL backbone phylogeny.
 - ftol_plastome_parts.csv: Start and end positions of loci in plastome DNA sequence alignment.
@@ -269,6 +271,37 @@ Missing data codes: 'NA' for missing or inapplicable data.
 Specialized formats or other abbreviations used: None.
 
 MD5 checksum: `r tools::md5sum(acc_table_wide_ftolr)`
+
+--------------------------
+
+```{r match-results}
+match_results <- read_csv(match_results_ftolr)
+```
+
+`r path_file(match_results_ftolr)`: Results of taxonomic name matching and
+resolution.
+
+Number of variables: `r ncol(match_results)`
+
+Number of cases/rows: `r nrow(match_results)`
+
+Variable list:
+
+```{r match-results-vars, results = "asis"}
+
+metadat <- "item{query}{Queried taxonomic name from NCBI}
+item{resolved_name}{Resolved name used in FTOL}
+item{matched_name}{Name matching query in pteridocat}
+item{resolved_status}{Taxonomic status of resolved name}
+item{matched_status}{Taxonomic status of matched name}
+item{match_type}{Type of match assigned by taxontools}
+item{taxid}{NCBI taxonomic ID}"
+
+desc_data(
+  match_results,
+  roxy_to_tbl(metadat)
+)
+```
 
 --------------------------
 
