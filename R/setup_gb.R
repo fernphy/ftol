@@ -1,11 +1,50 @@
 # Setup local copy of GenBank database for ferns
 library(fs)
 library(restez)
+library(blastula)
+
+# Compare latest and current GenBank release
+latest_release <- restez:::latest_genbank_release() |>
+  as.numeric()
+current_release <- readLines("_targets/user/data_raw/restez/gb_release.txt") |>
+  as.numeric()
+
+# stop early if latest release is not newer than current release
+if (!latest_release > current_release) {
+  message("No new GenBank data available; quitting")
+  quit(save = "no")
+}
+
+# Check if a download is currently running
+if (fs::file_exists("scratch/dl_running.txt")) {
+  message("Download currently in progress; quitting")
+  quit(save = "no")
+}
 
 # Prepare temporary download folder ----
 # DELETES OLD DATA (flatfiles)
-if (dir_exists("scratch")) dir_delete("scratch")
+if (dir_exists("scratch")) {
+  dir_delete("scratch")
+}
 dir_create("scratch")
+# presence of scratch/dl_running.txt means that download is in progress
+writeLines(latest_release, "scratch/dl_running.txt")
+
+# Send email to indicate that download has started
+# (setup credentials with R/setup_email.R)
+email <- compose_email(
+  glue::glue(
+    "FTOL downloading of new GenBank release {latest_release} \\
+    has started on {Sys.time()}")
+)
+
+smtp_send(
+    email,
+    from = "jnitta.no.reply@gmail.com",
+    to = "joelnitta@gmail.com",
+    subject = "FTOL download started",
+    credentials = creds_file(file = "gmail_creds")
+  )
 
 # Download data ----
 # Specify location to download GenBank flatfiles and create database
@@ -60,3 +99,24 @@ archive::archive_write_files(
   format = "tar",
   filter = "gzip"
 )
+
+
+# Download done, so delete "running" file
+if (fs::file_exists("scratch/dl_running.txt")) {
+  fs::file_delete("scratch/dl_running.txt")
+}
+
+# Send email to indicate that download has finished
+email <- compose_email(
+  glue::glue(
+    "FTOL downloading of new GenBank release {latest_release} \\
+    has finished on {Sys.time()}")
+)
+
+smtp_send(
+    email,
+    from = "jnitta.no.reply@gmail.com",
+    to = "joelnitta@gmail.com",
+    subject = "FTOL download finished",
+    credentials = creds_file(file = "gmail_creds")
+  )
