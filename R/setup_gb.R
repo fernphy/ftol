@@ -3,19 +3,30 @@ library(fs)
 library(restez)
 library(blastula)
 
-# Compare latest and current GenBank release
+# Compare latest and current GenBank release ----
+# - get latest release number on FTP server
 latest_release <- restez:::latest_genbank_release() |>
   as.numeric()
-current_release <- readLines("_targets/user/data_raw/restez/gb_release.txt") |>
+
+# - get current downloaded release number
+# (assumes we've already done this once)
+current_gb_release_file <- "_targets/user/data_raw/restez/gb_release.txt"
+
+assertthat::assert_that(
+  file_exists(current_gb_release_file),
+  msg = "Cannot find current GenBank release file; quitting"
+)
+
+current_release <- readLines(current_gb_release_file) |>
   as.numeric()
 
-# stop early if latest release is not newer than current release
-if (!latest_release > current_release) {
+# quit if latest release is not newer than current release
+if (!isTRUE(latest_release > current_release)) {
   message("No new GenBank data available; quitting")
   quit(save = "no")
 }
 
-# Check if a download is currently running
+# quit if a download is currently running
 if (fs::file_exists("scratch/dl_running.txt")) {
   message("Download currently in progress; quitting")
   quit(save = "no")
@@ -100,6 +111,7 @@ archive::archive_write_files(
   filter = "gzip"
 )
 
+# Cleanup ----
 
 # Download done, so delete "running" file
 if (fs::file_exists("scratch/dl_running.txt")) {
