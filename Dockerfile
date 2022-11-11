@@ -18,6 +18,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # git-lfs for gittargets
 # pandoc-citeproc for rendering Rmarkdown
 # libarchive-dev for archive
+# libharfbuzz-dev, libfribidi-dev for R package textshaping
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -52,6 +53,8 @@ RUN apt-get update \
     git-lfs \
     pandoc-citeproc \
     libarchive-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
   && apt-get clean
 
 ########################
