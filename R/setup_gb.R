@@ -2,6 +2,7 @@
 library(fs)
 library(restez)
 library(blastula)
+library(assertthat)
 
 # Compare latest and current GenBank release ----
 # - get latest release number on FTP server
@@ -12,25 +13,30 @@ latest_release <- restez:::latest_genbank_release() |>
 # (assumes we've already done this once)
 current_gb_release_file <- "_targets/user/data_raw/restez/gb_release.txt"
 
-assertthat::assert_that(
-  file_exists(current_gb_release_file),
-  msg = "Cannot find current GenBank release file; quitting"
-)
-
 current_release <- readLines(current_gb_release_file) |>
   as.numeric()
 
-# quit if latest release is not newer than current release
-if (!isTRUE(latest_release > current_release)) {
-  message("No new GenBank data available; quitting")
-  quit(save = "no")
-}
+# - run checks
+invisible(
+  assert_that(
+    file_exists(current_gb_release_file),
+    msg = "Cannot find current GenBank release file; quitting"
+  )
+)
 
-# quit if a download is currently running
-if (fs::file_exists("scratch/dl_running.txt")) {
-  message("Download currently in progress; quitting")
-  quit(save = "no")
-}
+invisible(
+  assert_that(
+    isTRUE(latest_release > current_release),
+    msg = "No new GenBank data available; quitting"
+  )
+)
+
+invisible(
+  assert_that(
+    !file_exists("scratch/dl_running.txt"),
+    msg = "Download currently in progress; quitting"
+  )
+)
 
 # Prepare temporary download folder ----
 # DELETES OLD DATA (flatfiles)
@@ -39,7 +45,7 @@ if (dir_exists("scratch")) {
 }
 dir_create("scratch")
 # presence of scratch/dl_running.txt means that download is in progress
-writeLines(latest_release, "scratch/dl_running.txt")
+writeLines(as.character(latest_release), "scratch/dl_running.txt")
 
 # Send email to indicate that download has started
 # (setup credentials with R/setup_email.R)
