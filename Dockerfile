@@ -220,7 +220,7 @@ RUN apt-get -y install cron
 # Write script to launch R/setup_gb.R from /wd/
 RUN echo "#!/bin/bash" >> /home/setup_gb.sh && \
   echo "cd /wd" >> /home/setup_gb.sh && \
-  echo "/usr/local/bin/Rscript R/setup.R" >> /home/setup_gb.sh && \
+  echo "/usr/local/bin/Rscript /wd/R/setup_gb.R" >> /home/setup_gb.sh && \
   chmod 0644 /home/setup_gb.sh
 
 # Create the log file to be able to run tail

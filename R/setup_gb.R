@@ -107,8 +107,12 @@ file_copy(
   overwrite = TRUE)
 
 # Also compress to tar archive for figshare
+restez_tar <- "_targets/user/data_raw/restez_sql_db.tar.gz"
+if (file_exists(restez_tar)) {
+  file_delete(restez_tar)
+}
 archive::archive_write_files(
-  archive = "_targets/user/data_raw/restez_sql_db.tar.gz",
+  archive = restez_tar,
   files = c(
     "scratch/restez/sql_db",
     "scratch/restez/gb_release.txt",
@@ -120,8 +124,9 @@ archive::archive_write_files(
 # Cleanup ----
 
 # Download done, so delete "running" file
-if (fs::file_exists("scratch/dl_running.txt")) {
-  fs::file_delete("scratch/dl_running.txt")
+# (scratch dir including all GenBank flatfiles remains, handle manually)
+if (file_exists("scratch/dl_running.txt")) {
+  file_delete("scratch/dl_running.txt")
 }
 
 # Send email to indicate that download has finished
