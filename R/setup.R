@@ -28,10 +28,10 @@ archive::archive_extract(
   dir = "_targets/user/data_raw/ref_aln"
 )
 
-# Download and unzip local fern GenBank database (release 249) from figshare
+# Download and unzip local fern GenBank database (release 251) from figshare
 archive::archive_extract(
   contentid::resolve(
-    "hash://sha256/8059a845c6570eeffb6fe08c29e178a9dc223ab6f929a1b6c6b374e160f21410" # nolint
+    "hash://sha256/ec689bcf9e97328d5aa200559367f894f4c475a342e33e797a87140c7ca372f0" # nolint
   ),
   dir = "_targets/user/data_raw/restez/sql_db"
 )

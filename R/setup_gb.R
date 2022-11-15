@@ -133,7 +133,8 @@ if (file_exists("scratch/dl_running.txt")) {
 email <- compose_email(
   glue::glue(
     "FTOL downloading of new GenBank release {latest_release} \\
-    has finished on {Sys.time()}")
+    has finished on {Sys.time()}. Be sure to upload to FigShare and update \\
+    hash in R/setup.R")
 )
 
 smtp_send(
