@@ -8,9 +8,6 @@
       }
     ]
   },
-  "Bioconductor": {
-    "Version": "3.16"
-  },
   "Packages": {
     "AnnotationDbi": {
       "Package": "AnnotationDbi",
@@ -2922,15 +2919,15 @@
     },
     "restez": {
       "Package": "restez",
-      "Version": "2.1.3",
+      "Version": "2.1.3.9000",
       "Source": "GitHub",
       "RemoteType": "github",
+      "RemoteHost": "api.github.com",
       "RemoteUsername": "ropensci",
       "RemoteRepo": "restez",
       "RemoteRef": "main",
-      "RemoteSha": "b7286b67a62ceac698540af8ee0874d5e516c252",
-      "RemoteHost": "api.github.com",
-      "Hash": "304fffb85e34c8c13f2c00273ad262b9",
+      "RemoteSha": "0a973f4c19ee3a74eb9207cf5ef29cf07ffc49b0",
+      "Hash": "ceaeeb56b37b60ba034eac7c76feafb7",
       "Requirements": [
         "DBI",
         "ape",
@@ -3490,7 +3487,7 @@
       "RemoteSha": "3894436b120367976fb6331ced1c19d001c251f7",
       "RemoteHost": "api.github.com",
       "Remotes": "anthonynorth/roxyglobals",
-      "Hash": "a0e80b7bf42d7108c788e89a88fe4e1e",
+      "Hash": "e6408ed2b5de3c50583a1c0fd9cb44b3",
       "Requirements": [
         "assertr",
         "assertthat",
@@ -3582,7 +3579,7 @@
       "RemoteSha": "30cb6850ee7f69d462619f066ff739dc19ff1e7c",
       "RemoteHost": "api.github.com",
       "Remotes": "milesmcbain/fnmate, milesmcbain/capsule, milesmcbain/atcursor",
-      "Hash": "bb61c776d7092e139f419472f12c8403",
+      "Hash": "a911e42015260aaa7cbdd618b75412fa",
       "Requirements": [
         "atcursor",
         "cli",
