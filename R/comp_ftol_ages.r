@@ -114,7 +114,7 @@ new_ftol_age <-
   ftol_new_monophy_by_clade %>%
   filter(monophyly == "Yes") %>%
   transmute(taxon, node = as.numeric(mrca)) %>%
-  left_join(new_ftol_dates, by = "node") %>%
+  left_join(ftol_new_dates, by = "node") %>%
   select(taxon, new_ftol_age = age)
 
 # Check difference in ages ----
