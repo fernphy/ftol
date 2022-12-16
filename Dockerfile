@@ -19,6 +19,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # pandoc-citeproc for rendering Rmarkdown
 # libarchive-dev for archive
 # libharfbuzz-dev, libfribidi-dev for R package textshaping
+# librdf0-dev for redland -> R package deposits
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -55,6 +56,7 @@ RUN apt-get update \
     libarchive-dev \
     libharfbuzz-dev \
     libfribidi-dev \
+    librdf0-dev \
   && apt-get clean
 
 ########################
