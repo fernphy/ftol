@@ -4,6 +4,8 @@ library(restez)
 library(blastula)
 library(assertthat)
 
+source("R/setup_gb_functions.R")
+
 # Compare latest and current GenBank release ----
 # - get latest release number on FTP server
 latest_release <- restez:::latest_genbank_release() |>
@@ -38,6 +40,9 @@ invisible(
   )
 )
 
+# Get plants index
+plants_index <- get_plants_index()
+
 # Prepare temporary download folder ----
 # DELETES OLD DATA (flatfiles)
 if (dir_exists("scratch")) {
@@ -69,7 +74,7 @@ restez_path_set("scratch")
 # Download plant flatfiles
 # this includes >900 files totaling >600 gb, so may get interrupted during dl
 # use max_tries to automatically restart
-db_download(preselection = 1, overwrite = FALSE, max_tries = 1000)
+db_download(preselection = plants_index, overwrite = FALSE, max_tries = 1000)
 
 # Create database ----
 # Specify vector of GenBank accessions:
