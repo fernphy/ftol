@@ -166,7 +166,7 @@ tar_plan(
   tar_target(
     ncbi_names_raw,
     extract_ncbi_names(
-      taxdump_zip_file = contentid::resolve("hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23"), # nolint
+      taxdump_zip_file = contentid::resolve("hash://sha256/fc7fac356feb81062e0d4ce83299688f6d4036fc9cf5725da9a08071b56d3399"), # nolint
       taxid_keep = raw_meta,
       names_exclude = ncbi_db_names_to_exclude(),
       workers = 20),
