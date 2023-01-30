@@ -3701,10 +3701,10 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   reversed_seqs_tbl <-
   alignment %>%
     dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
-    select(.data[[name_col]]) %>%
+    select(all_of(name_col)) %>%
     mutate(
-      reversed = str_detect(.data[[name_col]], "_R_"),
-      !!name_col := str_remove_all(.data[[name_col]], "_R_")
+      reversed = str_detect(all_of(name_col), "_R_"),
+      !!name_col := str_remove_all(all_of(name_col), "_R_")
     )
 
   # - fix names if mafft changed them
