@@ -57,7 +57,7 @@ ftol_data_readme_tar <- tar_render(
 tar_plan(
   # Load data ----
   # Pteridocat taxonomic database
-  pteridocat = pteridocat::pteridocat,
+  pteridocat_db = pteridocat::pteridocat,
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file_read(
