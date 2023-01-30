@@ -177,7 +177,7 @@ tar_plan(
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
   # Parse reference names
   pc_ref_names = ts_parse_names(
-    unique(pteridocat$scientificName), tbl_out = TRUE, quiet = TRUE),
+    unique(pteridocat_db$scientificName), tbl_out = TRUE, quiet = TRUE),
   # Resolve names, round 1: NCBI accepted scientific names
   ncbi_names_query_round_1 = select_ncbi_names_round_1(ncbi_names_query),
   # - match names to reference
@@ -189,7 +189,7 @@ tar_plan(
     collapse_infra_exclude = varieties_to_keep),
   # - resolve synonyms
   match_results_resolved_round_1 = ts_resolve_names(
-    match_results_raw_round_1, pteridocat),
+    match_results_raw_round_1, pteridocat_db),
   # Resolve names, round 2: NCBI synonym scientific names
   ncbi_names_query_round_2 = select_ncbi_names_round_2(
     match_results_resolved_round_1, ncbi_names_query),
@@ -200,7 +200,7 @@ tar_plan(
     match_canon = TRUE, collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep),
   match_results_resolved_round_2 = ts_resolve_names(
-    match_results_raw_round_2, pteridocat),
+    match_results_raw_round_2, pteridocat_db),
   # Resolve names, round 3: NCBI species without author
   ncbi_names_query_round_3 = select_ncbi_names_round_3(
     match_results_resolved_round_1,
@@ -212,7 +212,7 @@ tar_plan(
     match_canon = TRUE, collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep),
   match_results_resolved_round_3 = ts_resolve_names(
-    match_results_raw_round_3, pteridocat),
+    match_results_raw_round_3, pteridocat_db),
   # Combine name resolution results
   match_results_resolved_all =
     combined_match_results(
@@ -322,7 +322,7 @@ tar_plan(
   # Process Thelypteridaceae inclusion list from Patel el al. (2019)
   patel_inclusion_list = create_patel_inclusion_list(
     path_to_patel_data = contentid::resolve("hash://sha256/233607dc3945dc0f764c44d1171f8bd8bdfe50c4028c9c44e82965e5a5f11fdc"), # nolint
-    pteridocat = pteridocat
+    pteridocat = pteridocat_db
   ),
   # Load manual inclusion list
   tar_file_read(
@@ -373,7 +373,7 @@ tar_plan(
   # (drops accession if name could not be resolved)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
-    ref_names_parsed = pc_ref_names, ref_names_data = pteridocat
+    ref_names_parsed = pc_ref_names, ref_names_data = pteridocat_db
   ),
   # Extract plastome sequences
   # FASTA files for each accession in seqtbl format
