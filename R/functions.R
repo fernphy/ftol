@@ -6664,7 +6664,8 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       species = str_remove_all(species, "\\[|\\]"),
       # Remove year after authorship in scientific name
       # not all years entered with four digits, so match >1 digit
-      scientific_name = str_remove_all(scientific_name, ", [0-9]+"),
+      scientific_name = str_remove_all(scientific_name, ", [0-9]+") %>%
+        str_remove_all("\\[|\\]"),
       # Fix some scientific names
       scientific_name = case_when(
         # missing author
