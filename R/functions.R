@@ -4166,6 +4166,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
         # but the real basionym for Drynaria parishii (Bedd.) C.Chr. & Tardieu is Meniscium parishii Bedd. -> Grypothrix parishii #nolint
         # Pleopeltis parishii Bedd. should point to Drynaria parishii (Bedd.) Bedd. #nolint
         taxid == "2836282" ~ "Drynaria parishii (Bedd.) Bedd.",
+        # Author missing
+        taxid == "1565408" ~ "Cystopteris chinensis (Ching) X. C. Zhang & R. Wei",
         TRUE ~ scientific_name
       )
     ) %>%
@@ -6659,6 +6661,8 @@ parse_ncbi_tax_record <- function(record) {
 clean_ncbi_names <- function(ncbi_names_raw) {
   ncbi_names_raw %>%
     mutate(
+      # Temporarily change NA to 'MISSING' so logicals work properly
+      scientific_name = replace_na(scientific_name, "MISSING"),
       # Remove brackets around species name
       # (notation in NCBI taxonomic db that genus level taxonomy is uncertain)
       species = str_remove_all(species, "\\[|\\]"),
@@ -6733,7 +6737,12 @@ clean_ncbi_names <- function(ncbi_names_raw) {
           taxid == "381227" ~ "Trichomanes bimarginatum (Bosch) Bosch",
           TRUE ~ scientific_name
         )
-     )
+     ) %>%
+    # Mixup in NCBI taxonomy: 32168 should be Adiantum raddianum G.Forst.
+    # not Adiantum cuneatum G.Forst -> Lindsaea trichomanoides Dryand.
+    filter(!(taxid == "32168" & scientific_name == "Adiantum cuneatum G.Forst.")) %>%
+    # Change MISSING back to NA
+    mutate(scientific_name = na_if(scientific_name, "MISSING"))
 }
 
 #' Exclude invalid names from taxonomic name resolution
