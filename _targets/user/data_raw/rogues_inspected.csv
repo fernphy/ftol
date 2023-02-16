@@ -71,3 +71,5 @@ Woodwardia_kempii,KM606992,rps4,Blechnaceae,Cystopteridaceae,TRUE,NA
 Woodwardia_kempii,KM606992,rps4-trnS,Blechnaceae,Cystopteridaceae,TRUE,NA
 Tectaria_decurrens,OK480088,atpB,Tectariaceae,Nephrolepidaceae,TRUE,NA
 Schizaea_elegans,AF448932,trnL-trnF,Schizaeaceae,Anemiaceae,FALSE,Online BLAST matches to Schizaeaceae plastomes
+Lomariopsis_guineensis,EF040663,atpB,Lomariopsidaceae,Dryopteridaceae,TRUE,Blasts mostly to Dryopteris but only 300 bp of atpB 
+Tectaria_ferruginea,OK480092,atpB,Tectariaceae,Dryopteridaceae,TRUE,Blasts to Bolbitis
