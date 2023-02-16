@@ -440,7 +440,8 @@ tar_plan(
   tar_target(
     plastid_spacers_rep_align,
     align_rep_spacers(
-      plastid_spacers_aligned_trimmed_clusters, # clusters
+      plastid_spacers_aligned_trimmed =
+        plastid_spacers_aligned_trimmed_clusters, # clusters
       plastid_spacers_unaligned, # singletons
       target_select = target_spacers,
       exclude_terms = "Anemiaceae"), # exclude Anemiaceae, too variable to align
@@ -566,19 +567,24 @@ tar_plan(
     non_mono_notes,
     taxa_exclude = tibble(
       taxon = c(
+        # Commented list of false positives from past runs
+        # "Notogrammitis",
+        # "Polystichum",
+        # "Arachniodes",
+        # "Dryopteris",
+        # "Pseudocyclosorus",
+        # "Strophocaulon",
+        # "Goniopteris",
+        # "Calochlaena",
+        # "Didymoglossum",
+        # "Adiantopsis",
+        "Lytoneuron",
+        "Saccoloma",
+        "Syngramma",
         "Dryopteridoideae",
         "Polybotryoideae",
         "Sceptridium",
-        "Adiantopsis",
-        "Notogrammitis",
-        "Polystichum",
-        "Arachniodes",
-        "Dryopteris",
-        "Pseudocyclosorus",
-        "Strophocaulon",
-        "Goniopteris",
-        "Calochlaena",
-        "Didymoglossum")
+        "Ormopteris")
     )
   ),
   # Sanger ML tree: best of 10 replicates
