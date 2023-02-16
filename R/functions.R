@@ -3677,11 +3677,15 @@ combine_sanger_plastome <- function(
 #' be appended indicating if sequence was reversed when aligning or not.
 #'
 align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
+  
+  # Need to use quasiquotation for name_col
+  name_col_sym <- ensym(name_col)
+  
   # Extract sequences, convert to ape DNAbin list
   seqs <-
     seqs_tbl %>%
     # Name column must be unique values
-    assert(is_uniq, all_of(name_col)) %>%
+    assert(is_uniq, !!name_col_sym) %>%
     seqtbl_to_dnabin(name_col = name_col, seq_col = seq_col)
 
   # Set aside metadata
@@ -3699,13 +3703,12 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   # Join metadata back to aligned sequences
   # - make tibble of which seqs were reversed
   reversed_seqs_tbl <-
-  alignment %>%
+    alignment %>%
     dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
-    select(all_of(name_col)) %>%
-    mutate(
-      reversed = str_detect(all_of(name_col), "_R_"),
-      !!name_col := str_remove_all(all_of(name_col), "_R_")
-    )
+    # remove '_R_' from species names inserted by mafft
+    select(!!name_col_sym) %>%
+    mutate(reversed = str_detect(!!name_col_sym, "_R_")) %>%
+    mutate(across(-reversed, ~str_remove_all(., "_R_")))
 
   # - fix names if mafft changed them
   rownames(alignment) <- str_remove_all(rownames(alignment), "_R_")
@@ -3714,8 +3717,8 @@ align_seqs_tbl <- function(seqs_tbl, name_col = "accession", seq_col = "seq") {
   alignment %>%
     dnabin_to_seqtbl(name_col = name_col, seq_col = seq_col) %>%
     left_join(reversed_seqs_tbl, by = name_col) %>%
-    left_join(seqs_data, by = name_col)
-
+    left_join(seqs_data, by = name_col) %>%
+    assert(not_na, reversed)
 }
 
 #' Reformat a list of plastid genes from
