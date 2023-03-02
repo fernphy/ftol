@@ -12,9 +12,9 @@ register("https://github.com/susanfawcett/Thelypteridaceae_Spore_Phylogeny/files
 register("https://github.com/wtesto/4000fernPhylogeny/raw/main/supplementaryTables.xlsx") # nolint
 # "hash://sha256/c629f4617e7e2329a10cb1b207b82a6720653a67eafcaaa97cc6ee891ae7fdf7" # nolint
 
-# - NCBI taxonomy v 2023-01-01
-register("https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2023-01-01.zip") # nolint
-# "hash://sha256/fc7fac356feb81062e0d4ce83299688f6d4036fc9cf5725da9a08071b56d3399" # nolint
+# - NCBI taxonomy v 2023-02-01
+register("https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/taxdmp_2023-02-01.zip") # nolint
+# "hash://sha256/bd67e3163f29ce1d0a5042bcfbb1d9b6fb9a6fb4f3faf8e8ed816de924e54bed" # nolint
 
 # - fern fossil data: fern_fossils.csv v1.0.1
 register("https://raw.githubusercontent.com/fernphy/ferncal/34a16347db3cf068bbe46d3ecfad78ac98b0676e/fern_fossils.csv") # nolint
