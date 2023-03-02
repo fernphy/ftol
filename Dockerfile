@@ -57,6 +57,7 @@ RUN apt-get update \
     libharfbuzz-dev \
     libfribidi-dev \
     librdf0-dev \
+    libgit2-dev \
   && apt-get clean
 
 ########################

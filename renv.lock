@@ -2689,15 +2689,15 @@
     },
     "pteridocat": {
       "Package": "pteridocat",
-      "Version": "1.1.0",
+      "Version": "1.2.0",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "e5ddcc799b822889f0544f3110e180a4f7988c66",
-      "Hash": "d5f17f97d57b58509167d5a6e31647b5",
+      "RemoteSha": "2f785fe77be366a9c6837477e3ac13081287a898",
+      "Hash": "094dd5d30efaea25e268e25473ecc509",
       "Requirements": []
     },
     "purrr": {
