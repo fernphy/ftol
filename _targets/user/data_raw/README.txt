@@ -1,4 +1,4 @@
-This README.txt file was generated on 2023-02-07 by Joel Nitta
+This README.txt file was generated on 2023-03-06 by Joel Nitta
 
 --------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ accs_exclude.csv: GenBank accessions to exclude from analysis.
 
 Number of variables: 3
 
-Number of cases/rows: 55
+Number of cases/rows: 56
 
 Variable list:
 
@@ -147,7 +147,7 @@ Missing data codes: No missing data.
 
 Specialized formats or other abbreviations used: None.
 
-MD5 checksum: 800210337e09a653b67420eec1079a81
+MD5 checksum: 490341dfba611da77c44d1a3eb7b6819
 
 --------------------------------------------------------------------------------
 
