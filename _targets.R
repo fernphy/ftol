@@ -568,23 +568,24 @@ tar_plan(
     taxa_exclude = tibble(
       taxon = c(
         # Commented list of false positives from past runs
-        # "Notogrammitis",
-        # "Polystichum",
+        # "Adiantopsis",
         # "Arachniodes",
-        # "Dryopteris",
-        # "Pseudocyclosorus",
-        # "Strophocaulon",
-        # "Goniopteris",
         # "Calochlaena",
         # "Didymoglossum",
-        # "Adiantopsis",
-        "Lytoneuron",
+        # "Dryopteridoideae",
+        # "Dryopteris",
+        # "Goniopteris",
+        # "Lytoneuron",
+        "Notogrammitis",
+        # "Ormopteris",
+        # "Polybotryoideae",
+        "Polystichum",
+        # "Pseudocyclosorus",
         "Saccoloma",
-        "Syngramma",
-        "Dryopteridoideae",
-        "Polybotryoideae",
         "Sceptridium",
-        "Ormopteris")
+        # "Strophocaulon",
+        "Syngramma"
+        )
     )
   ),
   # Sanger ML tree: best of 10 replicates
