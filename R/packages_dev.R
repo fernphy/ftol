@@ -10,3 +10,6 @@ library(BiocManager) # for installing Bioconductor packages
 library(here) # used in reports
 library(devtools) # used by restrez
 library(MonetDBLite)  # used by restrez
+library(mirai) # parallelization
+library(nanonext) # parallelization
+library(crew) # parallelization

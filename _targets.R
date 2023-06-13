@@ -1,5 +1,3 @@
-library(targets)
-library(tarchetypes)
 source("R/packages.R")
 source("R/functions.R")
 
@@ -14,15 +12,14 @@ int_dir <- "_targets/user/intermediates"
 # Specify location of final results file
 results_dir <- "_targets/user/results"
 
-# Set parallel back-end
-plan(callr)
-
 # Set options:
 # - Use targets workspaces for debugging
 # - Track dependencies in some packages
+# - Local parallelization with 20 workers
 tar_option_set(
   workspace_on_error = TRUE,
-  imports = c("taxastand", "pteridocat")
+  imports = c("taxastand", "pteridocat"),
+  controller = crew_controller_local(workers = 20)
   )
 
 # Define Rmd targets outside of main workflow

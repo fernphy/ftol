@@ -1181,6 +1181,24 @@
         "sys"
       ]
     },
+    "crew": {
+      "Package": "crew",
+      "Version": "0.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "50a166a0063e9e74231f4473ec8dcab3",
+      "Requirements": [
+        "R6",
+        "getip",
+        "mirai",
+        "nanonext",
+        "processx",
+        "ps",
+        "rlang",
+        "tibble",
+        "tidyselect"
+      ]
+    },
     "crul": {
       "Package": "crul",
       "Version": "1.3",
@@ -1700,6 +1718,14 @@
       "Requirements": [
         "rstudioapi"
       ]
+    },
+    "getip": {
+      "Package": "getip",
+      "Version": "0.1-3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "ceb49d19444b9b3acfce8ee34e23e2f5",
+      "Requirements": []
     },
     "ggplot2": {
       "Package": "ggplot2",
@@ -2318,6 +2344,19 @@
         "shiny"
       ]
     },
+    "mirai": {
+      "Package": "mirai",
+      "Version": "0.8.7.9024",
+      "Source": "Repository",
+      "Repository": "https://shikokuchuo.r-universe.dev",
+      "RemoteUrl": "https://github.com/shikokuchuo/mirai",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "1974f1b9d056a7cb627c5b79648fbc3c3d5aa8c6",
+      "Hash": "ed06910738426be16861ff047b8e8ffd",
+      "Requirements": [
+        "nanonext"
+      ]
+    },
     "mnormt": {
       "Package": "mnormt",
       "Version": "2.1.1",
@@ -2352,6 +2391,17 @@
       "Requirements": [
         "colorspace"
       ]
+    },
+    "nanonext": {
+      "Package": "nanonext",
+      "Version": "0.9.0.9004",
+      "Source": "Repository",
+      "Repository": "https://shikokuchuo.r-universe.dev",
+      "RemoteUrl": "https://github.com/shikokuchuo/nanonext",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "1d7c8c28cd1e348592c86f788a20523e478e8fd4",
+      "Hash": "89c01976c2c67cc9cdae925f876f1d6d",
+      "Requirements": []
     },
     "narray": {
       "Package": "narray",
@@ -3454,10 +3504,10 @@
     },
     "targets": {
       "Package": "targets",
-      "Version": "0.14.0",
+      "Version": "1.1.3",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "a109c461586a605e31f6c4dba801db51",
+      "Hash": "547b1105f6a5d9ee56761562ceb63c7d",
       "Requirements": [
         "R6",
         "base64url",
@@ -3472,7 +3522,6 @@
         "tibble",
         "tidyselect",
         "vctrs",
-        "withr",
         "yaml"
       ]
     },

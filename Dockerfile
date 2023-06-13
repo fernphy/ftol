@@ -20,6 +20,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libarchive-dev for archive
 # libharfbuzz-dev, libfribidi-dev for R package textshaping
 # librdf0-dev for redland -> R package deposits
+# cmake -> R package nanonext
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -58,6 +59,7 @@ RUN apt-get update \
     libfribidi-dev \
     librdf0-dev \
     libgit2-dev \
+    cmake \
   && apt-get clean
 
 ########################
