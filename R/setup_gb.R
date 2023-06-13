@@ -54,19 +54,21 @@ writeLines(as.character(latest_release), "scratch/dl_running.txt")
 
 # Send email to indicate that download has started
 # (setup credentials with R/setup_email.R)
-email <- compose_email(
-  glue::glue(
-    "FTOL downloading of new GenBank release {latest_release} \\
-    has started on {Sys.time()}")
-)
-
-smtp_send(
-    email,
-    from = "jnitta.no.reply@gmail.com",
-    to = "joelnitta@gmail.com",
-    subject = "FTOL download started",
-    credentials = creds_file(file = "gmail_creds")
+if (fs::file_exists("gmail_creds")) {
+  email <- compose_email(
+    glue::glue(
+      "FTOL downloading of new GenBank release {latest_release} \\
+      has started on {Sys.time()}")
   )
+
+  smtp_send(
+      email,
+      from = "jnitta.no.reply@gmail.com",
+      to = "joelnitta@gmail.com",
+      subject = "FTOL download started",
+      credentials = creds_file(file = "gmail_creds")
+    )
+}
 
 # Download data ----
 # Specify location to download GenBank flatfiles and create database
@@ -135,17 +137,20 @@ if (file_exists("scratch/dl_running.txt")) {
 }
 
 # Send email to indicate that download has finished
-email <- compose_email(
-  glue::glue(
-    "FTOL downloading of new GenBank release {latest_release} \\
-    has finished on {Sys.time()}. Be sure to upload to FigShare and update \\
-    hash in R/setup.R")
-)
+if (fs::file_exists("gmail_creds")) {
 
-smtp_send(
-    email,
-    from = "jnitta.no.reply@gmail.com",
-    to = "joelnitta@gmail.com",
-    subject = "FTOL download finished",
-    credentials = creds_file(file = "gmail_creds")
+  email <- compose_email(
+    glue::glue(
+      "FTOL downloading of new GenBank release {latest_release} \\
+      has finished on {Sys.time()}. Be sure to upload to FigShare and update \\
+      hash in R/setup.R")
   )
+  
+  smtp_send(
+      email,
+      from = "jnitta.no.reply@gmail.com",
+      to = "joelnitta@gmail.com",
+      subject = "FTOL download finished",
+      credentials = creds_file(file = "gmail_creds")
+    )
+}
