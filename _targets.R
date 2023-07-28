@@ -361,13 +361,19 @@ tar_plan(
     accs_exclude, by = "accession"
   ),
   # Extract species names in plastome data from NCBI taxonomy
+  # Be sure to obtain most recent taxdump file from
+  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/
+  # before running
    plastome_ncbi_names_raw = extract_ncbi_names(
-     taxdump_zip_file = contentid::resolve("hash://sha256/883f9d06034178602ada5cff7790903495e9d8e89860aedef7749f931f9c5a23"), # nolint
+     taxdump_zip_file = contentid::resolve(
+      # new_taxdump_2023-06-01.zip
+      "hash://sha256/1864d7651630f2c8317f4e3ffb69b3b195b0e0cd6a2063dd640b8e1c8618a1b6" # nolint
+    ),
      taxid_keep = plastome_metadata_raw,
      names_exclude = plastome_ncbi_db_names_to_exclude(),
      workers = 2),
   # Resolve species names in plastome metadata
-  # (drops accession if name could not be resolved)
+  # (drops accession if name could not be resolved and fix some names)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
     ref_names_parsed = pc_ref_names, ref_names_data = pteridocat_db
