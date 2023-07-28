@@ -2703,14 +2703,14 @@
     },
     "mirai": {
       "Package": "mirai",
-      "Version": "0.9.1.9000",
+      "Version": "0.9.1",
       "Source": "Repository",
-      "Repository": "https://shikokuchuo.r-universe.dev",
+      "Repository": "RSPM",
       "Requirements": [
         "R",
         "nanonext"
       ],
-      "Hash": "63f831ddc7453bc57e3c88504d259877"
+      "Hash": "0e50ff6375e55e34578e5e16bcd89395"
     },
     "mnormt": {
       "Package": "mnormt",
@@ -2753,13 +2753,13 @@
     },
     "nanonext": {
       "Package": "nanonext",
-      "Version": "0.9.1.9000",
+      "Version": "0.9.1",
       "Source": "Repository",
-      "Repository": "https://shikokuchuo.r-universe.dev",
+      "Repository": "RSPM",
       "Requirements": [
         "R"
       ],
-      "Hash": "3fbea664b954fb3e31ded26fcb9d427c"
+      "Hash": "7a90de40e5452532a9df884997e600e6"
     },
     "narray": {
       "Package": "narray",
