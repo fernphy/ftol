@@ -215,7 +215,7 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
 ####################################
 
 # Create directory for renv project library
-RUN mkdir renv
+RUN mkdir /renv
 
 # Modify Rprofile.site so renv uses /renv for project library
 RUN echo 'Sys.setenv(RENV_PATHS_LIBRARY = "/renv")' >> /usr/local/lib/R/etc/Rprofile.site
@@ -228,10 +228,8 @@ COPY ./renv.lock /tmp/project
 
 WORKDIR /tmp/project
 
-# Don't use cache (the symlinks won't work from Rstudio server)
+# Restore, but don't use cache
 RUN Rscript -e 'install.packages("renv"); renv::consent(provided = TRUE); renv::settings$use.cache(FALSE); renv::init(bare = TRUE); renv::restore()'
-
-WORKDIR /home/rstudio/
 
 ############
 ### Cron ###
@@ -257,3 +255,5 @@ RUN (crontab -l ; echo "0 0 * * * bash /home/setup_gb.sh >> /var/log/cron.log 2>
 # docker run --rm -dt -v ${PWD}:/wd -w /wd --name setup_gb joelnitta/ftol:latest cron -f
 # 
 # as long as the container is up, it will run the job once per day
+
+WORKDIR /home/
