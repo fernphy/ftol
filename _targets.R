@@ -571,23 +571,25 @@ tar_plan(
     taxa_exclude = tibble(
       taxon = c(
         # Commented list of false positives from past runs
+        "Abrodictyum",
         # "Adiantopsis",
         # "Arachniodes",
         # "Calochlaena",
         # "Didymoglossum",
-        # "Dryopteridoideae",
+        "Dryopteridoideae",
         # "Dryopteris",
         # "Goniopteris",
         # "Lytoneuron",
-        "Notogrammitis",
+        # "Notogrammitis",
         # "Ormopteris",
-        # "Polybotryoideae",
+        "Phanerophlebia",
+        "Polybotryoideae",
         "Polystichum",
         # "Pseudocyclosorus",
-        "Saccoloma",
-        "Sceptridium",
+        # "Saccoloma",
+        "Sceptridium"
         # "Strophocaulon",
-        "Syngramma"
+        # "Syngramma"
         )
     )
   ),
