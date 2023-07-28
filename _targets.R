@@ -20,36 +20,7 @@ tar_option_set(
   workspace_on_error = TRUE,
   imports = c("taxastand", "pteridocat"),
   controller = crew_controller_local(workers = 20)
-  )
-
-# Define Rmd targets outside of main workflow
-# to avoid meaningless warnings
-# - input data README for figshare
-input_data_readme_tar <- tar_render(
-    input_data_readme,
-    "reports/input_data_readme/input_data_readme.Rmd",
-    output_dir = results_dir,
-    output_format = "readmedown::plain_document",
-    knit_root_dir = "reports/input_data_readme"
-  )
-# - input data README for github
-input_data_readme_gh_tar <- tar_render(
-    input_data_readme_gh,
-    "reports/input_data_readme/input_data_readme_gh.Rmd",
-    output_dir = data_raw,
-    output_file = "README",
-    output_format = "readmedown::plain_document",
-    knit_root_dir = "reports/input_data_readme"
-  )
-# - output data README for ftolr package
-ftol_data_readme_tar <- tar_render(
-    ftol_data_readme,
-    "reports/ftol_data_readme/ftol_data_readme.Rmd",
-    output_dir = "ftol_data",
-    output_file = "ftol_data_README.txt",
-    output_format = "readmedown::plain_document",
-    knit_root_dir = "reports/ftol_data_readme"
-  )
+)
 
 tar_plan(
   # Load data ----
@@ -1001,11 +972,32 @@ tar_plan(
     path(data_raw, "restez_sql_db.tar.gz")
   ),
   # Render READMEs
-  # - input data
-  input_data_readme_tar,
-  input_data_readme_gh_tar,
-  # - FTOL (output) data
-  ftol_data_readme_tar,
+  # - input data README for figshare
+  tar_render(
+    input_data_readme,
+    "reports/input_data_readme/input_data_readme.Rmd",
+    output_dir = results_dir,
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/input_data_readme"
+  ),
+  # - input data README for github
+  tar_render(
+    input_data_readme_gh,
+    "reports/input_data_readme/input_data_readme_gh.Rmd",
+    output_dir = data_raw,
+    output_file = "README",
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/input_data_readme"
+  ),
+  # - output data README for ftolr package
+  tar_render(
+    ftol_data_readme,
+    "reports/ftol_data_readme/ftol_data_readme.Rmd",
+    output_dir = "ftol_data",
+    output_file = "ftol_data_README.txt",
+    output_format = "readmedown::plain_document",
+    knit_root_dir = "reports/ftol_data_readme"
+  ),
   # Document software versions
   # - R package versions
   tar_file_read(
