@@ -6474,7 +6474,7 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
       fs::path(temp_dir, "names.dmp") %>%
       readr::read_delim(
         delim = "\t|\t", col_names = FALSE,
-        col_types = cols(.default = col_character())
+        col_types = readr::cols(.default = readr::col_character())
       )
 
    # Delete temporary unzipped file
@@ -6485,6 +6485,7 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
     taxid_keep$taxid[!(taxid_keep$taxid %in% ncbi_raw$X1)] %>%
       unique() %>%
       sort()
+
   if (length(missing_taxid) > 0) {
     msg <- glue("One or more taxid missing from NCBI data: {paste(missing_taxid, collapse = ', ')}") # nolint
     warning(msg)
