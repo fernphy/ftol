@@ -2,25 +2,6 @@ FROM rocker/r-ver:4.3.1
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-### Set up non-root user ###
-
-ARG USERNAME=ftol
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
-# Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    # [Optional] Add sudo support. Omit if you don't need to install software
-    # in continer.
-    && apt-get update \
-    && apt-get install -y sudo \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-
-# Set the default user. Omit if you want to keep the default as root.
-USER $USERNAME
-
 ############################
 ### Install APT packages ###
 ############################
@@ -79,6 +60,14 @@ RUN apt-get update \
     librdf0-dev \
     libgit2-dev \
     cmake \
+    wget \
+    pandoc \
+    libglpk40 \
+    libarchive13 \
+    libzmq5 \
+    liblzma-dev \
+    libbz2-dev \
+    libsecret-1-0 \
   && apt-get clean
 
 ########################
@@ -100,12 +89,8 @@ WORKDIR $APPS_HOME
 
 ### git-lfs ###
 # apt-get version is too old
-RUN wget https://github.com/git-lfs/git-lfs/releases/download/v3.1.2/git-lfs-linux-386-v3.1.2.tar.gz \
-  && mkdir git-lfs \
-  && tar xzf git-lfs-linux-386-v3.1.2.tar.gz --directory git-lfs \
-  && rm git-lfs-linux-386-v3.1.2.tar.gz \
-  && cd git-lfs \
-  && bash install.sh
+RUN wget curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash \
+  && apt-get install git-lfs
 
 ### treePL ###
 # many commits have been made since last release (v1.0)
@@ -129,8 +114,9 @@ RUN git clone https://github.com/blackrim/treePL.git \
   && cp treePL /usr/local/bin
 
 ### gnparser ###
+
 ENV APP_NAME=gnparser
-ENV GNP_VERSION=1.4.0
+ENV GNP_VERSION=1.7.3
 ENV DEST=$APPS_HOME/$APP_NAME/$GNP_VERSION
 RUN wget https://github.com/gnames/gnparser/releases/download/v$GNP_VERSION/gnparser-v$GNP_VERSION-linux.tar.gz \
   && tar xf $APP_NAME-v$GNP_VERSION-linux.tar.gz \
@@ -139,7 +125,7 @@ RUN wget https://github.com/gnames/gnparser/releases/download/v$GNP_VERSION/gnpa
 
 ### IQ Tree v2 ###
 ENV APP_NAME=iqtree
-ENV IQT_VERSION=2.1.3
+ENV IQT_VERSION=2.2.2.7
 RUN wget https://github.com/iqtree/iqtree2/releases/download/v$IQT_VERSION/iqtree-$IQT_VERSION-Linux.tar.gz \
   && tar xf $APP_NAME-$IQT_VERSION-Linux.tar.gz \
   && rm $APP_NAME-$IQT_VERSION-Linux.tar.gz \
@@ -147,7 +133,7 @@ RUN wget https://github.com/iqtree/iqtree2/releases/download/v$IQT_VERSION/iqtre
 
 ### trimAL ###
 ENV APP_NAME=trimal
-ENV TRIMAL_VERSION=2afb5b54645d484731b62740fddf7bbc0b290355
+ENV TRIMAL_VERSION=492b6d9455ec2d0b19a420bcfc4eea8adc88e3ea
 RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	cd $APP_NAME && \
   git checkout $TRIMAL_VERSION && \
@@ -157,7 +143,7 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 
 ### taxon-tools ###
 ENV APP_NAME=taxon-tools
-ENV TAXONTOOLS_VERSION=8f8b5e2611b6fdef1998b7878e93e60a9bc7c130
+ENV TAXONTOOLS_VERSION=5bc8c1f7b51ed51d22773f6b16d75ccec3ae6dec
 RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 	cd $APP_NAME && \
   git checkout $TAXONTOOLS_VERSION && \
@@ -169,7 +155,7 @@ RUN git clone https://github.com/camwebb/$APP_NAME.git && \
 ######################
 
 # install miniconda
-ENV MINICONDA_VERSION py37_4.10.3
+ENV MINICONDA_VERSION py311_23.5.2-0
 ENV CONDA_DIR $HOME/Miniconda3
 
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-Linux-x86_64.sh -O ~/miniconda.sh && \
@@ -189,7 +175,7 @@ RUN conda init bash
 ### SuperCRUNCH ###
 # Needs to run in a conda env
 ENV APPNAME supercrunch
-ENV SC_VERSION 1.3.1
+ENV SC_VERSION 1.3.2
 ENV ENV_PREFIX /env/$APPNAME
 
 # - Download SuperCRUNCH (python scripts and env.yaml)
@@ -199,6 +185,8 @@ RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$SC_VERSION.t
 
 # - Create conda environment
 RUN conda update --name base --channel defaults conda && \
+  conda install -n base conda-libmamba-solver && \
+  conda config --set solver libmamba && \
   conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$SC_VERSION/$APPNAME-conda-env.yml --force && \
   conda clean --all --yes
 
@@ -255,5 +243,26 @@ RUN (crontab -l ; echo "0 0 * * * bash /home/setup_gb.sh >> /var/log/cron.log 2>
 # docker run --rm -dt -v ${PWD}:/wd -w /wd --name setup_gb joelnitta/ftol:latest cron -f
 # 
 # as long as the container is up, it will run the job once per day
+
+############################
+### Set up non-root user ###
+############################
+
+ARG USERNAME=ftol
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# Create the user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    # [Optional] Add sudo support. Omit if you don't need to install software
+    # in continer.
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Set the default user. Omit if you want to keep the default as root.
+USER $USERNAME
 
 WORKDIR /home/
