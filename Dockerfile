@@ -1,4 +1,4 @@
-FROM rocker/rstudio:4.2.0
+FROM rocker/r-ver:4.3.1
 
 ARG DEBIAN_FRONTEND=noninteractive
 
