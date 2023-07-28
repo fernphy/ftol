@@ -4137,10 +4137,11 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     left_join(plastome_ncbi_names_raw, by = "taxid") %>%
     filter(accepted == TRUE) %>%
     select(-accepted) %>%
-    # Add one scientific name currently missing
+    # Add missing scientific names
     mutate(
       scientific_name = case_when(
         species == "Sciadopitys verticillata" ~ "Sciadopitys verticillata (Thunb.) Siebold & Zucc.",
+        species == "Plumbago auriculata" ~ "Plumbago auriculata Thunb. Lam.",
         TRUE ~ scientific_name
       )
     ) %>%
@@ -4161,7 +4162,7 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     # (needed `accepted` during cleaning, now ok to drop)
     select(-accepted) %>%
     # Remove any names not identified to species
-    filter(str_detect(species, " sp\\. ", negate = TRUE)) %>%
+    filter(str_detect(species, " sp\\. |aff\\. ", negate = TRUE)) %>%
     # Fix some names NCBI got wrong
     mutate(
       scientific_name = case_when(
@@ -4171,6 +4172,13 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
         taxid == "2836282" ~ "Drynaria parishii (Bedd.) Bedd.",
         # Author missing
         taxid == "1565408" ~ "Cystopteris chinensis (Ching) X. C. Zhang & R. Wei",
+        # Wrong scientific name in GenBank
+        # Dryopteris fulgens (syn of Plesioneuron fulgens) but should be
+        # Dryopteris renchangiana
+        # this should actually apply to the accessions, not the taxid
+        # but that needs to be fixed on GenBank
+        # MW796572, MW796570
+        taxid == "2982182" ~ "Dryopteris renchangiana Z. Y. Zuo & D. Z. Li",
         TRUE ~ scientific_name
       )
     ) %>%
@@ -4184,7 +4192,12 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     query = unique(plastome_names_query$query_name),
     reference = ref_names_parsed,
     max_dist = 5, match_no_auth = TRUE,
-    match_canon = TRUE, collapse_infra = TRUE)
+    match_canon = TRUE, collapse_infra = TRUE) |>
+    # Asplenium scolopendrium Lour. is a synonym of A. nidus, exclude this
+    filter(!(
+      query == "Asplenium scolopendrium var. scolopendrium" &
+      reference == "Asplenium scolopendrium Lour.")
+    )
 
   # Resolve synonyms
   match_results_plastome_resolved <- ts_resolve_names(
@@ -4194,7 +4207,15 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     mutate(
       match_type = case_when(
         query == "Bolbitis laxireticulata K.Iwats." &
-        matched_name == "Bolbitis × laxireticulata K. Iwats." ~ "checked_ok",
+          matched_name == "Bolbitis × laxireticulata K. Iwats." ~ "checked_ok",
+        query == "Dryopteris gaoligongensis Z.Y.Zuo, J.Mei Lu & D.Z.Li" &
+          matched_name == "Dryopteris gaoligongensis Z. Y. Zuo, Jin Mei Lu & D. Z. Li" ~ "checked_ok",
+        query == "Dryopteris sinonepalensis Z.Y.Zuo & Fraser-Jenk." &
+          matched_name == "Dryopteris sinonepalensis Z. Y. Zhou & Fraser-Jenk." ~ "checked_ok",
+        query == "Dennstaedtia glauca (Cav.) C.Chr. ex Looser" &
+          matched_name == "Dennstaedtia glauca (Cav.) C. Chr. apud Looser" ~ "checked_ok",
+        query == "Asplenium scolopendrium var. scolopendrium" &
+          matched_name == "Asplenium scolopendrium L." ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
