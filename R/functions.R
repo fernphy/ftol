@@ -4154,9 +4154,10 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     anti_join(
       unique(select(plastome_outgroups, accession)),
       by = "accession") %>%
-    left_join(plastome_ncbi_names_raw, by = "taxid") %>%
-    # Use only accepted name
-    filter(accepted == TRUE) %>%
+    left_join(
+      # Use only accepted name
+      filter(plastome_ncbi_names_raw, accepted == TRUE),
+      by = "taxid") %>%
     # Clean names: removes brackets and years
     clean_ncbi_names() %>%
     # (needed `accepted` during cleaning, now ok to drop)
