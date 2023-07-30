@@ -6766,6 +6766,13 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     # Mixup in NCBI taxonomy: 32168 should be Adiantum raddianum G.Forst.
     # not Adiantum cuneatum G.Forst -> Lindsaea trichomanoides Dryand.
     filter(!(taxid == "32168" & scientific_name == "Adiantum cuneatum G.Forst.")) %>%
+    # Fix Lepisorus rufofuscus T.Fujiwara. 2022 (drop year)
+    mutate(
+       scientific_name = case_when(
+          taxid == "3043755" ~ "Lepisorus rufofuscus T.Fujiwara",
+          TRUE ~ scientific_name
+        )
+     ) %>%
     # Change MISSING back to NA
     mutate(scientific_name = na_if(scientific_name, "MISSING"))
 }

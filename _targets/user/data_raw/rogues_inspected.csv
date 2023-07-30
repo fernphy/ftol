@@ -73,4 +73,5 @@ Tectaria_decurrens,OK480088,atpB,Tectariaceae,Nephrolepidaceae,TRUE,NA
 Schizaea_elegans,AF448932,trnL-trnF,Schizaeaceae,Anemiaceae,FALSE,Online BLAST matches to Schizaeaceae plastomes
 Lomariopsis_guineensis,EF040663,atpB,Lomariopsidaceae,Dryopteridaceae,TRUE,Blasts mostly to Dryopteris but only 300 bp of atpB 
 Tectaria_ferruginea,OK480092,atpB,Tectariaceae,Dryopteridaceae,TRUE,Blasts to Bolbitis
-Myriopteris_aurea,OP710730,rbcL,Pteridaceae,Aspleniaceae,TRUE,Blasts to non ferns 
+Myriopteris_aurea,OP710730,rbcL,Pteridaceae,Aspleniaceae,TRUE,Blasts to non ferns
+Pteris_orizabae,OQ289854,matK,Pteridaceae,Salviniaceae,TRUE,Blasts to non ferns (Anthurium)
