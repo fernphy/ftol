@@ -368,7 +368,8 @@ tar_plan(
     taxdump_zip_file,
     # new_taxdump_2023-07-01.zip
     contentid::resolve(
-      "hash://sha256/442f3eaa00666cffc5f74d9855d5ac2d5b8b55cf87bc7542e87322830bbf2038" # nolint
+      "hash://sha256/442f3eaa00666cffc5f74d9855d5ac2d5b8b55cf87bc7542e87322830bbf2038", # nolint
+      store = TRUE
     )
   ),
   plastome_ncbi_names_raw = extract_ncbi_names(
