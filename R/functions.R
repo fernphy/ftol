@@ -8101,6 +8101,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       # IMPORTANT: tip_1_manual and tip_2_manual should define the **crown**
       # group, regardless of `affinities_group`
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
+      "Polystichum", "stem", "Polystichum_craspedosorum", "Polystichum_sinense",
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
