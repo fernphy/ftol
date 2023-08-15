@@ -6430,6 +6430,13 @@ archive_raw_data <- function(version, metadata, out_path) {
 
 # Taxonomic name resolution ----
 
+# Download a file with contentid, then move it
+fetch_taxdump <- function(hash, file_out) {
+  taxdump_file <- contentid::resolve(hash)
+  fs::file_move(taxdump_file, file_out)
+  file_out
+}
+
 # Names to exclude when reading in NCBI taxonomic database
 ncbi_db_names_to_exclude <- function() {
   c(

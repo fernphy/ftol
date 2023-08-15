@@ -366,10 +366,10 @@ tar_plan(
   # before running
   tar_file(
     taxdump_zip_file,
-    # new_taxdump_2023-07-01.zip
-    contentid::resolve(
+    fetch_taxdump(
+      # new_taxdump_2023-07-01.zip
       "hash://sha256/442f3eaa00666cffc5f74d9855d5ac2d5b8b55cf87bc7542e87322830bbf2038", # nolint
-      store = TRUE
+      path(int_dir, "new_taxdump_2023-07-01.zip")
     )
   ),
   plastome_ncbi_names_raw = extract_ncbi_names(
