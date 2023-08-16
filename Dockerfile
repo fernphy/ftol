@@ -16,7 +16,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libmagick++-dev for R package magick -> phytools
 # python-dev-is-python3 for biopython -> superCRUNCH
 # git-lfs for gittargets
-# pandoc-citeproc for rendering Rmarkdown
 # libarchive-dev for archive
 # libharfbuzz-dev, libfribidi-dev for R package textshaping
 # librdf0-dev for redland -> R package deposits
@@ -53,7 +52,6 @@ RUN apt-get update \
     gawk \
     cd-hit \
     git-lfs \
-    pandoc-citeproc \
     libarchive-dev \
     libharfbuzz-dev \
     libfribidi-dev \
@@ -61,7 +59,6 @@ RUN apt-get update \
     libgit2-dev \
     cmake \
     wget \
-    pandoc \
     libglpk40 \
     libarchive13 \
     libzmq5 \
@@ -149,6 +146,14 @@ RUN git clone https://github.com/camwebb/$APP_NAME.git && \
   git checkout $TAXONTOOLS_VERSION && \
 	make check && \
 	make install
+
+### pandoc ###
+
+ENV APP_NAME=pandoc
+ENV PANDOC_VERSION=3.1.6.1
+RUN wget https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb \
+  && dpkg -i pandoc-$PANDOC_VERSION-1-amd64.deb \
+  && rm pandoc-$PANDOC_VERSION-1-amd64.deb
 
 ######################
 ### conda packages ###
