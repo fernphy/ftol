@@ -138,15 +138,6 @@ RUN git clone https://github.com/scapella/$APP_NAME.git && \
 	make && \
 	cp trimal /usr/local/bin
 
-### taxon-tools ###
-ENV APP_NAME=taxon-tools
-ENV TAXONTOOLS_VERSION=5bc8c1f7b51ed51d22773f6b16d75ccec3ae6dec
-RUN git clone https://github.com/camwebb/$APP_NAME.git && \
-	cd $APP_NAME && \
-  git checkout $TAXONTOOLS_VERSION && \
-	make check && \
-	make install
-
 ### pandoc ###
 
 ENV APP_NAME=pandoc
@@ -154,6 +145,16 @@ ENV PANDOC_VERSION=3.1.6.1
 RUN wget https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-1-amd64.deb \
   && dpkg -i pandoc-$PANDOC_VERSION-1-amd64.deb \
   && rm pandoc-$PANDOC_VERSION-1-amd64.deb
+
+### taxon-tools ###
+# needs pandoc
+ENV APP_NAME=taxon-tools
+ENV TAXONTOOLS_VERSION=5bc8c1f7b51ed51d22773f6b16d75ccec3ae6dec
+RUN git clone https://github.com/camwebb/$APP_NAME.git && \
+	cd $APP_NAME && \
+  git checkout $TAXONTOOLS_VERSION && \
+	make check && \
+	make install
 
 ######################
 ### conda packages ###
