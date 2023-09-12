@@ -1,10 +1,13 @@
 # Setup local copy of GenBank database for ferns
 library(fs)
 library(restez)
-library(blastula)
+library(gmailr)
 library(assertthat)
 
 source("R/setup_gb_functions.R")
+
+# Should email notifications be sent? ----
+send_email <- TRUE
 
 # Compare latest and current GenBank release ----
 # - get latest release number on FTP server
@@ -54,20 +57,29 @@ writeLines(as.character(latest_release), "scratch/dl_running.txt")
 
 # Send email to indicate that download has started
 # (setup credentials with R/setup_email.R)
-if (fs::file_exists("gmail_creds")) {
-  email <- compose_email(
-    glue::glue(
-      "FTOL downloading of new GenBank release {latest_release} \\
-      has started on {Sys.time()}")
-  )
-
-  smtp_send(
-      email,
-      from = "jnitta.no.reply@gmail.com",
-      to = "joelnitta@gmail.com",
-      subject = "FTOL download started",
-      credentials = creds_file(file = "gmail_creds")
+if (send_email) {
+  # Draft email
+  email_draft <-
+    gm_mime() |>
+    gm_to("joelnitta@gmail.com") |>
+    gm_from("pteridogroup.no.reply@gmail.com") |>
+    gm_subject("FTOL download started") |>
+    gm_html_body(
+      glue::glue(
+        "FTOL downloading of new GenBank release {latest_release} \\
+        has started on {Sys.time()}")
     )
+
+  # Authenticate email server
+  options(gargle_oauth_cache = ".secrets")
+  secret_json <- list.files(
+    ".secrets", pattern = "client_secret.*json", full.names = TRUE)
+  gm_auth_configure(path = secret_json)
+  gm_oauth_client()
+  gm_auth("pteridogroup.no.reply@gmail.com")
+
+  # Send email
+  gm_send_message(email_draft)
 }
 
 # Download data ----
@@ -136,21 +148,28 @@ if (file_exists("scratch/dl_running.txt")) {
   file_delete("scratch/dl_running.txt")
 }
 
-# Send email to indicate that download has finished
-if (fs::file_exists("gmail_creds")) {
-
-  email <- compose_email(
-    glue::glue(
-      "FTOL downloading of new GenBank release {latest_release} \\
-      has finished on {Sys.time()}. Be sure to upload to FigShare and update \\
-      hash in R/setup.R")
-  )
-  
-  smtp_send(
-      email,
-      from = "jnitta.no.reply@gmail.com",
-      to = "joelnitta@gmail.com",
-      subject = "FTOL download finished",
-      credentials = creds_file(file = "gmail_creds")
+if (send_email) {
+  # Draft email
+  email_draft <-
+    gm_mime() |>
+    gm_to("joelnitta@gmail.com") |>
+    gm_from("pteridogroup.no.reply@gmail.com") |>
+    gm_subject("FTOL download started") |>
+    gm_html_body(
+      glue::glue(
+        "FTOL downloading of new GenBank release {latest_release} has \\
+        finished on {Sys.time()}. Be sure to upload to FigShare and update \\
+        hash in R/setup.R")
     )
+
+  # Authenticate email server
+  options(gargle_oauth_cache = ".secrets")
+  secret_json <- list.files(
+    ".secrets", pattern = "client_secret.*json", full.names = TRUE)
+  gm_auth_configure(path = secret_json)
+  gm_oauth_client()
+  gm_auth("pteridogroup.no.reply@gmail.com")
+
+  # Send email
+  gm_send_message(email_draft)
 }
