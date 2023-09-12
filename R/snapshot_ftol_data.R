@@ -74,19 +74,19 @@ assert_that(
 # Only need to check data files that are archived outside of this repo
 # (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
 # If this fails, run content_id(ref_aln_archive) to obtain new hash.
-ref_aln_hash <- "hash://sha256/388b53201a8626d4b41851e716505e7904d24ee3730de25310cb82cd3a1e6e71" # nolint
+ref_aln_hash <- "hash://sha256/8ab904d3f71eb2b967a52e387798a58d5c8db5b94270633236afdb7bc01753b7" # nolint
 assert_that(
   content_id(ref_aln_archive) == ref_aln_hash,
   msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
-  )
+)
 
 # If this fails, run content_id(restez_sql_db_archive) to obtain new hash
-restez_sql_db_hash <- "hash://sha256/dd387f982e6b10c1deeb8199fffef5ef92054d8f4b48ff57ddf15f911fc2e362" # nolint
+restez_sql_db_hash <- "hash://sha256/2052b6c82365dbb0cc3654aff6c38d375bbd5ef6a097510b996591a569754e4d" # nolint
 assert_that(
   content_id(restez_sql_db_archive) == restez_sql_db_hash,
   msg = glue::glue(
-    "Contents of {restez_sql_db_archive} have changed; update hash")
-  )
+  "Contents of {restez_sql_db_archive} have changed; update hash")
+)
 
 # - Check renv status (lock file is synchronized with library)
 assert_that(
