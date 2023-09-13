@@ -1792,6 +1792,70 @@ write_tree_from_tbl <- function(
 
 # Taxonomic name resolution ----
 
+#' Obtain the hash of the most recent NCBI taxdump file
+#'
+#' @param url URL for NCBI taxdump FTP site. Should be
+#' https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/
+#'
+#' @return List with two items:
+#'  - hash: the hash of the most recent taxdump file ('new_taxdump*', not
+#'    'taxdmp*')
+#'  - file: the file name of the most recent taxdump file
+fetch_most_recent_taxdump_hash <- function(
+  url = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/") {
+  # Download listing of files in FTP site
+  handle <- curl::new_handle(dirlistonly = TRUE)
+  connection <- curl::curl(url, "r", handle)
+  file_table <- read.table(connection, stringsAsFactors = FALSE, fill = TRUE)
+  close(connection)
+
+  # Obtain most recent taxdump file
+  # this depends on formatting of NCBI taxdump_archive FTP site
+  most_recent_taxdump <-
+    file_table %>%
+    tibble::as_tibble() %>%
+    dplyr::select(V2) %>%
+    tidyr::extract(V2, "file", "(new_taxdump_.*?\\.zip)") %>%
+    dplyr::filter(!is.na(file)) %>%
+    assertr::assert(
+      assertr::not_na,
+      file,
+      error_fun = err_msg(glue::glue("No file names could be parsed from {url}"))
+    ) %>%
+    tidyr::extract(
+      file,
+      "date",
+      "([[:digit:]]{1,4}-[[:digit:]]{1,2}-[[:digit:]]{1,2})",
+      remove = FALSE
+    ) %>%
+    dplyr::mutate(
+      date = lubridate::ymd(date)
+    ) %>%
+    assertr::assert(
+      assertr::not_na,
+      date,
+      error_fun = err_msg(glue::glue("No dates could be parsed from {url}"))
+    ) %>%
+    dplyr::filter(date == max(date)) %>%
+    assertr::verify(
+      nrow(.) == 1,
+      error_fun = err_msg(
+        glue::glue("Multiple 'most rececnt' taxdump files found")
+      )
+    )
+
+  # Obtain hash of most recent taxdump
+  hash <-
+    glue::glue("{url}{most_recent_taxdump$file}") |>
+    contentid::register()
+
+  # Return hash and file name
+  list(
+    hash = hash,
+    filename = most_recent_taxdump$file
+  )
+}
+
 # Specify varieties to exclude from collapsing during taxonomic name resolution
 define_varieties_to_keep = function() {
   c(
