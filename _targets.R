@@ -25,7 +25,7 @@ tar_option_set(
 tar_plan(
   # Load data ----
   # Pteridocat taxonomic database
-  pteridocat_db = pteridocat::pteridocat,
+  pteridocat_db = pteridocat::load_pteridocat(),
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file_read(

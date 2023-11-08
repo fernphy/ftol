@@ -3140,11 +3140,11 @@
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "fe0718d635b699a1392718fa8f8070470f2e11f8",
+      "RemoteSha": "cad6d5a73559108c3279b5ee4a55d21ed1563fae",
       "Requirements": [
         "R"
       ],
-      "Hash": "176ffe665988ba69a764aae318520288"
+      "Hash": "4c1e5f368cf89c3a11295e4f3349cf70"
     },
     "purrr": {
       "Package": "purrr",
@@ -3335,13 +3335,18 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.0.0",
-      "Source": "Repository",
-      "Repository": "RSPM",
+      "Version": "1.0.2.9000",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "rstudio",
+      "RemoteRepo": "renv",
+      "RemoteRef": "main",
+      "RemoteSha": "816ed3eca4327094859ef8965ed0cca1b8632248",
       "Requirements": [
         "utils"
       ],
-      "Hash": "c321cd99d56443dbffd1c9e673c0c1a2"
+      "Hash": "ed1cf871fb5d8f716ed0118497ebd779"
     },
     "reprex": {
       "Package": "reprex",
