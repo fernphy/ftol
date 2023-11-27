@@ -4349,6 +4349,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
         # but that needs to be fixed on GenBank
         # MW796572, MW796570
         taxid == "2982182" ~ "Dryopteris renchangiana Z. Y. Zuo & D. Z. Li",
+        # Missing scientific name in Genbank
+        taxid == "3037582" ~ "Calymmodon cucullatus (Nees & Blume) C. Presl",
         TRUE ~ scientific_name
       )
     ) %>%
