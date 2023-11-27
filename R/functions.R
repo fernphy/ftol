@@ -1792,17 +1792,98 @@ write_tree_from_tbl <- function(
 
 # Taxonomic name resolution ----
 
+#' Extract relevant dates from the GenBank README file
+#'
+#' @param gb_readme Path to the GenBank README file
+#'   (usually named README.genbank)
+#'
+#' @return List with two items:
+#'  - release_date: the date the GenBank data were released
+#'  - close_date: the last date of any sequence in included in the GenBank data
+#'    (I think)
+get_genbank_date <- function(gb_readme) {
+  gb_lines <- readr::read_lines(gb_readme)
+  
+  release_date <-
+    gb_lines %>%
+    magrittr::extract2(
+      .,
+      which(stringr::str_detect(., "^\tRelease Availability Date"))) %>%
+    stringr::str_match("Date: (.*)$") %>%
+    magrittr::extract(,2) %>%
+    stringr::str_squish() %>%
+    lubridate::mdy()
+  
+  close_date <-
+    gb_lines %>%
+    magrittr::extract2(
+      .,
+      which(stringr::str_detect(., "^\tClose-Of-Data"))) %>%
+    stringr::str_match("Data: (.*)$") %>%
+    magrittr::extract(,2) %>%
+    stringr::str_squish() %>%
+    lubridate::mdy()
+
+  # Checks
+  assertthat::assert_that(assertthat::noNA(close_date))
+  assertthat::assert_that(assertthat::noNA(release_date))
+  assertthat::assert_that(assertthat::not_empty(close_date))
+  assertthat::assert_that(assertthat::not_empty(release_date))
+  assertthat::assert_that(
+    inherits(close_date, "Date"),
+    msg = "`close_date` must be of class 'Date'. Did parsing fail?")
+  assertthat::assert_that(
+    length(close_date) == 1,
+    msg = "`close_date` must be of length 1. Did parsing fail?")
+  assertthat::assert_that(
+    inherits(release_date, "Date"),
+    msg = "`release_date` must be of class 'Date'. Did parsing fail?")
+  assertthat::assert_that(
+    length(release_date) == 1,
+    msg = "`release_date` must be of length 1. Did parsing fail?")
+
+  list(close_date = close_date, release_date = release_date)
+}
+
 #' Obtain the hash of the most recent NCBI taxdump file
 #'
 #' @param url URL for NCBI taxdump FTP site. Should be
 #' https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/
+#' @param close_date Vector of length 1 and class "Date";
+#'   The closing date of the GenBank dataset to be used with the taxonomy data
+#' @param release_date Vector of length 1 and class "Date";
+#'   The release date of the GenBank dataset to be used with the taxonomy data
+#' @param ... Other arguments; not used by this function for meant for tracking
+#' with {targets}
 #'
 #' @return List with two items:
 #'  - hash: the hash of the most recent taxdump file ('new_taxdump*', not
 #'    'taxdmp*')
 #'  - file: the file name of the most recent taxdump file
 fetch_most_recent_taxdump_hash <- function(
-  url = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/") {
+  url = "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/",
+  close_date = NULL,
+  release_date = NULL,
+  ...) {
+
+  # Checks
+  if (!is.null(close_date)) {
+    assertthat::assert_that(
+      inherits(close_date, "Date"),
+      msg = "`close_date` must be of class 'Date'")
+    assertthat::assert_that(
+      length(close_date) == 1,
+      msg = "`close_date` must be of length 1")
+  }
+  if (!is.null(release_date)) {
+    assertthat::assert_that(
+      inherits(release_date, "Date"),
+      msg = "`release_date` must be of class 'Date'")
+    assertthat::assert_that(
+      length(release_date) == 1,
+      msg = "`release_date` must be of length 1")
+  }
+
   # Download listing of files in FTP site
   handle <- curl::new_handle(dirlistonly = TRUE)
   connection <- curl::curl(url, "r", handle)
@@ -1811,7 +1892,7 @@ fetch_most_recent_taxdump_hash <- function(
 
   # Obtain most recent taxdump file
   # this depends on formatting of NCBI taxdump_archive FTP site
-  most_recent_taxdump <-
+  taxdump_data <-
     file_table %>%
     tibble::as_tibble() %>%
     dplyr::select(V2) %>%
@@ -1835,14 +1916,38 @@ fetch_most_recent_taxdump_hash <- function(
       assertr::not_na,
       date,
       error_fun = err_msg(glue::glue("No dates could be parsed from {url}"))
-    ) %>%
-    dplyr::filter(date == max(date)) %>%
-    assertr::verify(
-      nrow(.) == 1,
-      error_fun = err_msg(
-        glue::glue("Multiple 'most rececnt' taxdump files found")
-      )
     )
+
+    if (is.null(close_date) && is.null(release_date)) {
+    most_recent_taxdump <-
+      taxdump_data %>%
+      dplyr::filter(date == max(date)) %>%
+      assertr::verify(
+        nrow(.) == 1,
+        error_fun = err_msg(
+          glue::glue("Multiple 'most rececnt' taxdump files found")
+        )
+      )
+    } else if (!is.null(close_date) && !is.null(release_date)) {
+    # Choose dataset that is older than the GenBank cutoff date,
+    # but younger than the GenBank release date.
+    # So it should be the most recent taxonomic data including
+    # all of the names in the GenBank data
+    most_recent_taxdump <-
+      taxdump_data %>%
+      dplyr::filter(
+        date >= close_date,
+        date <= release_date
+      ) %>%
+      assertr::verify(
+        nrow(.) == 1,
+        error_fun = err_msg(
+          glue::glue("No single 'most recent' taxdump files found")
+        )
+      )
+    } else {
+      stop("Must provide both `close_date` and `release_date` or neither")
+    }
 
   # Obtain hash of most recent taxdump
   hash <-
