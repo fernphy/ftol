@@ -4386,6 +4386,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
           matched_name == "Dennstaedtia glauca (Cav.) C. Chr. apud Looser" ~ "checked_ok",
         query == "Asplenium scolopendrium var. scolopendrium" &
           matched_name == "Asplenium scolopendrium L." ~ "checked_ok",
+        query == "Eupodium kaulfussii (J.Sm.) J.Sm." &
+          matched_name == "Eupodium kaulfussii (J. Sm.) Hook." ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
