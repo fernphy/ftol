@@ -830,7 +830,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
   # Filter sequences, convert to DNAbin:
   # - query (filter on target only)
   query_seqs <- query_seqtbl %>%
-    filter(gene == target_select) %>%
+    dplyr::filter(gene == target_select) %>%
     unique() %>%
     verify(
       nrow(.) > 0,
@@ -841,7 +841,7 @@ extract_from_ref_blast <- function(query_seqtbl, ref_seqtbl, target,
 
   # - reference (filter on target, and optionally by feature)
   ref_seqs <- ref_seqtbl %>%
-    filter(target == target_select) %>%
+    dplyr::filter(target == target_select) %>%
     verify(
       nrow(.) > 0,
       error_fun = err_msg("No reference sequences matching target")) %>%
@@ -7000,8 +7000,8 @@ exclude_invalid_ncbi_names <- function(ncbi_names) {
 #'
 select_ncbi_names_round_1 <- function(ncbi_names) {
   ncbi_names %>%
-    filter(accepted == TRUE) %>%
-    filter(!is.na(scientific_name)) %>%
+    dplyr::filter(accepted == TRUE) %>%
+    dplyr::filter(!is.na(scientific_name)) %>%
     assertr::assert(is_uniq, taxid, scientific_name)
 }
 
