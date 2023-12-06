@@ -360,21 +360,11 @@ tar_plan(
     accs_exclude,
     by = "accession"
   ),
-  # Obtain hash of most recent taxdump file from
-  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive/
-  tar_target(
-    taxdump_hash,
-    fetch_most_recent_taxdump_hash(),
-    # Always run this so NCBI taxonomy is up-to-date
-    # (and no species will be skipped because of missing NBCI names)
-    cue = tar_cue(mode = "always")
-  ),
-  # Download taxdump file
+  # Load taxdump file downloaded from
+  # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
   tar_file(
     taxdump_zip_file,
-    fetch_taxdump(taxdump_hash$hash,
-      path(int_dir, taxdump_hash$file)
-    )
+    path(data_raw, "taxdmp.zip")
   ),
   # Extract species names in plastome data from NCBI taxonomy
   plastome_ncbi_names_raw = extract_ncbi_names(
