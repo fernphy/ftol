@@ -1,0 +1,5 @@
+conflicted::conflicts_prefer(dplyr::filter, .quiet = TRUE)
+conflicted::conflicts_prefer(dplyr::select, .quiet = TRUE)
+conflicted::conflicts_prefer(tidyr::gather, .quiet = TRUE)
+conflicted::conflicts_prefer(purrr::map, .quiet = TRUE)
+conflicted::conflicts_prefer(contentid::resolve, .quiet = TRUE)

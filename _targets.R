@@ -1,3 +1,7 @@
+# Load packages and functions
+library(targets)
+library(tarchetypes)
+library(crew)
 source("R/packages.R")
 source("R/functions.R")
 
@@ -18,6 +22,7 @@ results_dir <- "_targets/user/results"
 # - Local parallelization with 20 workers
 tar_option_set(
   workspace_on_error = TRUE,
+  packages = workflow_packages,
   imports = c("taxastand", "pteridocat"),
   controller = crew_controller_local(workers = 20)
 )
@@ -25,7 +30,7 @@ tar_option_set(
 tar_plan(
   # Load data ----
   # Pteridocat taxonomic database
-  pteridocat_db = pteridocat::load_pteridocat(),
+  pteridocat_db = load_pteridocat(),
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   tar_file_read(
@@ -428,7 +433,7 @@ tar_plan(
     plastid_spacers_unaligned %>%
       filter(cluster != "none") %>%
       group_by(target, cluster) %>%
-      tar_group(),
+      targets::tar_group(),
     iteration = "group"
   ),
   # Align each cluster
