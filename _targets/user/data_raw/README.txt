@@ -1,4 +1,4 @@
-This README.txt file was generated on 2023-08-15 by Joel Nitta
+This README.txt file was generated on 2023-12-06 by Joel Nitta
 
 --------------------------------------------------------------------------------
 
@@ -224,7 +224,7 @@ Pteridophyte Phylogeny Group I (2016), with modifications.
 
 Number of variables: 8
 
-Number of cases/rows: 407
+Number of cases/rows: 417
 
 Variable list:
 
@@ -241,7 +241,7 @@ Missing data codes: Non-applicable data indicated with ‘NA’.
 
 Specialized formats or other abbreviations used: None.
 
-MD5 checksum: d1612ac49c439b21e848e542db706e72
+MD5 checksum: 61072a41c6f5fa33d20a3c1c15ae5048
 
 --------------------------------------------------------------------------------
 
