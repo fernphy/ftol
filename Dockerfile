@@ -204,6 +204,22 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
   echo "python /apps/SuperCRUNCH-$SC_VERSION/supercrunch-scripts/\"\$@\"" >> /usr/local/bin/$APPNAME && \
   chmod 755 /usr/local/bin/$APPNAME
 
+########################
+### Setup conflicted ###
+########################
+
+# Normally put calls to `conflicted::conflicts_prefer()` in project-level
+# .Rprofile, but for some reason this is being ignored by {targets} when
+# running steps in parallel
+
+RUN R -q -e 'install.packages("conflicted")'
+
+COPY R/resolve_conflicts.R /resolve_conflicts.R
+
+RUN cat /resolve_conflicts.R >> /usr/local/lib/R/etc/Rprofile.site
+
+RUN rm /resolve_conflicts.R
+
 ####################################
 ### Install R packages with renv ###
 ####################################
