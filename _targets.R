@@ -597,11 +597,12 @@ tar_plan(
         # "Blechnum",
         # "Crepidomanes",
         # "Calochlaena",
-        "Dasygrammitis",
+        # "Dasygrammitis",
         # "Didymoglossum",
-        # "Dryopteridoideae",
+        "Dryopteridoideae",
         # "Dryopteris",
-        "Goniopteris",
+        # "Goniopteris",
+        "Lomariocycas",
         # "Lytoneuron",
         # "Notogrammitis",
         # "Ormopteris",
@@ -611,10 +612,11 @@ tar_plan(
         # "Polystichum",
         "Pseudocyclosorus",
         # "Reholttumia",
-        # "Saccoloma",
-        "Sceptridium"
+        "Saccoloma",
+        "Sceptridium",
         # "Strophocaulon",
-        # "Syngramma"
+        # "Syngramma",
+        "Tomophyllum"
       )
     )
   ),
