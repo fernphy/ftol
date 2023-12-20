@@ -74,14 +74,14 @@ assert_that(
 # Only need to check data files that are archived outside of this repo
 # (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
 # If this fails, run content_id(ref_aln_archive) to obtain new hash.
-ref_aln_hash <- "hash://sha256/8ab904d3f71eb2b967a52e387798a58d5c8db5b94270633236afdb7bc01753b7" # nolint
+ref_aln_hash <- "hash://sha256/6e26b015242dbef07ccbf657afe1fb44cfbbf985f2451911a460849d2551ec0a" # nolint
 assert_that(
   content_id(ref_aln_archive) == ref_aln_hash,
   msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
 )
 
 # If this fails, run content_id(restez_sql_db_archive) to obtain new hash
-restez_sql_db_hash <- "hash://sha256/2052b6c82365dbb0cc3654aff6c38d375bbd5ef6a097510b996591a569754e4d" # nolint
+restez_sql_db_hash <- "hash://sha256/4678990f9d78d3d47bde069a284c79930b0d3d55bf6b75ff8ea54ef1663b3320" # nolint
 assert_that(
   content_id(restez_sql_db_archive) == restez_sql_db_hash,
   msg = glue::glue(
