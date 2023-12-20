@@ -144,6 +144,8 @@ if (nrow(added) > 0) {
   # Commit
   git_commit(
     repo = "ftol_data",
+    author = git_signature_default(),
+    committer = git_signature_default(),
     message = msg
   )
   # Push
