@@ -1394,12 +1394,13 @@
     },
     "crew": {
       "Package": "crew",
-      "Version": "0.6.0",
+      "Version": "0.7.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
         "R6",
+        "cli",
         "data.table",
         "getip",
         "mirai",
@@ -1412,7 +1413,7 @@
         "tidyselect",
         "utils"
       ],
-      "Hash": "a7dfba95c3019cfecc6c10bdebbe024a"
+      "Hash": "38a4df32ace7e78b32120bd6d511b1e0"
     },
     "crul": {
       "Package": "crul",
@@ -2820,14 +2821,14 @@
     },
     "mirai": {
       "Package": "mirai",
-      "Version": "0.11.2",
+      "Version": "0.11.3",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
         "nanonext"
       ],
-      "Hash": "bf4a5ecfef3fc61c1b5f88abf0c13f42"
+      "Hash": "64c7c7bd85b69a53b2a872a0826db748"
     },
     "mnormt": {
       "Package": "mnormt",
@@ -2870,13 +2871,13 @@
     },
     "nanonext": {
       "Package": "nanonext",
-      "Version": "0.10.4",
+      "Version": "0.11.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R"
       ],
-      "Hash": "27657c7f163a8527858a94850e3e2c94"
+      "Hash": "ac09038e0a7ab1556117913dfe8e3858"
     },
     "narray": {
       "Package": "narray",
