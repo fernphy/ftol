@@ -4197,7 +4197,7 @@
     },
     "targets": {
       "Package": "targets",
-      "Version": "1.3.2",
+      "Version": "1.4.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
@@ -4220,7 +4220,7 @@
         "vctrs",
         "yaml"
       ],
-      "Hash": "eea57f5c8154c12cf13467c6ffb919de"
+      "Hash": "0be50803a2b160210f4f64792e6a29a5"
     },
     "taxastand": {
       "Package": "taxastand",
