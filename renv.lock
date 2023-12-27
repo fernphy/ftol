@@ -1492,6 +1492,30 @@
       ],
       "Hash": "d6fd1b1440c1cacc6623aaa4e9fe352b"
     },
+    "deposits": {
+      "Package": "deposits",
+      "Version": "0.2.1.052",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "ropenscilabs",
+      "RemoteRepo": "deposits",
+      "RemoteRef": "main",
+      "RemoteSha": "bc3ca40a678178eee012433d43829dc9dbd95754",
+      "Requirements": [
+        "R6",
+        "checkmate",
+        "fs",
+        "here",
+        "httr2",
+        "jsonlite",
+        "jsonvalidate",
+        "methods",
+        "withr",
+        "xml2"
+      ],
+      "Hash": "6935e7be7a27dc23a8ea8c320ecccc3a"
+    },
     "desc": {
       "Package": "desc",
       "Version": "1.4.2",
@@ -2524,6 +2548,16 @@
       ],
       "Hash": "266a20443ca13c65688b2116d5220f76"
     },
+    "jsonvalidate": {
+      "Package": "jsonvalidate",
+      "Version": "1.3.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "V8"
+      ],
+      "Hash": "cdc2843ef7f44f157198bb99aea7552d"
+    },
     "juicyjuice": {
       "Package": "juicyjuice",
       "Version": "0.1.0",
@@ -3269,12 +3303,12 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
-      "RemoteRef": "name_update_231205",
-      "RemoteSha": "453edd8ae18a42e61d20f4dbae2110dbbb0fe3e6",
+      "RemoteRef": "main",
+      "RemoteSha": "33fc6a67622a3b42879b43c6be09825762ab0149",
       "Requirements": [
         "R"
       ],
-      "Hash": "f2b58d32df40dfaedf3d9c9cf53826ce"
+      "Hash": "a5f80a1e74c42ded1615e2c268af9ac1"
     },
     "purrr": {
       "Package": "purrr",
@@ -3641,14 +3675,14 @@
     },
     "rlang": {
       "Package": "rlang",
-      "Version": "1.1.2",
+      "Version": "1.1.1",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "50a6dbdc522936ca35afc5e2082ea91b"
+      "Hash": "a85c767b55f0bf9b7ad16c6d7baee5bb"
     },
     "rmarkdown": {
       "Package": "rmarkdown",
