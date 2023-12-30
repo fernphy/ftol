@@ -8698,6 +8698,45 @@ find_redundant_constraints <- function(
     count(anc_node_calibrated)
 }
 
+# Depositing ----
+
+#' Upload a file to a figshare repository
+#'
+#' Requires authentication with a figshare API key (may be contained in
+#' /.Renviron file). See more here:
+#' https://docs.ropensci.org/deposits/articles/install-setup.html#setup-api-tokens
+#'
+#' @param path Path to file to upload.
+#' @param deposit_id Deposit ID; should be an integer. deposit_id of ftol input
+#' data is 19474316 (https://doi.org/10.6084/m9.figshare.19474316)
+#'
+#' @return Hash of the file that has been uploaded (this is mostly called for)
+#' its side-effect of uploading the file
+#' @examples
+#'
+#' # Upload a text file to a test dataset on Figshare
+#' # https://figshare.com/account/items/19474316
+#' data <- as.character(runif(100))
+#' temp_file <- tempfile(fileext = ".txt")
+#' writeLines(data, temp_file)
+#' upload_to_figshare(temp_file, 24903468)
+#' fs::file_delete(temp_file)
+#' 
+upload_to_figshare <- function(path, deposit_id) {
+  cli <- deposits::depositsClient$new(service = "figshare")
+  cli$deposit_retrieve(deposit_id)
+  # TODO: remove try() call once
+  # https://github.com/ropenscilabs/deposits/issues/99
+  # is fixed
+  try(cli$deposit_upload_file(
+    path = path,
+    deposit_id = deposit_id,
+    overwrite = TRUE,
+    compress = "no"
+  ))
+  digest::digest(path)
+}
+
 # Etc ----
 # This function can be called inside of other functions to check
 # if the names of the input match the names of the arguments
