@@ -27,7 +27,8 @@ tar_load(
     gb_readme_path,
     restez_sql_db_archive,
     ref_aln_archive,
-    ref_aln_files)
+    ref_aln_files,
+    taxdump_zip_file)
   )
 ```
 
@@ -97,6 +98,7 @@ File List:
 - README.genbank: Text file including information about GenBank release `r gb_release`.
 - restez_sql_db.tar.gz: Compressed file archive including database of fern DNA sequences from GenBank release `r gb_release`.
 - ref_aln.tar.gz: Compressed file archive including one fasta file per target plastid locus.
+- taxdmp.zip: Compressed file archive including NCBI taxonomic data.
 
 --------------------------
 
@@ -174,7 +176,19 @@ MD5 checksum: `r tools::md5sum(ref_aln_archive)`
 
 --------------------------
 
+`r path_file(taxdump_zip_file)`: Compressed file archive including NCBI
+taxonomic data downloaded from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
+on `r file.info(taxdump_zip_file)$mtime`.
+
+MD5 checksum: `r tools::md5sum(taxdump_zip_file)`
+
+--------------------------
+
 CHANGE LOG
+
+2023-12-26
+
+- Add taxdmp.zip
 
 2023-12-20
 
