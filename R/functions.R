@@ -4390,6 +4390,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
           matched_name == "Asplenium scolopendrium L." ~ "checked_ok",
         query == "Eupodium kaulfussii (J.Sm.) J.Sm." &
           matched_name == "Eupodium kaulfussii (J. Sm.) Hook." ~ "checked_ok",
+        query == "Asplenium obliquissimum (Hayata) Sugim. & Sa.Kurata" &
+          matched_name == "Asplenium obliquissimum (Hayata) Sugim. & Kurata" ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
@@ -6954,6 +6956,62 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     mutate(
        scientific_name = case_when(
           taxid == "3043755" ~ "Lepisorus rufofuscus T.Fujiwara",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Diplazium giganteum
+    # Not Diplazium giganteum Karst. -> Hemidictyum marginatum (L.) C. Presl
+    mutate(
+       scientific_name = case_when(
+          taxid == "1392681" ~ "Diplazium giganteum (Baker) Ching",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Cheilanthes distans
+    # Not Cheilanthes distans Colenso -> Hiya distans
+    mutate(
+       scientific_name = case_when(
+          taxid == "414608" ~ "Cheilanthes distans (R. Br.) Mett.",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Polystichum glandulosum
+    # Not Polystichum glandulosum Dulac -> Oreopteris limbosperma
+    mutate(
+       scientific_name = case_when(
+          taxid == "1445493" ~ "Polystichum glandulosum C. Presl",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Tectaria ferruginea
+    # Not Tectaria ferruginea Cav. -> Rumohra adiantiformis (G. Forst.) Ching
+    mutate(
+       scientific_name = case_when(
+          taxid == "1524125" ~ "Tectaria ferruginea (Mett.) Copel.",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Dryopteris pacifica
+    # Not Dryopteris pacifica Christ -> Tectaria stearnsii Maxon
+    mutate(
+       scientific_name = case_when(
+          taxid == "239587" ~ "Dryopteris pacifica (Nakai) Tagawa",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Dryopteris setosa
+    # Not Dryopteris setosa Kuntze -> Ctenitis
+    mutate(
+       scientific_name = case_when(
+          taxid == "272768" ~ "Dryopteris setosa (Thunb. ex Murray) Akasawa",
+          TRUE ~ scientific_name
+        )
+     ) %>%
+    # Fix Pellaea paradoxa
+    # Not Pellaea paradoxa Fée -> Lytoneuron paradoxum (Fée) Yesilyurt
+    mutate(
+       scientific_name = case_when(
+          taxid == "1054383" ~ "Pellaea paradoxa (R. Br.) Hook.",
           TRUE ~ scientific_name
         )
      ) %>%
