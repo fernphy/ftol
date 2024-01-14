@@ -3305,11 +3305,11 @@
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "9fd00a70ebc61a54ecab2ecad8115118367d06ba",
+      "RemoteSha": "d54d7e26fe7e62d03266a3c801a82a6571dc5f2c",
       "Requirements": [
         "R"
       ],
-      "Hash": "b331fa73ddc4a0760bdd1a26f4def127"
+      "Hash": "0c7b9721b604f83ac22421c8c1dfd999"
     },
     "purrr": {
       "Package": "purrr",
