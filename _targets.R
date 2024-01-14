@@ -603,7 +603,7 @@ tar_plan(
         "Diploblechnum",
         "Dryopteridoideae",
         # "Dryopteris",
-        # "Goniopteris",
+        "Goniopteris",
         # "Lomariocycas",
         # "Lytoneuron",
         # "Notogrammitis",
