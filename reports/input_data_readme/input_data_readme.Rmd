@@ -186,6 +186,10 @@ MD5 checksum: `r tools::md5sum(taxdump_zip_file)`
 
 CHANGE LOG
 
+2024-03-14
+
+- Update to GenBank release 259
+
 2023-12-26
 
 - Add taxdmp.zip
