@@ -104,7 +104,7 @@ ft_data_ver <- function(what = "ftol") {
 
   - Downloads section: copy text from the old "current" version (be sure to update and check link).
 
-  - ![](/assets/images/2023-02-16-13-18-01.png)
+  - ![](website-code.png)
 
   - Update news
 
