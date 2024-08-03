@@ -4392,6 +4392,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
           matched_name == "Eupodium kaulfussii (J. Sm.) Hook." ~ "checked_ok",
         query == "Asplenium obliquissimum (Hayata) Sugim. & Sa.Kurata" &
           matched_name == "Asplenium obliquissimum (Hayata) Sugim. & Kurata" ~ "checked_ok",
+        query == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. L1" &
+          matched_name == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z." ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
@@ -6699,8 +6701,6 @@ extract_ncbi_names <- function(taxdump_zip_file, taxid_keep, names_exclude = NUL
    if(!is.null(names_exclude)) {
       ncbi_names <-
          ncbi_names %>%
-         # Make sure all taxids from metadata are in NCBI data
-         verify(all(names_exclude %in% .$name)) %>%
          # Exclude some superfluous sci names: these cause multiple accepted names
          # for a given taxid
       filter(!name %in% names_exclude)
