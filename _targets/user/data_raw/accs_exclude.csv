@@ -57,3 +57,6 @@ KP337994,rbcL,Supposed to be Alsophila crenulata but blasts to Sphaeropteris lep
 OP711320,rbcL,Supposed to be Vittaria flavicosta but blasts to Polytaenium
 OQ289855,matK,Supposed to be Sticherus ferrugineus but blasts to angiosperms (Anthurium)
 OQ290141,matK,Supposed to be Diplazium donnell-smithii but blasts to angiosperms (Lactuca)
+OR087475,rps4,Supposed to be Thelypteridaceae but blasts to Tectaria
+OR087475,rps4-trnS,Supposed to be Thelypteridaceae but blasts to Tectaria
+OR087646,trnL-trnF,Supposed to be Thelypteridaceae but blasts to Tectaria

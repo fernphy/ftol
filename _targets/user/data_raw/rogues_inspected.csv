@@ -75,3 +75,8 @@ Lomariopsis_guineensis,EF040663,atpB,Lomariopsidaceae,Dryopteridaceae,TRUE,Blast
 Tectaria_ferruginea,OK480092,atpB,Tectariaceae,Dryopteridaceae,TRUE,Blasts to Bolbitis
 Myriopteris_aurea,OP710730,rbcL,Pteridaceae,Aspleniaceae,TRUE,Blasts to non ferns
 Pteris_orizabae,OQ289854,matK,Pteridaceae,Salviniaceae,TRUE,Blasts to non ferns (Anthurium)
+Cochlidium_serrulatum,KT156612,matK,Polypodiaceae,Tectariaceae,FALSE,Online BLAST matches to Polypodiaceae (grammitids)
+Diplazium_flexuosum,OR099919,rbcL,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplenium
+Diplazium_flexuosum,OR100030,trnL-trnF,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplenium
+Diplazium_flexuosum,OR100250,rps4-trnS,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplenium
+Mickelia_nicotianifolia,KJ628855,rbcL,Dryopteridaceae,Tectariaceae,TRUE,Blasts to Tectaria
