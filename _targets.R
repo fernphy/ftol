@@ -375,7 +375,7 @@ tar_plan(
   plastome_ncbi_names_raw = extract_ncbi_names(
     taxdump_zip_file,
     taxid_keep = plastome_metadata_raw,
-    names_exclude = plastome_ncbi_db_names_to_exclude(),
+    names_exclude = ncbi_db_names_to_exclude(),
     workers = 2
   ),
   # Resolve species names in plastome metadata

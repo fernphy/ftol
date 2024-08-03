@@ -6618,13 +6618,9 @@ ncbi_db_names_to_exclude <- function() {
     "Archangiopteris hokouensis Ching, 1958, non Angiopteris hokouensis Ching, 1959", #nolint
     "Polystichum imbricans subsp. curtum (Ewan) D.H.Wagner, 1979",
     "Tapeinidium denhamii (Hook.) C.Chr., 1905",
-    "Dryopteris sabae (Franch. & Sav.) C.Chr."
+    "Dryopteris sabae (Franch. & Sav.) C.Chr.",
+    "Danaea sellowiana C.Presl, 1845"
     )
-}
-
-plastome_ncbi_db_names_to_exclude <- function() {
-  # Superfluous with Danaea sellowiana C.Presl, 1845
-  "Danaea sellowiana Pr.in Corda., 1845"
 }
 
 #' Extract taxonomic names from an NCBI taxonomy database dump file
