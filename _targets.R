@@ -320,7 +320,10 @@ tar_plan(
 
   # Process Thelypteridaceae inclusion list from Patel el al. (2019)
   patel_inclusion_list = create_patel_inclusion_list(
-    path_to_patel_data = contentid::resolve("hash://sha256/233607dc3945dc0f764c44d1171f8bd8bdfe50c4028c9c44e82965e5a5f11fdc"), # nolint
+    path_to_patel_data = contentid::resolve(
+      "hash://sha256/233607dc3945dc0f764c44d1171f8bd8bdfe50c4028c9c44e82965e5a5f11fdc", # nolint
+      registries = "local.tsv"
+    ),
     pteridocat = pteridocat_db
   ),
   # Load manual inclusion list
