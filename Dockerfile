@@ -193,7 +193,7 @@ RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$SC_VERSION.t
 RUN conda update --name base --channel defaults conda && \
   conda install -n base conda-libmamba-solver && \
   conda config --set solver libmamba && \
-  conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$SC_VERSION/$APPNAME-conda-env.yml --force && \
+  conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$SC_VERSION/$APPNAME-conda-env.yml && \
   conda clean --all --yes
 
 # - Make shell script to run conda app
