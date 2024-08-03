@@ -86,6 +86,21 @@ Note that this code was designed to be run on a multi-core machine, so the numbe
 
 The complete workflow takes 1-2 weeks to complete, with phylogenetic analysis taking up by far most of the time.
 
+### Running with Docker
+
+Launch a container in the background:
+
+```
+docker run \
+  --rm \
+  -dt \
+  -v ${PWD}:/wd \
+  -w /wd \
+  -e USERID=$(id -u) \
+  -e GROUPID=$(id -g) \
+  joelnitta/ftol:latest bash
+```
+
 ## License
 
 - code: [MIT](LICENSE)
