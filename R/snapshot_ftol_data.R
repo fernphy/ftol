@@ -81,7 +81,7 @@ assert_that(
 )
 
 # If this fails, run content_id(restez_sql_db_archive) to obtain new hash
-restez_sql_db_hash <- "hash://sha256/d5b6be62c59916182ac16edb104be39bc63abd40f190d27a67eb447b8af7e868" # nolint
+restez_sql_db_hash <- "hash://sha256/c8617dab24a22bc1e580c1e8c05e4c3fbf5825163d627739a8b7f054e1452e41" # nolint
 assert_that(
   content_id(restez_sql_db_archive) == restez_sql_db_hash,
   msg = glue::glue(
