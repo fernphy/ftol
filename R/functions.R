@@ -8342,7 +8342,9 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Pleopeltis", "crown", "Pleopeltis_bombycina", "Pleopeltis_conzattii",
       "Lepisorus", "crown", "Lepisorus_longifolius", "Lepisorus_angustus",
       "Polypodium s.l.", "stem", "Pleurosoriopsis_makinoi", "Polypodium_pellucidum",
-      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata"),
+      "Cyathea+Alsophila+Gymnosphaera", "crown", "Alsophila_poolii", "Cyathea_epaleata",
+      "Ophioglossum", "stem", "Rhizoglossum_bergianum", "Ophioglossum_parvifolium"
+      ),
     "ts2016" = tribble(
       ~affinities, ~affinities_group, ~tip_1_manual, ~tip_2_manual,
       "Alsophila+Cyathea", "stem", "Cyathea_minuta", "Alsophila_capensis",
