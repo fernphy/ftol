@@ -370,6 +370,7 @@ tar_plan(
   ),
   # Load taxdump file downloaded from
   # https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
+  # This is automatically downloaded by setup_gb.R for each new GenBank release
   tar_file(
     taxdump_zip_file,
     path(data_raw, "taxdmp.zip")

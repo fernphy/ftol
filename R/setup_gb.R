@@ -147,6 +147,22 @@ archive::archive_write_files(
   filter = "gzip"
 )
 
+# Also download new taxdump file,
+# store previous one as 'bak'
+# This needs to be done *after* GenBank data are downloaded so that all
+# GenBank taxonomic data is up-to-date
+taxdmp_path <- "_targets/user/data_raw/taxdmp.zip"
+
+if (file_exists(taxdmp_path)) {
+  file_move(
+    taxdmp_path,
+    "_targets/user/data_raw/taxdmp.zip.bak"
+  )
+}
+
+download.file(
+  "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip", taxdmp_path)
+
 # Cleanup ----
 
 # Download done, so delete "running" file
