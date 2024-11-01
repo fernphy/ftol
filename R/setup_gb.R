@@ -67,13 +67,16 @@ if (send_email) {
     gm_html_body(
       glue::glue(
         "FTOL downloading of new GenBank release {latest_release} \\
-        has started on {Sys.time()}")
+        has started on {Sys.time()}"
+      )
     )
 
   # Authenticate email server
   options(gargle_oauth_cache = ".secrets")
   secret_json <- list.files(
-    ".secrets", pattern = "client_secret.*json", full.names = TRUE)
+    ".secrets",
+    pattern = "client_secret.*json", full.names = TRUE
+  )
   gm_auth_configure(path = secret_json)
   gm_oauth_client()
   gm_auth("pteridogroup.no.reply@gmail.com")
@@ -115,15 +118,18 @@ dir_create("_targets/user/data_raw/restez")
 file_copy(
   "scratch/restez/sql_db",
   "_targets/user/data_raw/restez/sql_db",
-  overwrite = TRUE)
+  overwrite = TRUE
+)
 file_copy(
   "scratch/restez/gb_release.txt",
   "_targets/user/data_raw/restez/gb_release.txt",
-  overwrite = TRUE)
+  overwrite = TRUE
+)
 file_copy(
   "scratch/restez/README.genbank",
   "_targets/user/data_raw/restez/README.genbank",
-  overwrite = TRUE)
+  overwrite = TRUE
+)
 
 # Also compress to tar archive for figshare
 restez_tar <- "_targets/user/data_raw/restez_sql_db.tar.gz"
@@ -135,7 +141,8 @@ archive::archive_write_files(
   files = c(
     "scratch/restez/sql_db",
     "scratch/restez/gb_release.txt",
-    "scratch/restez/README.genbank"),
+    "scratch/restez/README.genbank"
+  ),
   format = "tar",
   filter = "gzip"
 )
@@ -159,13 +166,16 @@ if (send_email) {
       glue::glue(
         "FTOL downloading of new GenBank release {latest_release} has \\
         finished on {Sys.time()}. Be sure to upload to FigShare and update \\
-        hash in R/setup.R")
+        hash in R/setup.R"
+      )
     )
 
   # Authenticate email server
   options(gargle_oauth_cache = ".secrets")
   secret_json <- list.files(
-    ".secrets", pattern = "client_secret.*json", full.names = TRUE)
+    ".secrets",
+    pattern = "client_secret.*json", full.names = TRUE
+  )
   gm_auth_configure(path = secret_json)
   gm_oauth_client()
   gm_auth("pteridogroup.no.reply@gmail.com")
