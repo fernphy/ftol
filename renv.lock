@@ -848,7 +848,7 @@
     },
     "ape": {
       "Package": "ape",
-      "Version": "5.7-1",
+      "Version": "5.8",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
@@ -863,7 +863,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "10705eec964349f270504754d8fe8ef1"
+      "Hash": "16b5ff4dff0ead9ea955f62f794b1535"
     },
     "apex": {
       "Package": "apex",
@@ -3001,7 +3001,7 @@
     },
     "phangorn": {
       "Package": "phangorn",
-      "Version": "2.11.1",
+      "Version": "2.12.1",
       "Source": "Bioconductor",
       "Repository": "RSPM",
       "Requirements": [
@@ -3021,7 +3021,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "a5b899ce1f3af942e16627a995e32ba2"
+      "Hash": "eea536597b96f3df44a2d6b963ac280e"
     },
     "phytools": {
       "Package": "phytools",
@@ -3305,11 +3305,11 @@
       "RemoteUsername": "fernphy",
       "RemoteRepo": "pteridocat",
       "RemoteRef": "main",
-      "RemoteSha": "ef7310e6d3d3f1db4fb4360addcc181be315d59c",
+      "RemoteSha": "1a9bb1c112e7ad004db4c687728935fa1867ea4a",
       "Requirements": [
         "R"
       ],
-      "Hash": "fe6205d2aad8dd3e83ebd3be1eaf960f"
+      "Hash": "a3f34a14092cb783972ab09ebcd3794d"
     },
     "purrr": {
       "Package": "purrr",
