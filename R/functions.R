@@ -9103,3 +9103,8 @@ get_docker_tag <- function() {
   )
   return(tag)
 }
+
+#' Get last error
+last_error <- function() {
+  tar_progress() |> dplyr::filter(progress == "errored")
+}
