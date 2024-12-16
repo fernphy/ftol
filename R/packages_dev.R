@@ -14,3 +14,4 @@ library(devtools) # used by restrez
 library(mirai) # parallelization
 library(nanonext) # parallelization
 library(crew) # parallelization
+library(yaml) # parse dependencies within R Markdown files

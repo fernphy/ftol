@@ -1,3 +1,6 @@
+# Use pak for renv package installations
+options(renv.config.pak.enabled = TRUE)
+
 source("renv/activate.R")
 
 # Increase time-limit for downloads
