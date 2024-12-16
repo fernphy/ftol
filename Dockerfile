@@ -247,7 +247,10 @@ COPY ./renv.lock /tmp/project
 WORKDIR /tmp/project
 
 # Restore, but don't use cache
-RUN Rscript -e 'install.packages("renv"); renv::consent(provided = TRUE); renv::settings$use.cache(FALSE); renv::init(bare = TRUE); renv::restore()'
+COPY R/renv_install.R /tmp/project/renv_install.R
+
+RUN Rscript /tmp/project/renv_install.R && \
+  rm /tmp/project/renv_install.R
 
 ############
 ### Cron ###
