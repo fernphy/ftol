@@ -1978,7 +1978,8 @@ define_varieties_to_keep = function() {
     "Dicksonia lanata subsp. lanata",
     "Dryopteris simasakii var. simasakii",
     "Elaphoglossum peltatum f. peltatum",
-    "Hypolepis rugosula subsp. rugosula"
+    "Hypolepis rugosula subsp. rugosula",
+    "Lastraea glabra var. glabra Brack."
   )
 }
 
@@ -4395,6 +4396,8 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
           matched_name == "Asplenium obliquissimum (Hayata) Sugim. & Kurata" ~ "checked_ok",
         query == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. L1" &
           matched_name == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z." ~ "checked_ok",
+        query == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. Li" &
+          matched_name == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z." ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
@@ -6622,7 +6625,10 @@ ncbi_db_names_to_exclude <- function() {
     "Polystichum imbricans subsp. curtum (Ewan) D.H.Wagner, 1979",
     "Tapeinidium denhamii (Hook.) C.Chr., 1905",
     "Dryopteris sabae (Franch. & Sav.) C.Chr.",
-    "Danaea sellowiana C.Presl, 1845"
+    "Danaea sellowiana C.Presl, 1845",
+    "Grammitis reinwardtii Blume, 1828",
+    "Lindsaea propinqua Hook., 1835",
+    "Botrychium lanuginosum Wall. ex Hook. & Grev., 1828"
     )
 }
 
