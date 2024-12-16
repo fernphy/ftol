@@ -20,6 +20,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 # libharfbuzz-dev, libfribidi-dev for R package textshaping
 # librdf0-dev for redland -> R package deposits
 # cmake -> R package nanonext
+# libpng-dev -> R package png
+# libbz2-dev liblzma-devel -> R package Rhtslib -> R package gmbecker/genbankr
+
+# python3-biopython biopython for superCRUNCH
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -65,6 +69,10 @@ RUN apt-get update \
     liblzma-dev \
     libbz2-dev \
     libsecret-1-0 \
+    libpng-dev \
+    liblzma-dev \
+    libbz2-dev \
+    python3-biopython \
   && apt-get clean
 
 ########################
@@ -73,8 +81,8 @@ RUN apt-get update \
 
 # biopython for superCRUNCH
 
-RUN curl https://bootstrap.pypa.io/get-pip.py | python \
-  && pip install biopython
+# RUN curl https://bootstrap.pypa.io/get-pip.py | python \
+#   && pip install biopython
 
 #############################
 ### Other custom software ###
