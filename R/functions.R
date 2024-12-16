@@ -7767,7 +7767,8 @@ make_sanger_sampling_tbl <- function(
 #' @return Tibble
 #'
 get_result_monophy <- function(solution, taxlevels) {
-  MonoPhy::GetResultMonophyly(solution, taxlevels = taxlevels) %>%
+  MonoPhy::GetResultMonophyly(
+    solution, taxlevels = as.numeric(taxlevels)) %>%
   magrittr::extract2(1) %>%
   rownames_to_column("taxon") %>%
   as_tibble() %>%
