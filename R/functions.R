@@ -276,7 +276,8 @@ resolve_fern_fossils <- function(version) {
   switch(
     version,
     "1.0.1" = contentid::resolve(
-      "hash://sha256/153139fbb560442ad46770a04be370f5884cd6396e0eaf05d6875513f80d072c" # nolint
+      "hash://sha256/153139fbb560442ad46770a04be370f5884cd6396e0eaf05d6875513f80d072c", # nolint
+      registries = "local.tsv"
     ),
     stop("must provide valid ferncal version")
   )

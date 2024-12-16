@@ -813,7 +813,8 @@ tar_plan(
   # (consensus tree only)
   ts_fossil_calibration_points = parse_ts_calibrations(
     testo_sundue_2016_si_path = contentid::resolve(
-      "hash://sha256/c629f4617e7e2329a10cb1b207b82a6720653a67eafcaaa97cc6ee891ae7fdf7" # nolint
+      "hash://sha256/3438efbd1fbc3513dd6bebe2cd474f59f8db0009bd6cda290190f5b5364ee6b0", # nolint
+      registries = "local.tsv"
     )
   ),
   ts_fossil_node_species_map = make_ts_fossil_species_map(
