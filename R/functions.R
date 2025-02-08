@@ -1979,7 +1979,8 @@ define_varieties_to_keep = function() {
     "Dryopteris simasakii var. simasakii",
     "Elaphoglossum peltatum f. peltatum",
     "Hypolepis rugosula subsp. rugosula",
-    "Lastraea glabra var. glabra Brack."
+    "Lastraea glabra var. glabra Brack.",
+    "Dryopteris wallichiana subsp. wallichiana"
   )
 }
 
