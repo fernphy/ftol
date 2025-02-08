@@ -6641,7 +6641,10 @@ ncbi_db_names_to_exclude <- function() {
     "Danaea sellowiana C.Presl, 1845",
     "Grammitis reinwardtii Blume, 1828",
     "Lindsaea propinqua Hook., 1835",
-    "Botrychium lanuginosum Wall. ex Hook. & Grev., 1828"
+    "Botrychium lanuginosum Wall. ex Hook. & Grev., 1828",
+    "Matteuccia struthiopteris var. acutiloba Ching, 1974",
+    "Davallia tasmanii Field, 1890",
+    "Asplenium oldhamii Hance, 1866"
     )
 }
 
