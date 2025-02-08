@@ -4407,6 +4407,10 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
           matched_name == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z." ~ "checked_ok",
         query == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. Li" &
           matched_name == "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z." ~ "checked_ok",
+        query == "Lomariopsis cochinchinensis Fee Fee" &
+          matched_name == "Lomariopsis cochinchinensis Fée" ~ "checked_ok",
+        query == "Thelypteris arida (D.Don) C.V.Morton" &
+          matched_name == "Thelypteris arida (D. Don) Morton" ~ "checked_ok",
       TRUE ~ match_type
       )
     ) %>%
