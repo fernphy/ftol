@@ -595,6 +595,7 @@ tar_plan(
       taxon = c(
         # Commented list of false positives from past runs
         "Abrodictyum",
+        "Abacopteris",
         # "Adiantopsis",
         # "Amauropelta",
         # "Arachniodes",
@@ -606,14 +607,17 @@ tar_plan(
         # "Dasygrammitis",
         "Dicksonia",
         "Didymoglossum",
+        "Dipteris",
         # "Diploblechnum",
         "Dryopteridoideae",
         # "Dryopteris",
         "Goniopteris",
+        "Leucotrichum",
         # "Lomariocycas",
         # "Lytoneuron",
         "Metathelypteris",
         "Meniscium",
+        "Mesophlebion",
         # "Notogrammitis",
         "Olfersia",
         # "Ormopteris",
@@ -621,8 +625,10 @@ tar_plan(
         # "Pneumatopteris",
         "Polybotryoideae",
         "Polybotrya",
+        "Polystichopsis",
         # "Polypodiales",
         "Polystichum",
+        "Pronephrium",
         "Pseudocyclosorus",
         "Reholttumia",
         "Saccoloma",
@@ -631,8 +637,8 @@ tar_plan(
         "Syngramma",
         "Thelypteris",
         "Trichomanes",
-        "Xiphopterella"
-        # "Tomophyllum"
+        "Xiphopterella",
+        "Tomophyllum"
       )
     )
   ),
