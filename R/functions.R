@@ -4376,6 +4376,10 @@ resolve_pterido_plastome_names <- function(plastome_ncbi_names_raw,
     filter(!(
       query == "Asplenium scolopendrium var. scolopendrium" &
       reference == "Asplenium scolopendrium Lour.")
+    ) |>
+    # Exclude samples only identified to species
+    filter(
+      !str_detect(query, " sp\\.$")
     )
 
   # Resolve synonyms
