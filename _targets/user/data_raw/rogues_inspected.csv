@@ -80,3 +80,6 @@ Diplazium_flexuosum,OR099919,rbcL,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplen
 Diplazium_flexuosum,OR100030,trnL-trnF,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplenium
 Diplazium_flexuosum,OR100250,rps4-trnS,Athyriaceae,Aspleniaceae,TRUE,Blasts to Asplenium
 Mickelia_nicotianifolia,KJ628855,rbcL,Dryopteridaceae,Tectariaceae,TRUE,Blasts to Tectaria
+Desmophlebium_lechleri,KT329415,trnL-trnF,Desmophlebiaceae,Diplaziopsidaceae,FALSE,Close enough; small families in eupoly II
+Lomariopsis_leptocarpa,PP560641,rbcL,Lomariopsidaceae,Dryopteridaceae,TRUE,GenBank synonymy is wrong
+Lomariopsis_leptocarpa,PP561639,trnL-trnF,Lomariopsidaceae,Dryopteridaceae,TRUE,GenBank synonymy is wrong

@@ -3118,7 +3118,11 @@ check_rogue_taxonomy <- function(
     mutate(
       real_rogue = case_when(
         q_family == gb_family ~ TRUE,
-        TRUE ~ FALSE
+        # Make an exception for Teratophyllum leptocarpum (Fee) Holttum
+        # these accessions are NOT actually rogues, but we deal with that
+        # in verify_rogues()
+        accession %in% c("PP560641", "PP561639") ~ TRUE,
+        .default = FALSE
       )
     ) %>%
     # Do any manual fixes needed to remove mistaken rogues
