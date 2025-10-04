@@ -71,7 +71,7 @@ Woodwardia_kempii,KM606992,rps4,Blechnaceae,Cystopteridaceae,TRUE,NA
 Woodwardia_kempii,KM606992,rps4-trnS,Blechnaceae,Cystopteridaceae,TRUE,NA
 Tectaria_decurrens,OK480088,atpB,Tectariaceae,Nephrolepidaceae,TRUE,NA
 Schizaea_elegans,AF448932,trnL-trnF,Schizaeaceae,Anemiaceae,FALSE,Online BLAST matches to Schizaeaceae plastomes
-Lomariopsis_guineensis,EF040663,atpB,Lomariopsidaceae,Dryopteridaceae,TRUE,Blasts mostly to Dryopteris but only 300 bp of atpB 
+Lomariopsis_guineensis,EF040663,atpB,Lomariopsidaceae,Dryopteridaceae,TRUE,Blasts mostly to Dryopteris but only 300 bp of atpB
 Tectaria_ferruginea,OK480092,atpB,Tectariaceae,Dryopteridaceae,TRUE,Blasts to Bolbitis
 Myriopteris_aurea,OP710730,rbcL,Pteridaceae,Aspleniaceae,TRUE,Blasts to non ferns
 Pteris_orizabae,OQ289854,matK,Pteridaceae,Salviniaceae,TRUE,Blasts to non ferns (Anthurium)
@@ -83,3 +83,67 @@ Mickelia_nicotianifolia,KJ628855,rbcL,Dryopteridaceae,Tectariaceae,TRUE,Blasts t
 Desmophlebium_lechleri,KT329415,trnL-trnF,Desmophlebiaceae,Diplaziopsidaceae,FALSE,Close enough; small families in eupoly II
 Lomariopsis_leptocarpa,PP560641,rbcL,Lomariopsidaceae,Dryopteridaceae,TRUE,GenBank synonymy is wrong
 Lomariopsis_leptocarpa,PP561639,trnL-trnF,Lomariopsidaceae,Dryopteridaceae,TRUE,GenBank synonymy is wrong
+Adiantum_braunii,PV006829,rbcL,Pteridaceae,Blechnaceae,TRUE,NA
+Amauropelta_oligocarpa,PV006719,rbcL,Thelypteridaceae,Polypodiaceae,TRUE,NA
+Amauropelta_pilosohispida,PV006751,rbcL,Thelypteridaceae,Polypodiaceae,TRUE,NA
+Amauropelta_pilosohispida,PV006870,rbcL,Thelypteridaceae,Tectariaceae,TRUE,NA
+Asplenium_sphaerosporum,PV006918,rbcL,Aspleniaceae,Cyatheales,TRUE,NA
+Blechnum_appendiculatum,PV006743,rbcL,Blechnaceae,Polypodiaceae,TRUE,NA
+Blechnum_polypodioides,PV006806,rbcL,Blechnaceae,Dryopteridaceae,TRUE,NA
+Blechnum_polypodioides,PV006916,rbcL,Blechnaceae,Cyatheales,TRUE,NA
+Campyloneurum_angustifolium,PV006986,rbcL,Polypodiaceae,Pteridaceae,TRUE,NA
+Cochlidium_serrulatum,PV006798,rbcL,Polypodiaceae,Dryopteridaceae,TRUE,NA
+Ctenitis_interjecta,PV007157,rbcL,Dryopteridaceae,Pteridaceae,TRUE,NA
+Diplazium_altissimum,PV006795,rbcL,Athyriaceae,Dryopteridaceae,TRUE,NA
+Diplazium_diplazioides,PV007000,rbcL,Athyriaceae,Ophioglossaceae,TRUE,NA
+Diplazium_lindbergii,PV007026,rbcL,Athyriaceae,Psilotaceae,TRUE,NA
+Diplazium_ternatum,PV006955,rbcL,Athyriaceae,Pteridaceae,TRUE,NA
+Diplopterygium_bancroftii,PV006840,rbcL,Gleicheniaceae,Athyriaceae,TRUE,NA
+Diplopterygium_bancroftii,PV007149,rbcL,Gleicheniaceae,Pteridaceae,TRUE,NA
+Diplopterygium_bancroftii,PV007182,rbcL,Gleicheniaceae,Pteridaceae,TRUE,NA
+Dryopteris_cinnamomea,PV006755,rbcL,Dryopteridaceae,Polypodiaceae,TRUE,NA
+Elaphoglossum_paleaceum,PV006938,rbcL,Dryopteridaceae,Pteridaceae,TRUE,NA
+Elaphoglossum_peltatum,PV006876,rbcL,Dryopteridaceae,Dennstaedtiaceae,TRUE,NA
+Elaphoglossum_sartorii,PV006749,rbcL,Dryopteridaceae,Polypodiaceae,TRUE,NA
+Elaphoglossum_sartorii,PV006781,rbcL,Dryopteridaceae,Polypodiaceae,TRUE,NA
+Elaphoglossum_setosum,PV006951,rbcL,Dryopteridaceae,Pteridaceae,TRUE,NA
+Gleichenella_pectinata,PV007147,rbcL,Gleicheniaceae,Pteridaceae,TRUE,NA
+Goniopteris_hatchii,PV006813,rbcL,Thelypteridaceae,Dryopteridaceae,TRUE,NA
+Goniopteris_paucipinnata,PV006777,rbcL,Thelypteridaceae,Polypodiaceae,TRUE,NA
+Hymenasplenium_riparium,PV006726,rbcL,Aspleniaceae,Polypodiaceae,TRUE,NA
+Hymenasplenium_riparium,PV006824,rbcL,Aspleniaceae,Dryopteridaceae,TRUE,NA
+Hymenophyllum_polyanthos,PV006901,rbcL,Hymenophyllaceae,Aspleniaceae,TRUE,NA
+Hymenophyllum_polyanthos,PV006998,rbcL,Hymenophyllaceae,Lindsaeaceae,TRUE,NA
+Lomariopsis_recurvata,PV006814,rbcL,Lomariopsidaceae,Dryopteridaceae,TRUE,NA
+Malaifilix_grandidentata,KU605090,rps4,Pteridryaceae,Tectariaceae,FALSE,close enough
+Malaifilix_grandidentata,KU605090,rps4-trnS,Pteridryaceae,Tectariaceae,FALSE,close enough
+Malaifilix_grandidentata,KU605113,trnL-trnF,Pteridryaceae,Tectariaceae,FALSE,close enough
+Marattia_weinmanniifolia,PV006745,rbcL,Marattiaceae,Polypodiaceae,TRUE,NA
+Marattia_weinmanniifolia,PV006818,rbcL,Marattiaceae,Dryopteridaceae,TRUE,NA
+Parapolystichum_effusum,PV007150,rbcL,Dryopteridaceae,Pteridaceae,TRUE,NA
+Pecluma_alfredii,PV007070,rbcL,Polypodiaceae,Hymenophyllaceae,TRUE,NA
+Pecluma_atra,PV006826,rbcL,Polypodiaceae,Dryopteridaceae,TRUE,NA
+Pecluma_ptilota,PV006832,rbcL,Polypodiaceae,Blechnaceae,TRUE,NA
+Pelazoneuron_ovatum,PV006783,rbcL,Thelypteridaceae,Polypodiaceae,TRUE,NA
+Plenasium_banksiifolium,FJ262721,trnL-trnF,Osmundaceae,Salviniaceae,TRUE,NA
+Pleopeltis_fallax,PV007037,rbcL,Polypodiaceae,Marattiaceae,TRUE,NA
+Pleopeltis_lepidotricha,PV007017,rbcL,Polypodiaceae,Marattiaceae,TRUE,NA
+Pleopeltis_plebeia,PV006861,rbcL,Polypodiaceae,Thelypteridaceae,TRUE,NA
+Pleopeltis_plebeia,PV006863,rbcL,Polypodiaceae,Thelypteridaceae,TRUE,NA
+Pleopeltis_plebeia,PV007041,rbcL,Polypodiaceae,Anemiaceae,TRUE,NA
+Pleopeltis_villagranii,PV006995,rbcL,Polypodiaceae,Hymenophyllaceae,TRUE,NA
+Polydictyum_menyanthidis,MG517595,trnL-trnF,Pteridryaceae,Tectariaceae,FALSE,close enough
+Polypodium_conterminans,PV006885,rbcL,Polypodiaceae,Saccolomatineae,TRUE,NA
+Polypodium_plesiosorum,PV006851,rbcL,Polypodiaceae,Thelypteridaceae,TRUE,NA
+Polystichum_hartwegii,PV006910,rbcL,Dryopteridaceae,Aspleniaceae,TRUE,NA
+Polystichum_hartwegii,PV006931,rbcL,Dryopteridaceae,Pteridaceae,TRUE,NA
+Pteridrys_microthecia,KF709518,trnL-trnF,Pteridryaceae,Tectariaceae,FALSE,close enough
+Pteridrys_microthecia,KJ196630,trnL-trnF,Pteridryaceae,Tectariaceae,FALSE,close enough
+Pteridrys_vietnamensis,OR087337,rps4,Pteridryaceae,Tectariaceae,FALSE,close enough
+Pteris_quadriaurita,PV006736,rbcL,Pteridaceae,Polypodiaceae,TRUE,NA
+Pteris_quadriaurita,PV006804,rbcL,Pteridaceae,Dryopteridaceae,TRUE,NA
+Tapeinidium_luzonicum,U18646,rbcL,Lindsaeaceae,Dennstaedtiaceae,TRUE,NA
+Davallia_corniculata,MT657534,rbcL,Davalliaceae,Dryopteridaceae,TRUE,NA
+Polypodium_rhodopleuron,FJ825695,rbcL,Polypodiaceae,Arthropteridaceae,TRUE,NA
+Pteridrys_cnemidaria,KF709473,atpB,Pteridryaceae,Dryopteridaceae,TRUE,NA
+Sitobolium_punctilobulum,MF349755,rbcL,Dennstaedtiaceae,Athyriaceae,TRUE,NA

@@ -23,21 +23,20 @@ results_dir <- "_targets/user/results"
 tar_option_set(
   workspace_on_error = TRUE,
   packages = workflow_packages,
-  imports = c("taxastand", "pteridocat"),
+  imports = c("taxastand"),
   controller = crew_controller_local(workers = 20)
 )
 
 tar_plan(
   # Load data ----
-  # Pteridocat taxonomic database
-  pteridocat_db = load_pteridocat(),
+  # - PPG taxonomic database (https://github.com/pteridogroup/ppg)
+  ppg_full = load_ppg(ver = "0.0.0.9000"),
+  # - Format for matching species names with taxastand
+  ppg_db = format_ppg_for_ts(ppg_full, ppg_names_to_add),
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
-  tar_file_read(
-    ppgi_taxonomy,
-    path(data_raw, "ppgi_taxonomy_mod.csv"),
-    read_csv(!!.x)
-  ),
+  ppg_tl = dwc_to_tl(ppg_full),
+  ppgi_taxonomy = taxlist_to_df(ppg_tl),
   # Equisetum subgenus level taxonomy
   tar_file(equisteum_subgen_path, path(data_raw, "equisetum_subgenera.csv")),
   # List of coding genes to extract from plastomes
@@ -59,6 +58,18 @@ tar_plan(
   tar_file_read(
     accs_exclude,
     path(data_raw, "accs_exclude.csv"),
+    read_csv(!!.x)
+  ),
+  # Manually matched names
+  tar_file_read(
+    manual_matches,
+    path(data_raw, "pterido_manual_match.csv"),
+    read_csv(!!.x)
+  ),
+  # Names to add to PPG (ideally, shouldn't need to do this)
+  tar_file_read(
+    ppg_names_to_add,
+    path(data_raw, "ppg_names_to_add.csv"),
     read_csv(!!.x)
   ),
   # Reference alignments for assembling genes
@@ -112,11 +123,15 @@ tar_plan(
     pattern = map(target_loci),
     deployment = "main"
   ),
-  raw_meta = unique(raw_meta_all) %>%
-    # Drop excluded sequences from metadata
-    anti_join(accs_exclude, by = "accession") %>%
-    # Limit to accession in local GenBank database
-    inner_join(accs_in_local_db, by = "accession"),
+  # Specify custom NCBI taxonids
+  custom_ncbi_taxids = get_custom_ncbi_taxids(),
+  # Filter out excluded seqs and update with custom ids
+  raw_meta = filter_and_update_raw_meta(
+    raw_meta_all,
+    accs_exclude,
+    accs_in_local_db,
+    custom_ncbi_taxids
+  ),
   # Fetch sequences from local GenBank database
   tar_target(
     fern_sanger_seqs_raw,
@@ -156,9 +171,9 @@ tar_plan(
   ncbi_names_full = clean_ncbi_names(ncbi_names_raw),
   # Exclude invalid names (hybrids, taxa not identified to species level)
   ncbi_names_query = exclude_invalid_ncbi_names(ncbi_names_full),
-  # Parse reference names
-  pc_ref_names = ts_parse_names(
-    unique(pteridocat_db$scientificName),
+  # Parse reference names for taxastand
+  ppg_ref_names = ts_parse_names(
+    unique(ppg_db$scientificName),
     tbl_out = TRUE, quiet = TRUE
   ),
   # Resolve names, round 1: NCBI accepted scientific names
@@ -166,14 +181,15 @@ tar_plan(
   # - match names to reference
   match_results_raw_round_1 = ts_match_names(
     query = ncbi_names_query_round_1$scientific_name,
-    reference = pc_ref_names,
+    reference = ppg_ref_names,
+    manual_match = manual_matches,
     max_dist = 5, match_no_auth = TRUE,
     match_canon = TRUE, collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep
   ),
   # - resolve synonyms
   match_results_resolved_round_1 = ts_resolve_names(
-    match_results_raw_round_1, pteridocat_db
+    match_results_raw_round_1, ppg_db
   ),
   # Resolve names, round 2: NCBI synonym scientific names
   ncbi_names_query_round_2 = select_ncbi_names_round_2(
@@ -181,13 +197,14 @@ tar_plan(
   ),
   match_results_raw_round_2 = ts_match_names(
     query = ncbi_names_query_round_2$scientific_name,
-    reference = pc_ref_names,
+    reference = ppg_ref_names,
+    manual_match = manual_matches,
     max_dist = 5, match_no_auth = TRUE,
     match_canon = TRUE, collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep
   ),
   match_results_resolved_round_2 = ts_resolve_names(
-    match_results_raw_round_2, pteridocat_db
+    match_results_raw_round_2, ppg_db
   ),
   # Resolve names, round 3: NCBI species without author
   ncbi_names_query_round_3 = select_ncbi_names_round_3(
@@ -196,15 +213,17 @@ tar_plan(
   ),
   match_results_raw_round_3 = ts_match_names(
     query = ncbi_names_query_round_3$species,
-    reference = pc_ref_names,
+    reference = ppg_ref_names,
+    manual_match = manual_matches,
     max_dist = 5, match_no_auth = TRUE,
     match_canon = TRUE, collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep
   ),
   match_results_resolved_round_3 = ts_resolve_names(
-    match_results_raw_round_3, pteridocat_db
+    match_results_raw_round_3, ppg_db
   ),
   # Combine name resolution results
+  # match_results_resolved_all_auto =
   match_results_resolved_all =
     combined_match_results(
       ncbi_names_query = ncbi_names_query,
@@ -213,8 +232,12 @@ tar_plan(
       match_results_resolved_round_3
     ),
   # CHECKPOINT: Inspect unmatched and fuzzily matched names
-  # If any names need to be inspected, make_ncbi_accepted_names_map() will error
-  pterido_names_to_inspect = inspect_ts_results(match_results_resolved_all),
+  # If any names still need to be inspected, make_ncbi_accepted_names_map()
+  # will error.
+  # Update _targets/user/data_raw/pterido_manual_match.csv
+  # as needed
+  pterido_names_to_inspect = inspect_ts_results(
+    match_results_resolved_all),
   # Map NCBI names to accepted names
   ncbi_accepted_names_map = make_ncbi_accepted_names_map(
     match_results_resolved_all, pterido_names_to_inspect
@@ -262,7 +285,7 @@ tar_plan(
   # - Make sure family taxonomy is correct
   sanger_seqs_rogues_candidates = check_rogue_taxonomy(
     sanger_seqs_rogues_raw,
-    raw_meta_all,
+    raw_meta,
     ncbi_names_query,
     ppgi_taxonomy
   ),
@@ -324,7 +347,7 @@ tar_plan(
       "hash://sha256/233607dc3945dc0f764c44d1171f8bd8bdfe50c4028c9c44e82965e5a5f11fdc", # nolint
       registries = "local.tsv"
     ),
-    pteridocat = pteridocat_db
+    tax_ref = ppg_db
   ),
   # Load manual inclusion list
   tar_file_read(
@@ -386,7 +409,8 @@ tar_plan(
   # (drops accession if name could not be resolved and fix some names)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
     plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
-    ref_names_parsed = pc_ref_names, ref_names_data = pteridocat_db
+    ref_names_parsed = ppg_ref_names, ref_names_data = ppg_db,
+    manual_matches = manual_matches
   ),
   # Extract plastome sequences
   # FASTA files for each accession in seqtbl format

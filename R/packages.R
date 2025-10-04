@@ -7,7 +7,6 @@ workflow_packages <- c(
   "fs",
   "future",
   "future.callr",
-  "pteridocat",
   "taxastand",
   "tflow",
   "tidyverse",

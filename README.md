@@ -98,6 +98,8 @@ docker run \
   -w /wd \
   -e USERID=$(id -u) \
   -e GROUPID=$(id -g) \
+  -v $HOME/.gitconfig:/home/user/.gitconfig:ro \
+  -v $HOME/.ssh:/home/user/.ssh:ro \
   joelnitta/ftol:latest bash
 ```
 

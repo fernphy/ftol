@@ -121,11 +121,11 @@ RUN git clone https://github.com/blackrim/treePL.git \
 ### gnparser ###
 
 ENV APP_NAME=gnparser
-ENV GNP_VERSION=1.7.3
+ENV GNP_VERSION=1.11.6
 ENV DEST=$APPS_HOME/$APP_NAME/$GNP_VERSION
-RUN wget https://github.com/gnames/gnparser/releases/download/v$GNP_VERSION/gnparser-v$GNP_VERSION-linux.tar.gz \
-  && tar xf $APP_NAME-v$GNP_VERSION-linux.tar.gz \
-  && rm $APP_NAME-v$GNP_VERSION-linux.tar.gz \
+RUN wget https://github.com/gnames/gnparser/releases/download/v$GNP_VERSION/gnparser-v$GNP_VERSION-linux-x86.tar.gz \
+  && tar xf $APP_NAME-v$GNP_VERSION-linux-x86.tar.gz \
+  && rm $APP_NAME-v$GNP_VERSION-linux-x86.tar.gz \
   && mv "$APP_NAME" /usr/local/bin/
 
 ### IQ Tree v2 ###
@@ -258,7 +258,7 @@ RUN Rscript /tmp/project/renv_install.R && \
 
 # cron is used to run R/setup_gb.R automatically once per day
 
-RUN apt-get -y install cron
+RUN apt-get update && apt-get -y install cron
 
 # Write script to launch R/setup_gb.R from /wd/
 RUN echo "#!/bin/bash" >> /home/setup_gb.sh && \

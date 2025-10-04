@@ -1,4 +1,4 @@
-This README.txt file was generated on 2024-11-04 by Joel Nitta
+This README.txt file was generated on 2025-07-19 by Joel Nitta
 
 --------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@ accs_exclude.csv: GenBank accessions to exclude from analysis.
 
 Number of variables: 3
 
-Number of cases/rows: 61
+Number of cases/rows: 86
 
 Variable list:
 
@@ -147,7 +147,7 @@ Missing data codes: No missing data.
 
 Specialized formats or other abbreviations used: None.
 
-MD5 checksum: 0937c4e6234fad0dc285d8ba308f7c35
+MD5 checksum: d33a0b7d6e1a9a1841eceb266cdf8db6
 
 --------------------------------------------------------------------------------
 
@@ -183,7 +183,7 @@ equisetum_subgenera.csv: Equisteum subgenera
 
 Number of variables: 2
 
-Number of cases/rows: 47
+Number of cases/rows: 49
 
 Variable list:
 
@@ -194,7 +194,7 @@ Missing data codes: Nothing entered if there is no assigned subgenus.
 
 Specialized formats or other abbreviations used: None.
 
-MD5 checksum: 1b964b8ff9de5557d52a7f3047f7ab5a
+MD5 checksum: ceffaa1acc293a35dfeb7e5b7ee89c73
 
 --------------------------------------------------------------------------------
 

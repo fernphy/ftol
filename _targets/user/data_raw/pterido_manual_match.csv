@@ -1,408 +1,313 @@
-query,matched_name,matched_status,query_match_taxon_agree,use_query_as_synonym,use_query_as_accepted,use_query_as_new,namePublishedIn,nameAccordingTo,taxonRemarks,notes,use_matched_name
-Adiantum comorense (Tardieu) Verdc.,Adiantum comoroense (Tardieu) Verdc.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Adiantum dentatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum dentatum A.H.Wang, F.G.Wang & F.W.Xing",accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Adiantum obovatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum obovatum A.H.Wang, F.G.Wang & F.W.Xing",accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Allantodia okudairai (Makino) Ching,Allantodia okudairae (Makino) Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Alsophila weidenbrueckiae Lehnert,Alsophila weidenbrueckii Lehnert,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Anemia caffrorum (L.) Christenh.,Anemia afrorum (L.) Christenh.,accepted,FALSE,0,0,0,NA,NA,"https://www.ipni.org/n/77110541-1 Basionym treated as an orthographical variant, Art. 61.6, ICN (Madrid).",NA,1
-Anemia muenchii Christ,Anemia munchii Christ,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Anemia phyllitidis var. phyllitidis,Anemia phyllitidis (L.) Sw.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Arachniodes coadnata (Ching) Nakaike,Arachniodes coadunata (Ching) Nakaike,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes emeiensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes heyuanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes hunanensis Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes jinfushanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes yunnanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes baiseensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes fujiangensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Arachniodes fujianensis Ching,Arachniodes gijiangensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes sichuanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes gizushanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes jiangxiensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes yinjiangensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes guanxianensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes maoshanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes lushanensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes fujianensis Ching,Arachniodes pianmaensis Ching,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes ziyunshanensis Y.T.Hsieh,Arachniodes futeshanensis Y.T.Hsieh,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes ziyunshanensis Y.T.Hsieh,Arachniodes nibashanensis Y.T.Hsieh,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Arachniodes ziyunshanensis Y.T.Hsieh,Arachniodes ziyunshanensis Y.T.Xie,,,,,,,,,,1
-Asplenium actinopteroides Peter,Asplenium actiniopteroides Peter,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Asplenium anceps R.Br.,Asplenium dentex R.Br.,unchecked,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium anceps R.Br.,Asplenium anceps Sol. ex Lowe,,,,,,,,,,1
-Asplenium ceii Pic.Serm.,Asplenium pocsii Pic.Serm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium ceii Pic.Serm.,Asplenium smedsii Pic.Serm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium ceii Pic.Serm.,Asplenium ceii Pic.Ser.,,,,,,,,,,1
-Asplenium christii Hieron.,Asplenium marlothii Hieron.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium staudtii Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium preussii Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium holstii Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium lorentzii Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium uhligii Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium christii Hieron.,Asplenium christii Hier.,,,,,,,,,,1
-Asplenium cuneifolium subsp. cuneifolium,Asplenium cultrifolium L.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium cuneifolium subsp. cuneifolium,Asplenium cuneifolium subsp. cuneifolium,,,,,,,,,,1
-Asplenium dalhousiae Hook.,Asplenium dalhousieae Hook.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Asplenium emarginatum P.Beauv.,Asplenium marginatum Wall.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium emarginatum P.Beauv.,Asplenium emarginatum Pal.,,,,,,,,,,1
-Asplenium erectum Bory ex Willd.,Asplenium acutum Bory ex Willd.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium erectum Bory ex Willd.,Asplenium erectum Bory; Willd.,,,,,,,,,,1
-Asplenium fissum Kit. ex Willd.,Asplenium obtusum Kit. ex Willd.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium fissum Kit. ex Willd.,Asplenium fissum Kit.; Willd.,,,,,,,,,,1
-Asplenium flaccidum subsp. flaccidum,Asplenium fragilis ,unchecked,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium flaccidum subsp. flaccidum,Asplenium flaccidum Bonap.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Asplenium fontanum subsp. fontanum,Asplenium linza Ces.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium fontanum subsp. fontanum,Asplenium dentatum L.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium fontanum subsp. fontanum,Asplenium costale Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium fontanum subsp. fontanum,Asplenium cristatum ,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium formosae H.Christ,Asplenium comosum Christ,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium formosae H.Christ,Asplenium formosae Christ,,,,,,,,,,1
-Asplenium incurvatum Fee Fee,Asplenium curvatum Fée,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium incurvatum Fee Fee,Asplenium incurvatum F�e,,,,,,,,,,1
-Asplenium lividum Mett.,Asplenium lividum Mett.; Kuhn,,,,,,,,,,1
-Asplenium lividum Mett.,Asplenium amoenum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium mutilum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium nitidum Sw.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium obtusum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium rigidum Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium niponicum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium donianum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium vastum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium alienum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium dubium Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium nervosum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium salignum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium lividum Mett.,Asplenium striatum Mett.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium loriceum C.Chr.,Asplenium loriceum Christ,,,,,,,,,,1
-Asplenium loriceum C.Chr.,Asplenium coriaceum Desv.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium loriceum C.Chr.,Asplenium martianum C.Chr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium loriceum C.Chr.,Asplenium coriaceum Roxb.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium loriceum C.Chr.,Asplenium coriaceum Bory,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium oldhami Hance,Asplenium oldhamii Hance,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Asplenium pseudoerectum Hieron.,Asplenium pseuderectum Hieron.,,,,,,,,,,1
-Asplenium pseudoerectum Hieron.,Asplenium pseudohorridum Hieron.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium sampsonii Hance,Asplenium sampsoni Hance,,,,,,,,,,1
-Asplenium sampsonii Hance,Asplenium jamesonii Hook.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium scleropium Homb. & Jacq.,Asplenium scleroprium Hombr. & Jacq.,,,,,,,,,,1
-Asplenium scleropium Homb. & Jacq.,Asplenium scleroprium Hombr. & Jacq.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium scolopendropsis J.Sm.,Asplenium scolopendrioides J.Sm.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Asplenium volkensii Hieron.,Asplenium sintenisii Hieron.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Asplenium volkensii Hieron.,Asplenium volkensii Hier.,,,,,,,,,,1
-Asplenium wilfordii Mett.,Asplenium wilfordii Mett.; Kuhn,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Athyrium bourgaei E.Fourn.,Athyrium bourgaeui Fourn.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Athyrium drepanopterum (Kunze) A.Braun ex Milde,Athyrium drepanopteron (Kunze) A.Braun ex Milde,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Athyrium rhachidosorum (Hand.-Mazz.) Ching,Athyrium rhachidisorum (Hand.-Mazz.) Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Blechnum x caudatum Cav.,Blechnum caudatum Cav.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Bolbitis gemmifera (Hieron.) C.Chr.,Bolbitis gemmifer (Hieron.) C.Chr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Botrychium lunaria var. lunaria,Botrychium lunaria var. lunaria,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Ceradenia ayapoyana M.Kessler & A.R.Sm.,Ceradenia ayopayana M.Kessler & A.R.Sm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Ceradenia madidiense M.Kessler & A.R.Sm.,Ceradenia madidiensis M.Kessler & A.R.Sm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Coniogramme rosthornii Hieron.,Coniogramme rosthorni Hieron.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Cranfillia fullagari (F.Muell.) Gasper & V.A.O.Dittrich,Cranfillia fullagarii (F.Muell.) Gasper & V.A.O.Dittrich,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Ctenitis cerea Li Bing Zhang & Yi F.Duan,Ctenitis cerea Li Bing Zhang & Y.F.Duan,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Cyathea milnei Hook.f.,Cyathea milnei Hk.; Hk.fil.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Cyathea milnei Hook.f.,Cyathea burkei Hook.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Cyathea milnei Hook.f.,Cyathea smithii Hook.f.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Cyathea squamipes H.Karst.,Cyathea squamipes Kl.; Karst.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Cyrtomium fortunei var. clivicola (Makino) Tagawa,Cyrtomium fortunei var. clivicolum (Makino) Tagawa,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Cystopteris chinensis Ching,Cystopteris chinensis (Ching) X.C.Zhang & R.Wei,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Davallia tasmani Field,Davallia tasmanii Field,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Diplazium balliviani Rosenst.,Diplazium bamlerianum Rosenst.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Diplazium balliviani Rosenst.,Diplazium ballivianii Rosenst.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Diplazium petrii Tardieu,Diplazium petri Tardieu,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Diplazium sibiricum var. sibiricum,Diplazium sibiricum (Turcz. ex Kunze) Sa.Kurata,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Doodia lyoni O.Deg.,Doodia lyonii Degen.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Dryopteris atrovirens C. Chr.,Dryopteris atrovirens C.Chr.apud Christ,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Dryopteris atrovirens C. Chr.,Dryopteris atrogrisea C.Chr.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Dryopteris atrovirens C. Chr.,Dryopteris atrorubens C.Chr.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Dryopteris christensenae (Ching) Li Bing Zhang,Dryopteris christenseniae (Ching) Li Bing Zhang,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Dryopteris remotepinnata Hayata,Dryopteris remotipinnata Hayata,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Dryopteris subbipinnata W.H. Wagner & Hobdy,Dryopteris subbipinnata W.H.Wagner & R.W.Hobdy,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Elaphoglossum backhousianum T.Moore,Elaphoglossum backhouseanum T.Moore,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Elaphoglossum dussii Underw. ex Maxon,Elaphoglossum dussii Underw. & Maxon,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Elaphoglossum nervosum (Bory) Christ,Elaphoglossum nervosum C.Chr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Elaphoglossum nidiforme Mickel,Elaphoglossum nidiformis Mickel,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Elaphoglossum nidiforme Mickel,Elaphoglossum ensiforme Mickel,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Elaphoglossum nidiforme Mickel,Elaphoglossum eximiiforme Mickel,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Elaphoglossum nidiforme Mickel,Elaphoglossum lanceiforme Mickel,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Elaphoglossum nidiforme Mickel,Elaphoglossum ornatiforme Mickel,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Elaphoglossum nidiforme Mickel,Elaphoglossum pallidiforme Mickel,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Equisetum x fontqueri Rothm.,Equisetum font-queri Rothm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Goniophlebium mengtzeense (Christ) Rodl-Linder,Goniophlebium mengtzeense (Christ) G.Roedl-Linder,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Hemionitis ekmanii Maxon,Hemionitis ekmanii (Maxon) Christenh.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-"Hymenasplenium tholiformis Liang Zhang, W.B.Ju & K.W.Xu","Hymenasplenium tholiforme Liang Zhang, W.B.Ju & K.W.Xu",accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Hymenophyllum apiculatum Mett.,Hymenophyllum apiculatum Mett.; Kuhn,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Lepisorus albertii (Regel) Ching,Lepisorus alberti (Regel) Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Lepisorus hsiaowutaiensis Ching & S.K.Wu,Lepisorus hsiawutaiensis Ching & S.K.Wu,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Lindsaea lancea var. lancea,Lindsaea lowei ht.,unchecked,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Lindsaea lancea var. lancea,Lindsaea lancea (L.) Bedd.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Lindsaea lancea var. lancea,Lindsaea elata Desv.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Lindsaea lancea var. lancea,Lindsaea longa Copel.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Lindsaea lancea var. lancea,Lindsaea blanda Mett.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Lindsaea lancea var. lancea,Lindsaea elegans Fée,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Lindsaea millefolia K.U.Kramer,Lindsaea millefolium K.U.Kramer,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Ophioderma redactophyllum Chantanaorr. & Li Bing Zhang,Ophioderma redactophylla Chantanaorr. & Li Bing Zhang,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pleopeltis angusta var. angusta,Pleopeltis angusta Bojer,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Polypodium subpetiolatum Hook.,Polypodium subpetiolatum Hk.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Polypodium subpetiolatum Hook.,Polypodium subserratum Hook.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Polypodium subpetiolatum Hook.,Polypodium subobliquatum Hook.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Polystichum chingiae Ching,Polystichum chunii Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Polystichum chingiae Ching,Polystichum chingae Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Polystichum chingiae Ching,Polystichum christii Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Polystichum cystostegia (Hook.) J.B.Armstr.,Polystichum cystostegium (Hook.) J.B.Armstr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Polystichum polyblepharum var. scabiosum Sa.Kurata,Polystichum polyblepharon var. scabiosum Sa.Kurata,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Polystichum rapense E.D.Br.,Polystichum rapense E.Brown,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pteris comans G.Forst.,Pteris comans Forst.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pteris inaequalis C.Presl,Pteris inaequalis Baker,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,"From Flora of China (http://www.efloras.org/florataxon.aspx?flora_id=2&taxon_id=200003374): Pteris sinensis was proposed as a replacement name for P. inaequalis Baker in the belief that this was a later homonym of P. inaequalis C. Presl (Tent. Pterid. 145. 1836). However, Presl�s name is a nomen nudum and was not therefore validly published (Melbourne Code, Art. 38.1(a)). Baker�s name is therefore legitimate and the correct name for this taxon.",1
-Pteris lydgatei (Baker) H.Christ,Pteris lidgatei (Baker) Christ,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pteris microptera Mett.,Pteris microptera Mett.; Kuhn,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pteris vittata 'nano',Pteris vittata L,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pyrrosia lanceolata Farw.,Pyrrosia lanceolatus (L.) Farw.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Pyrrosia matsudae (Hayata) Tagawa,Pyrrosia matsudai (Hayata) Tagawa,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-"Selliguea albipes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert","Selliguea albopes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert",accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Selliguea feeoides Copel.,Selliguea feeioides Copel.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Serpocaulon menisciifolium (Langsd. & Fisch.) A.R.Sm.,Serpocaulon meniscifolium (Langsd. & Fisch.) A.R.Sm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Sphaerostephanos heterocarpos (Blume) Holttum,Sphaerostephanos heterocarpus (Blume) Holttum,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Sphaerostephanos polycarpos (Blume) Copel.,Sphaerostephanos polycarpa (Blume) Copel.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Sticherus brackenridgei (Fourn.) St.John,Sticherus brackenridgii (Fourn.) H.St.John,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Sticherus tener Ching,Sticherus tenera (R.Br.) Ching,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Stigmatopteris ichtiosma (Sodiro) C.Chr.,Stigmatopteris ichthiosma (Sodiro) C.Chr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Syngramma vittiformis J.Sm.,Syngramma vittiforme J.Sm.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Tapeinidium denhami (Hook.) C.Chr.,Tapeinidium denhamii (Hook.) C.Chr.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Tectaria jardini (Mett.) E.D.Br.,Tectaria jardinii (Mett.) E.D.Br.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Tectaria melanocaulos (Blume) Copel.,Tectaria melanocaula (Blume) Copel.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Thelypteris hattorii var. nemoralis (Ching) Sa.Kurata,Thelypteris hattori var. nemoralis (Ching) Sa.Kurata,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Trichomanes radicans type I,Trichomanes radicans Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Trichomanes radicans type I,Trichomanes radicans ,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Trichomanes radicans type I',Trichomanes radicans Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Trichomanes radicans type I',Trichomanes radicans ,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,0
-Trichomanes radicans type II,Trichomanes radicans Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Trichomanes radicans type IV,Trichomanes radicans Sw.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Trichomanes tubiflora (F.S.Wagner) Christenh.,Trichomanes tubiflorum (F.S.Wagner) Christenh.,synonym,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-x Cystocarpium roskamianum Fraser-Jenk.,× Cystocarpium × roskamianum Fraser-Jenk.,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-x Lindsaeosoria flynnii W.H.Wagner,× Lindsaeosoria × flynnii W.H.Wagner,accepted,FALSE,0,0,0,NA,NA,spelling mistake in species name,NA,1
-Adiantum dentatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum dentatum A.H.Wang, F.G.Wang & F.W.Xing",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Adiantum madagascariense H.Rosend.,Adiantum madagascariense Rosendahl,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Adiantum malesianum J.Ghatak,Adiantum malesianum Ghatak,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Adiantum obovatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum obovatum A.H.Wang, F.G.Wang & F.W.Xing",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Adiantum orbignyanum Mett.,Adiantum orbignyanum Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Adiantum tracyi C.C.Hall ex W.H.Wagner,Adiantum × tracyi C.C.Hall ex W.H.Wagner,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Aglaomorpha x leporella (K.I.Goebel) C.Chr.,Aglaomorpha leporella (K.I.Goebel) C.Chr.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Alsophila orientalis (Kunze) R.M.Tryon, q1970",Alsophila orientalis (Kunze) R.M.Tryon,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Amauropelta balbisii var. longipilosa (C.Chr.) C.Sanchez, Alvarez, O. & Caluff","Amauropelta balbisii var. longipilosa (C.Chr.) C.Sánchez, O.Alvarez & Caluff",synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia collina Raddi,Anemia collina Sm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia imbricata J.W.Sturm,Anemia imbricata Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia lanuginosa Bongard,Anemia lanuginosa Bongard; Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia nervosa Pohl,Anemia nervosa Pohl; Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia salvadorensis Mickel & Seiler,Anemia salvadorensis Mickel & R.L.Seiler,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Anemia tenera Pohl,Anemia tenera Pohl; Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Angiopteris marchionica E.D.Br.,Angiopteris marchionica E.Brown,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Angiopteris rapensis E.D.Br.,Angiopteris rapensis E.Brown,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Anisocampium cuspidatum (Bedd.) Y.C.Liu, W.L.Chiou & M.Kato","Anisocampium cuspidatum (Bedd.) Yea C.Liu, W.L.Chiou & M.Kato",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Anisocampium niponicum (Mett.) Y.C.Liu, W.L.Chiou & M.Kato","Anisocampium niponicum (Mett.) Yea C.Liu, W.L.Chiou & M.Kato",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Antrophyum sessilifolium (Cav.) Spreng.,Antrophyum sessilifolium (Cav.) Spr.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Arachniodes vietnamensis Liang Zhang, N.T.Lu & T.T.Nguyen","Arachniodes vietnamensis Liang Zhang, N.T.Lu & T.Trung Nguyen",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Arachniodes ziyunshanensis Y.T.Hsieh,Arachniodes ziyunshanensis Y.T.Xie,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Arthropteris paucivenia (C.Chr.) H.M.Liu, Hovenkamp & H.Schneid.","Arthropteris paucivenia (C.Chr.) Hong M.Liu, Hovenkamp & H.Schneid.",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium billotii F.W.Schultz,Asplenium billotii F.Schultz,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium bourgaei Boiss.,Asplenium bourgaei Boiss.; Milde,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium ceii Pic.Serm.,Asplenium ceii Pic.Ser.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium christii Hieron.,Asplenium christii Hier.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium exiguum nothosubsp. glenniei (Baker) Fraser-Jenk.,Asplenium exiguum subsp. glenniei (Baker) Fraser-Jenk.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium finlaysonianum Hook.,Asplenium finlaysonianum Wall.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium formosae H.Christ,Asplenium formosae Christ,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium heteroresiliens W.H.Wagner,Asplenium × heteroresiliens W.H.Wagner,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium lividum Mett.,Asplenium lividum Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium loriceum C.Chr.,Asplenium loriceum Christ,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium minutifolium Kanemitsu & Tagane,Asplenium minutifolium Kanem. & Tagane,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium planicaule E.J.Lowe,Asplenium planicaule Lowe,unchecked,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium polyphyllum Bertero,Asplenium polyphyllum C.Presl,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Asplenium subglandulosum (Hook. & Grev.) Salvo, C.Prada & T.E.Diaz","Asplenium subglandulosum (Hook. & Grev.) Salvo, Prada & T.E.Diaz",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium wilfordii Mett.,Asplenium wilfordii Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium x flexuosum Schrad.,Asplenium flexuosum C.Presl,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium x mantoniae Varoczy & Vida,Asplenium mantoniae Váróczy & Vida,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium x protomajoricum Pangua & Prada,Asplenium × protomajoricum Pangua & C.Prada,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Asplenium x protomajoricum Pangua & Prada,Asplenium protomajoricum Pangua & Prada,unchecked,TRUE,1,0,0,NA,NA,author variant,NA,0
-Asplenium x tenuivarians Z.R.Wang ex Ebihara,Asplenium tenuivarians Z.R.Wang ex Ebihara,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Astrolepis deltoidea (Baker) J.Beck & Windham,Astrolepis deltoidea (Baker) J.B.Beck & Windham,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Athyrium asplenioides (Michx.) Eaton,Athyrium asplenioides (Michx.) Desv.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Athyrium newtonii Baker,Athyrium newtonii (Baker) Diels,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Athyrium oppositipennum var. pubescens (Tagawa) Yea C.Liu, W.L.Chiou & H.Y.Liu","Athyrium oppositipennum var. pubescens (Tagawa) Y.C.Liu, W.L.Chiou & H.Y.Liu",synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Azolla nilotica Decne.,Azolla nilotica Dcne.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Blechnum vieillardii var. simplex Fourn.,Blechnum vieillardii var. simplex E.Fourn.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Blechnum x confluens Schltdl. & Cham.,Blechnum confluens Schltdl. & Cham.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Bommeria pedata (Sw.) E.Fourn.,Bommeria pedata (Sw.) Fourn.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Botrychium hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,Botrychium × hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Botrychium watertonense W.H.Wagner,Botrychium × watertonense W.H.Wagner,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Campyloneurum wurdackii B.Leon,Campyloneurum wurdackii León,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cheilanthes squamosa Gillies & Hook. ex Grev.,Cheilanthes squamosa Gillies ex Hook. & Grev.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Christella conspersa (Schrad.) i.Love & D.Love,Christella conspersa (Schrad.) Á.Löve & D.Löve,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Coniogramme longissima Ching & H.S.Kung,Coniogramme longissima Ching & Kung,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis brevipetiolulata Li Bing Zhang & Yi F.Duan,Ctenitis brevipetiolulata Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Ctenitis bullescens Rouhan, Li Bing Zhang & Yi F.Duan","Ctenitis bullescens Rouhan, Li Bing Zhang & Y.F.Duan",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis cerea Li Bing Zhang & Yi F.Duan,Ctenitis cerea Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis comorensis Li Bing Zhang & Yi F.Duan,Ctenitis comorensis Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis dentata Li Bing Zhang & Yi F.Duan,Ctenitis dentata Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis mayottensis Li Bing Zhang & Yi F.Duan,Ctenitis mayottensis Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Ctenitis reunionensis Hennequin, Li Bing Zhang & Yi F.Duan","Ctenitis reunionensis Hennequin, Li Bing Zhang & Y.F.Duan",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Ctenitis tardieu-blotiae Li Bing Zhang & Yi F.Duan,Ctenitis tardieu-blotiae Li Bing Zhang & Y.F.Duan,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea brevipinna Benth.,Cyathea brevipinna Bak.; Benth.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea humilis Hieron.,Cyathea humilis Hier.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea marattioides Willd. ex Kaulf.,Cyathea marattioides Willd.; Klf.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea milnei Hook.f.,Cyathea milnei Hk.; Hk.fil.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea patens hort. ex Houlston & Moore,Cyathea patens hort.; Houlst. & T.Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea punctata R.C.Moran & B.llg.,Cyathea punctata R.C.Moran & B.Øllg.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea squamipes H.Karst.,Cyathea squamipes Kl.; Karst.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cyathea tenera T.Moore,Cyathea tenera (J.Sm.) Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cystopteris laurentiana (Weath.) Blasdell,Cystopteris × laurentiana (Weath.) Blasdell,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Cystopteris tennesseensis Shaver,Cystopteris × tennesseensis Shaver,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Danaea trichomanoides Spruce ex T.Moore,Danaea trichomanoides Spruce; Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Danaea x jamaicensis Underw.,Danaea jamaicensis Underw.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Davallia denticulata (Burm.f.) Mett.,Davallia denticulata (Burm.) Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia auriculata Navarr. & B.llg.,Dennstaedtia auriculata Navarrete & B.Øllg.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia davallioides (R.Br.) T.Moore,Dennstaedtia davallioides (R.Br.) Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia hirsuta (Sw.) Mett. ex Miq.,Dennstaedtia hirsuta Mett.; Miq.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia macrosora Navarr. & B.llg.,Dennstaedtia macrosora H.Navarrete & B.Øllg.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia scandens (Blume) T.Moore,Dennstaedtia scandens (Blume) Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dennstaedtia werckleana (Christ) Navarrete & B.llg.,Dennstaedtia werckleana (Christ) Navarrete & B.Øllg.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Deparia nakaikeana Fraser-Jenk.,Deparia × nakaikeana Fraser-Jenk.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dicranopteris taiwanensis Ching & P.S.Chiu,Dicranopteris taiwanensis Ching & Chiu,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Diplazium australe (R.Br.) Wakef.,Diplazium australe (R.Br.) Bir,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Diplazium nipponicum Tagawa,Diplazium nipponicum Tgawa,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Diplazium sanderi (C.Chr.) Pacheco,Diplazium sanderi (C.Chr.) L.Pacheco,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Diplazium squamigerum (Mett.) Matsum.,Diplazium squamigerum (Mett.) Christ,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Diplazium yinchanianum Zi Y.Liu, H.J.Wei & Y.H.Yan","Diplazium yinchanianum Zi Yue Liu, H.J.Wei & Y.H.Yan",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Doodia linearis T.Moore,Doodia linearis C.Moore,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris fatuhivensis E.D.Br.,Dryopteris fatuhivensis E.Brown,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris holttumii Li Bing Zhang,Dryopteris × holttumii Li Bing Zhang,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris labordei var. purpurascens (H.Ito) Seriz.,Dryopteris labordei var. purpurascens (H.Ito) S.Sherizawa,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris quaylei E.D. Br.,Dryopteris quaylei E.Brown,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris redactopinnata S.K. Basu & Panigrahi,Dryopteris redactopinnata Soumen K.Basu & Panigrahi,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris shiroumensis Kurata & Nakam.,Dryopteris shiroumensis Sa.Kurata & Nakam.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris sichotensis Kom.,Dryopteris sichotensis Komarov,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Dryopteris sororia (Maxon) M. McHenry, Sundue & Barrington","Dryopteris sororia (Maxon) M.A.McHenry, Sundue & Barrington",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris subbipinnata W.H. Wagner & Hobdy,Dryopteris subbipinnata W.H.Wagner & R.W.Hobdy,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris subreflexipinna Ogata,Dryopteris subreflexipinna M.Ogata,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Dryopteris x makabensis Ka.Yamam. & N.Murak.,Dryopteris × makabensis Kaor.Yamam. & N.Murak.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Elaphoglossum affine (M.Martens & Galeotti) T.Moore,Elaphoglossum affine (M.Martens & Galeotti) Moore.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Elaphoglossum coriaceum Bonap.,Elaphoglossum coriaceum Bonaparte,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Elaphoglossum dussii Underw. ex Maxon,Elaphoglossum dussii Underw. & Maxon,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Elaphoglossum vestitum (Schltdl. & Cham.) T.Moore,Elaphoglossum vestitum (Schltdl. & Cham.) Schott,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Equisetum x litorale Kuehlew. ex Rupr.,Equisetum × litorale Kühlew. ex Rupr.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Gaga angustifolia (Kunth) F.W.Li & Windham,Gaga angustifolia (Kunth) Fay W.Li & Windham,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Gaga marginata (Kunth) F.W.Li & Windham,Gaga marginata (Kunth) Fay W.Li & Windham,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Goniophlebium amoenum (Wall. ex Mett.) Bedd.,Goniophlebium amoenum (Wall. ex Mett.) J.Sm. ex Bedd.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Goniophlebium mengtzeense (Christ) Rodl-Linder,Goniophlebium mengtzeense (Christ) G.Roedl-Linder,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Goniophlebium percussum (Cav.) Wagner & Grether,Goniophlebium percussum (Cav.) W.H.Wagner & Grether,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Gymnocarpium x brittonianum (Sarvela) Pryer & Haufler,Gymnocarpium × brittonianum (Sarvela) K.M.Pryer & Haufler,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Gymnosphaera phlebodes (Lehnert & Coritico) S.Y.Ng,Gymnosphaera phlebodes (Lehnert & Coritico) S.Y.Dong,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Haplopteris heterophylla C.W.Chen, Y.H.Chang & Y.C.Liu","Haplopteris heterophylla C.W.Chen, Y.H.Chang & Yea C.Liu",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hiya brooksiae (Alderw.) Hui Shang,Hiya brooksiae (Alderw.) H.Shang,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hiya nigrescens (Hook.) Hui Shang,Hiya nigrescens (Hook.) H.Shang,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hiya scabristipes (Brownsey) Hui Shang,Hiya scabristipes (Brownsey) H.Shang,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Hymenasplenium quangnamense Li Bing Zhang, K.W.Xu & Liang Zhan","Hymenasplenium quangnamense Li Bing Zhang, K.W.Xu & Liang Zhang",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum deplanchei Mett.,Hymenophyllum deplanchei Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum devolii Lai,Hymenophyllum devolii M.J.Lai,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum dimidiatum Mett.,Hymenophyllum dimidiatum Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum magellanicum Willd. ex Kunze,Hymenophyllum magellanicum Willd.; Kze.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum pumilum T.Moore,Hymenophyllum pumilum C.Moore; Bak.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum rufum Fee Fee,Hymenophyllum rufum Fée,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hymenophyllum schomburgkii C.Pres,Hymenophyllum schomburgkii C.Presl,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hypodematium angustifolium C.S.Lee & K.Lee,Hypodematium angustifolium C.S.Lee & K.H.Lee,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Hypolepis viscosa H.Karst.,Hypolepis viscosa (H.Karst.) Mett.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Jamesonia laxa Mett.,Jamesonia laxa Kunze,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Lepisorus rostratus (Bedd.) B.K.Nayar & S.Kaur,Lepisorus rostratus (Hook.) B.K.Nayar & Kaur,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Lepisorus rufofuscus T.Fujiwara,Lepisorus rufofuscus T.Fujiw.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Leptopteris wilkesiana (Brack.) Gower,Leptopteris wilkesiana (Brack.) Christ,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Lomariopsis wrightii Mett.,Lomariopsis wrightii Mett.; Eat.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Lygodium micans J.W.Sturm,Lygodium micans Sturm,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Mecodium szechuanense Ching & P.S.Chiu,Mecodium szechuanense Ching & Chiu,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Mecodium wangii Ching & P.S.Chiu,Mecodium wangii Ching & Chiu,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Microgramma lindbergii (Mett.) Sota,Microgramma lindbergii (Mett.) de la Sota,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Microlepia firma Mett. ex Kuhn,Microlepia firma Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Microsorum glossophyllum (Copel.) Copel.. 1947,Microsorum glossophyllum (Copel.) Copel.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Myriopteris fendleri E.Fourn.,Myriopteris fendleri Fourn.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & N.Nakato","Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & Nakato",synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Onocleopsis hintonii F.Ballard,Onocleopsis hintonii Ballard,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Ophioglossum aletum Patel, Reddy & Goswami","Ophioglossum aletum M.Patel, M.N.Reddy & H.K.Goswami",unchecked,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Ophioglossum trilokinathii B.L.Yadav, M.K.Meghvansi, K.Meena & C.B.Gena","Ophioglossum trilokinathii B.L.Yadav, Meghvansi, Meena & Gena",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pilularia americana A.Braun,Pilularia americana A.Br.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pilularia minuta Durieu,Pilularia minuta Durieu; A.Br.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Platycerium superbum Jonch. & Hennipman,Platycerium superbum Joncheere & Hennipman,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Platygyria x inaequibasis Ching & S.K.Wu,Platygyria inaequibasis Ching & S.K.Wu,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polybotrya glandulosa Mett.,Polybotrya glandulosa Mett.; Kuhn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polybotrya pubens Mart.,Polybotrya pubens Mart.; Kze.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polypodium subpetiolatum Hook.,Polypodium subpetiolatum Hk.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum cystostegia (Hook.) J.B.Armstr.,Polystichum cystostegia (Hook.) Armstr.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum distans E.Fourn.,Polystichum distans Fourn.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum marquesense E.D.Br.,Polystichum marquesense E.Brown,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum microchlamys var. azumiense Seriz.,Polystichum microchlamys var. azumiense ,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum polyblepharum Nakai,Polystichum polyblepharum C.Presl,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum rochaleanum Glaz.,Polystichum rochaleanum Glaz.; Fee,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Polystichum sinotsus-simense Ching & Zheng Y.Liu,Polystichum sinotsussimense Ching & Z.Y.Liu,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris asperula (Bedd.) Hieron.,Pteris asperula J.Sm. ex Hieron.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris ensiformis Burm.f.,Pteris ensiformis Burm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris inaequalis C.Presl,Pteris inaequalis Baker,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris litoralis Rech.,Pteris litoralis Rechinger,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris nipponica W.C.Shieh,Pteris nipponica Shieh,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris stenophylla C.Presl,Pteris stenophylla Link,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris usambarensis Hieron.,Pteris usambarensis Hier.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris woodwardioides Bory ex Willd.,Pteris woodwardioides Bory; Willd.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pteris x sefuricola Kurata,Pteris sefuricola Sa.Kurata,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Pyrrosia longifolia (Burm.f.) C.V.Morton,Pyrrosia longifolia (Burm.f.) Morton,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Rouxopteris boryi (Kunze) H.M.Liu,Rouxopteris boryi (Kunze) Hong M.Liu,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Sadleria wagneriana D.D.Palmer & Flynn,Sadleria wagneriana D.D.Palmer & T.Flynn,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Salvinia molesta D.S. Mitch.,Salvinia molesta D.Mitch.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Salvinia oblongifolia Martius,Salvinia oblongifolia Mart.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Schizaea biroi V.A.Richt.,Schizaea biroi Richter,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Schizaea dichotoma (L.) J.Sm.,Schizaea dichotoma Kunze,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Schizaea fluminensis Miers ex J.W.Sturm,Schizaea fluminensis Miers; Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Schizaea medusa L.Y.Kuo, B.F.Ke, F.W.Li, & Rouhan","Schizaea medusa L.Y.Kuo, B.F.Ke, Fay W.Li & Rouhan",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Sticherus flabellatus (R.Br.) H.St.John,Sticherus flabellatus (R.Br.) St.John,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Struthiopteris spicant (L.) F.W.Weiss,Struthiopteris spicant (L.) Weiss,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma alismifolia C.Presl,Syngramma alismifolia (C.Presl) J.Sm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma borneensis Hook.,Syngramma borneensis (Hook.) J.Sm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma cartilagidens Baker,Syngramma cartilagidens (Baker) Diels,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma lobbiana Hook.,Syngramma lobbiana (Hook.) J.Sm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma valleculata Baker,Syngramma valleculata (Baker) C.Chr.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Syngramma wallichii Hook.,Syngramma wallichii (Hook.) Bedd.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Tectaria marchionica E.D.Brown,Tectaria marchionica E.Brown,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Thelypteris arida (D.Don) C.V.Morton,Thelypteris arida (D.Don) Morton,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Thelypteris x pseudoliukiuensis Seriz.,Thelypteris pseudoliukiuensis Seriz.,synonym,TRUE,1,0,0,NA,NA,author variant,NA,1
-Thylacopteris papillosa Kunze ex J.Sm.,Thylacopteris papillosa Kze.; J.Sm.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Tmesipteris vieillardii P.A.Dang.,Tmesipteris vieillardii Dangeard,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Trichomanes ankersii C.Parker ex Hook. & Grev.,Trichomanes ankersii C.S.Parker ex Hook. & Grev.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Trichomanes tanaicum J.W.Sturm,Trichomanes tanaicum Hk.; Sturm,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-Trichomanes vittaria DC.,Trichomanes vittaria DC.; Poir.,accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Vandenboschia confusa Dubuisson, Deblauwe & Boucheron-Dubuisson","Vandenboschia confusa Dubuisson, Deblauwe & Bouch.-Dubuisson",accepted,TRUE,1,0,0,NA,NA,author variant,NA,1
-"Adiantum mynssenae J.Prado, nom. nov.",Adiantum mynsseniae J.Prado,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Anthonya bergiana (Schltdl.) Windham & Pryer,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Anthonya depauperata (Baker) Windham & Pryer,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Anthonya hirta (Sw.) Windham & Pryer,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Anthonya marlothii (Hieron.) Windham & Pryer,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Arachniodes simplicior var. simplicior,Arachniodes simplicior (Makino) Ohwi,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Bosmania membranacea subsp. carinata (W.M.Chu & Z.R.He) R.Wei & X.C.Zhang,Bosmania membranacea (D.Don) Testo,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Carlottahallia poeppigiana (Mett. ex Kuhn) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Christella procurrens (Mett.) Copel.,Cyclosorus procurrens (Mett.) Copel.,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Davallia tyermanii (T.Moore) Baker,Davallia tyermannii (T.Moore) H.J.Veitch,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Dryopteris x ebinoensis (nom. nud.),NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Dryopteris x ebinoensis Sa.Kurata,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Elaphoglossum peltatum f. peltatum,Elaphoglossum peltatum (Sw.) Urb.,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Estrella mollis (Kunze) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Gymnocarpium dryopteris var. aokigaharaense Nakaike,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-"Hymenasplenium mitanii Nakaike, nom. nud.",NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Lastraea glabra var. glabra Brack.,Lastrea glabra Brack.,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Namaquapteris capensis (Thunb.) Windham & Schuettp.,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Namaquapteris hastata (L.f.) Windham & Schuettp.,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Ophioderma pendulum L.,Ophioderma pendula (L.) C.Presl,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Platycerium holttumii de Jonch.& Hennipman,Platycerium holttumii Joncheere & Hennipman,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Pleopeltis polypodioides var. polypodioides,Pleopeltis polypodioides (L.) E.G.Andrews & Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Polystichum polyblepharum var. polyblepharum,Polystichum polyblepharum C.Presl,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Quechuapteris fraseri (Mett. ex Kuhn) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Quechuapteris glauca (Cav.) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Quechuapteris hypoleuca (Kunze) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Quechuapteris pilosa (Goldm.) Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
-Tectaria stenoptera Ching,Tectaria stenopteros (Baker) Ching,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Thelypteris esquirolii var. glabrata (Christ) K.Iwats.,Thelypteris esquirolii (Christ) Ching,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Trichomanes radicans type III,Trichomanes radicans Sw.,NA,NA,NA,NA,NA,NA,NA,NA,NA,1
-Ynesmexia skinneri (Hook.) Fauskee & Windham,NA,NA,NA,NA,NA,NA,NA,NA,NA,add new,
+query,match,comments
+Adiantum comorense (Tardieu) Verdc.,Adiantum comoroense (Tardieu) Verdc.,NA
+Adiantum dentatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum dentatum A.H.Wang, F.G.Wang & F.W.Xing",NA
+Adiantum madagascariense H.Rosend.,Adiantum madagascariense Rosendahl,NA
+Adiantum malesianum J.Ghatak,Adiantum malesianum Ghatak,NA
+"Adiantum mynssenae J.Prado, nom. nov.",Adiantum mynsseniae J.Prado,NA
+Adiantum obovatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum obovatum A.H.Wang, F.G.Wang & F.W.Xing",NA
+Adiantum orbignyanum Mett.,Adiantum orbignyanum Mett.; Kuhn,NA
+Adiantum tracyi C.C.Hall ex W.H.Wagner,Adiantum × tracyi C.C.Hall ex W.H.Wagner,NA
+Aglaomorpha x leporella (K.I.Goebel) C.Chr.,Aglaomorpha leporella (K.I.Goebel) C.Chr.,NA
+Allantodia okudairai (Makino) Ching,Allantodia okudairae (Makino) Ching,NA
+"Alsophila orientalis (Kunze) R.M.Tryon, q1970",Alsophila orientalis (Kunze) R.M.Tryon,NA
+Alsophila weidenbrueckiae Lehnert,Alsophila weidenbrueckii Lehnert,NA
+"Amauropelta balbisii var. longipilosa (C.Chr.) C.Sanchez, Alvarez, O. & Caluff","Amauropelta balbisii var. longipilosa (C.Chr.) C.Sánchez, O.Alvarez & Caluff",NA
+Anemia caffrorum (L.) Christenh.,Anemia afrorum (L.) Christenh.,NA
+Anemia collina Raddi,Anemia collina Sm.,NA
+Anemia imbricata J.W.Sturm,Anemia imbricata Sturm,NA
+Anemia lanuginosa Bongard,Anemia lanuginosa Bongard; Sturm,NA
+Anemia muenchii Christ,Anemia munchii Christ,NA
+Anemia nervosa Pohl,Anemia nervosa Pohl; Sturm,NA
+Anemia phyllitidis var. phyllitidis,Anemia phyllitidis (L.) Sw.,NA
+Anemia salvadorensis Mickel & Seiler,Anemia salvadorensis Mickel & R.L.Seiler,NA
+Anemia tenera Pohl,Anemia tenera Pohl; Sturm,NA
+Angiopteris marchionica E.D.Br.,Angiopteris marchionica E.Brown,NA
+Angiopteris rapensis E.D.Br.,Angiopteris rapensis E.Brown,NA
+"Anisocampium cuspidatum (Bedd.) Y.C.Liu, W.L.Chiou & M.Kato","Anisocampium cuspidatum (Bedd.) Yea C.Liu, W.L.Chiou & M.Kato",NA
+"Anisocampium niponicum (Mett.) Y.C.Liu, W.L.Chiou & M.Kato","Anisocampium niponicum (Mett.) Yea C.Liu, W.L.Chiou & M.Kato",NA
+Antrophyum sessilifolium (Cav.) Spreng.,Antrophyum sessilifolium (Cav.) Spr.,NA
+Arachniodes fujianensis Ching,Arachniodes fujiangensis Ching,NA
+Arachniodes simplicior var. simplicior,Arachniodes simplicior (Makino) Ohwi,NA
+"Arachniodes vietnamensis Liang Zhang, N.T.Lu & T.T.Nguyen","Arachniodes vietnamensis Liang Zhang, N.T.Lu & T.Trung Nguyen",NA
+Arachniodes ziyunshanensis Y.T.Hsieh,Arachniodes ziyunshanensis Y.T.Xie,NA
+"Arthropteris paucivenia (C.Chr.) H.M.Liu, Hovenkamp & H.Schneid.","Arthropteris paucivenia (C.Chr.) Hong M.Liu, Hovenkamp & H.Schneid.",NA
+Asplenium actinopteroides Peter,Asplenium actiniopteroides Peter,NA
+Asplenium anceps R.Br.,Asplenium anceps Sol. ex Lowe,NA
+Asplenium billotii F.W.Schultz,Asplenium billotii F.Schultz,NA
+Asplenium bourgaei Boiss.,Asplenium bourgaei Boiss.; Milde,NA
+Asplenium ceii Pic.Serm.,Asplenium ceii Pic.Ser.,NA
+Asplenium christii Hieron.,Asplenium christii Hier.,NA
+Asplenium cuneifolium subsp. cuneifolium,Asplenium cuneifolium subsp. cuneifolium,NA
+Asplenium dalhousiae Hook.,Asplenium dalhousieae Hook.,NA
+Asplenium emarginatum P.Beauv.,Asplenium emarginatum Pal.,NA
+Asplenium erectum Bory ex Willd.,Asplenium erectum Bory; Willd.,NA
+Asplenium exiguum nothosubsp. glenniei (Baker) Fraser-Jenk.,Asplenium exiguum subsp. glenniei (Baker) Fraser-Jenk.,NA
+Asplenium finlaysonianum Hook.,Asplenium finlaysonianum Wall.,NA
+Asplenium fissum Kit. ex Willd.,Asplenium fissum Kit.; Willd.,NA
+Asplenium flaccidum subsp. flaccidum,Asplenium flaccidum Bonap.,NA
+Asplenium formosae H.Christ,Asplenium formosae Christ,NA
+Asplenium heteroresiliens W.H.Wagner,Asplenium × heteroresiliens W.H.Wagner,NA
+Asplenium incurvatum Fee Fee,Asplenium incurvatum Fée,NA
+Asplenium lividum Mett.,Asplenium lividum Mett.; Kuhn,NA
+Asplenium loriceum C.Chr.,Asplenium loriceum Christ,NA
+Asplenium minutifolium Kanemitsu & Tagane,Asplenium minutifolium Kanem. & Tagane,NA
+Asplenium oldhami Hance,Asplenium oldhamii Hance,NA
+Asplenium planicaule E.J.Lowe,Asplenium planicaule Lowe,NA
+Asplenium polyphyllum Bertero,Asplenium polyphyllum C.Presl,NA
+Asplenium pseudoerectum Hieron.,Asplenium pseuderectum Hieron.,NA
+Asplenium sampsonii Hance,Asplenium sampsoni Hance,NA
+Asplenium scleropium Homb. & Jacq.,Asplenium scleroprium Hombr. & Jacq.,NA
+Asplenium scolopendropsis J.Sm.,Asplenium scolopendrioides J.Sm.,NA
+"Asplenium subglandulosum (Hook. & Grev.) Salvo, C.Prada & T.E.Diaz","Asplenium subglandulosum (Hook. & Grev.) Salvo, Prada & T.E.Diaz",NA
+Asplenium volkensii Hieron.,Asplenium volkensii Hier.,NA
+Asplenium wilfordii Mett.,Asplenium wilfordii Mett.; Kuhn,NA
+Asplenium x flexuosum Schrad.,Asplenium flexuosum C.Presl,NA
+Asplenium x mantoniae Varoczy & Vida,Asplenium mantoniae Váróczy & Vida,NA
+Asplenium x protomajoricum Pangua & Prada,Asplenium × protomajoricum Pangua & C.Prada,NA
+Asplenium x tenuivarians Z.R.Wang ex Ebihara,Asplenium tenuivarians Z.R.Wang ex Ebihara,NA
+Astrolepis deltoidea (Baker) J.Beck & Windham,Astrolepis deltoidea (Baker) J.B.Beck & Windham,NA
+Athyrium asplenioides (Michx.) Eaton,Athyrium asplenioides (Michx.) Desv.,NA
+Athyrium bourgaei E.Fourn.,Athyrium bourgaeui Fourn.,NA
+Athyrium drepanopterum (Kunze) A.Braun ex Milde,Athyrium drepanopteron (Kunze) A.Braun ex Milde,NA
+Athyrium newtonii Baker,Athyrium newtonii (Baker) Diels,NA
+"Athyrium oppositipennum var. pubescens (Tagawa) Yea C.Liu, W.L.Chiou & H.Y.Liu","Athyrium oppositipennum var. pubescens (Tagawa) Y.C.Liu, W.L.Chiou & H.Y.Liu",NA
+Athyrium rhachidosorum (Hand.-Mazz.) Ching,Athyrium rhachidisorum (Hand.-Mazz.) Ching,NA
+Azolla nilotica Decne.,Azolla nilotica Dcne.,NA
+Blechnum vieillardii var. simplex Fourn.,Blechnum vieillardii var. simplex E.Fourn.,NA
+Blechnum x caudatum Cav.,Blechnum caudatum Cav.,NA
+Blechnum x confluens Schltdl. & Cham.,Blechnum confluens Schltdl. & Cham.,NA
+Bolbitis gemmifera (Hieron.) C.Chr.,Bolbitis gemmifer (Hieron.) C.Chr.,NA
+Bommeria pedata (Sw.) E.Fourn.,Bommeria pedata (Sw.) Fourn.,NA
+Bosmania membranacea subsp. carinata (W.M.Chu & Z.R.He) R.Wei & X.C.Zhang,Bosmania membranacea (D.Don) Testo,NA
+Botrychium hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,Botrychium × hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,NA
+Botrychium lunaria var. lunaria,Botrychium lunaria var. lunaria,NA
+Botrychium watertonense W.H.Wagner,Botrychium × watertonense W.H.Wagner,NA
+Campyloneurum wurdackii B.Leon,Campyloneurum wurdackii León,NA
+Ceradenia ayapoyana M.Kessler & A.R.Sm.,Ceradenia ayopayana M.Kessler & A.R.Sm.,NA
+Ceradenia madidiense M.Kessler & A.R.Sm.,Ceradenia madidiensis M.Kessler & A.R.Sm.,NA
+Cheilanthes squamosa Gillies & Hook. ex Grev.,Cheilanthes squamosa Gillies ex Hook. & Grev.,NA
+Christella conspersa (Schrad.) i.Love & D.Love,Christella conspersa (Schrad.) Á.Löve & D.Löve,NA
+Christella procurrens (Mett.) Copel.,Cyclosorus procurrens (Mett.) Copel.,NA
+Coniogramme longissima Ching & H.S.Kung,Coniogramme longissima Ching & Kung,NA
+Coniogramme rosthornii Hieron.,Coniogramme rosthorni Hieron.,NA
+Cranfillia fullagari (F.Muell.) Gasper & V.A.O.Dittrich,Cranfillia fullagarii (F.Muell.) Gasper & V.A.O.Dittrich,NA
+Ctenitis brevipetiolulata Li Bing Zhang & Yi F.Duan,Ctenitis brevipetiolulata Li Bing Zhang & Y.F.Duan,NA
+"Ctenitis bullescens Rouhan, Li Bing Zhang & Yi F.Duan","Ctenitis bullescens Rouhan, Li Bing Zhang & Y.F.Duan",NA
+Ctenitis cerea Li Bing Zhang & Yi F.Duan,Ctenitis cerea Li Bing Zhang & Y.F.Duan,NA
+Ctenitis comorensis Li Bing Zhang & Yi F.Duan,Ctenitis comorensis Li Bing Zhang & Y.F.Duan,NA
+Ctenitis dentata Li Bing Zhang & Yi F.Duan,Ctenitis dentata Li Bing Zhang & Y.F.Duan,NA
+Ctenitis mayottensis Li Bing Zhang & Yi F.Duan,Ctenitis mayottensis Li Bing Zhang & Y.F.Duan,NA
+"Ctenitis reunionensis Hennequin, Li Bing Zhang & Yi F.Duan","Ctenitis reunionensis Hennequin, Li Bing Zhang & Y.F.Duan",NA
+Ctenitis tardieu-blotiae Li Bing Zhang & Yi F.Duan,Ctenitis tardieu-blotiae Li Bing Zhang & Y.F.Duan,NA
+Cyathea brevipinna Benth.,Cyathea brevipinna Bak.; Benth.,NA
+Cyathea humilis Hieron.,Cyathea humilis Hier.,NA
+Cyathea marattioides Willd. ex Kaulf.,Cyathea marattioides Willd.; Klf.,NA
+Cyathea milnei Hook.f.,Cyathea milnei Hk.; Hk.fil.,NA
+Cyathea patens hort. ex Houlston & Moore,Cyathea patens hort.; Houlst. & T.Moore,NA
+Cyathea punctata R.C.Moran & B.llg.,Cyathea punctata R.C.Moran & B.Øllg.,NA
+Cyathea squamipes H.Karst.,Cyathea squamipes Kl.; Karst.,NA
+Cyathea tenera T.Moore,Cyathea tenera (J.Sm.) Moore,NA
+Cyrtomium fortunei var. clivicola (Makino) Tagawa,Cyrtomium fortunei var. clivicolum (Makino) Tagawa,NA
+Cystopteris chinensis Ching,Cystopteris chinensis (Ching) X.C.Zhang & R.Wei,NA
+Cystopteris laurentiana (Weath.) Blasdell,Cystopteris × laurentiana (Weath.) Blasdell,NA
+Cystopteris tennesseensis Shaver,Cystopteris × tennesseensis Shaver,NA
+Danaea trichomanoides Spruce ex T.Moore,Danaea trichomanoides Spruce; Moore,NA
+Danaea x jamaicensis Underw.,Danaea jamaicensis Underw.,NA
+Davallia denticulata (Burm.f.) Mett.,Davallia denticulata (Burm.) Mett.; Kuhn,NA
+Davallia tasmani Field,Davallia tasmanii Field,NA
+Davallia tyermanii (T.Moore) Baker,Davallia tyermannii (T.Moore) H.J.Veitch,NA
+Dennstaedtia auriculata Navarr. & B.llg.,Dennstaedtia auriculata Navarrete & B.Øllg.,NA
+Dennstaedtia davallioides (R.Br.) T.Moore,Dennstaedtia davallioides (R.Br.) Moore,NA
+Dennstaedtia hirsuta (Sw.) Mett. ex Miq.,Dennstaedtia hirsuta Mett.; Miq.,NA
+Dennstaedtia macrosora Navarr. & B.llg.,Dennstaedtia macrosora H.Navarrete & B.Øllg.,NA
+Dennstaedtia scandens (Blume) T.Moore,Dennstaedtia scandens (Blume) Moore,NA
+Dennstaedtia werckleana (Christ) Navarrete & B.llg.,Dennstaedtia werckleana (Christ) Navarrete & B.Øllg.,NA
+Deparia nakaikeana Fraser-Jenk.,Deparia × nakaikeana Fraser-Jenk.,NA
+Dicranopteris taiwanensis Ching & P.S.Chiu,Dicranopteris taiwanensis Ching & Chiu,NA
+Diplazium australe (R.Br.) Wakef.,Diplazium australe (R.Br.) Bir,NA
+Diplazium balliviani Rosenst.,Diplazium ballivianii Rosenst.,NA
+Diplazium nipponicum Tagawa,Diplazium nipponicum Tgawa,NA
+Diplazium petrii Tardieu,Diplazium petri Tardieu,NA
+Diplazium sanderi (C.Chr.) Pacheco,Diplazium sanderi (C.Chr.) L.Pacheco,NA
+Diplazium sibiricum var. sibiricum,Diplazium sibiricum (Turcz. ex Kunze) Sa.Kurata,NA
+Diplazium squamigerum (Mett.) Matsum.,Diplazium squamigerum (Mett.) Christ,NA
+"Diplazium yinchanianum Zi Y.Liu, H.J.Wei & Y.H.Yan","Diplazium yinchanianum Zi Yue Liu, H.J.Wei & Y.H.Yan",NA
+Doodia linearis T.Moore,Doodia linearis C.Moore,NA
+Doodia lyoni O.Deg.,Doodia lyonii Degen.,NA
+Dryopteris atrovirens C. Chr.,Dryopteris atrovirens C.Chr.apud Christ,NA
+Dryopteris christensenae (Ching) Li Bing Zhang,Dryopteris christenseniae (Ching) Li Bing Zhang,NA
+Dryopteris fatuhivensis E.D.Br.,Dryopteris fatuhivensis E.Brown,NA
+Dryopteris holttumii Li Bing Zhang,Dryopteris × holttumii Li Bing Zhang,NA
+Dryopteris labordei var. purpurascens (H.Ito) Seriz.,Dryopteris labordei var. purpurascens (H.Ito) S.Sherizawa,NA
+Dryopteris quaylei E.D. Br.,Dryopteris quaylei E.Brown,NA
+Dryopteris redactopinnata S.K. Basu & Panigrahi,Dryopteris redactopinnata Soumen K.Basu & Panigrahi,NA
+Dryopteris remotepinnata Hayata,Dryopteris remotipinnata Hayata,NA
+Dryopteris shiroumensis Kurata & Nakam.,Dryopteris shiroumensis Sa.Kurata & Nakam.,NA
+Dryopteris sichotensis Kom.,Dryopteris sichotensis Komarov,NA
+"Dryopteris sororia (Maxon) M. McHenry, Sundue & Barrington","Dryopteris sororia (Maxon) M.A.McHenry, Sundue & Barrington",NA
+Dryopteris subbipinnata W.H. Wagner & Hobdy,Dryopteris subbipinnata W.H.Wagner & R.W.Hobdy,NA
+Dryopteris subreflexipinna Ogata,Dryopteris subreflexipinna M.Ogata,NA
+Dryopteris x makabensis Ka.Yamam. & N.Murak.,Dryopteris × makabensis Kaor.Yamam. & N.Murak.,NA
+Elaphoglossum affine (M.Martens & Galeotti) T.Moore,Elaphoglossum affine (M.Martens & Galeotti) Moore.,NA
+Elaphoglossum backhousianum T.Moore,Elaphoglossum backhouseanum T.Moore,NA
+Elaphoglossum coriaceum Bonap.,Elaphoglossum coriaceum Bonaparte,NA
+Elaphoglossum dussii Underw. ex Maxon,Elaphoglossum dussii Underw. & Maxon,NA
+Elaphoglossum nervosum (Bory) Christ,Elaphoglossum nervosum C.Chr.,NA
+Elaphoglossum nidiforme Mickel,Elaphoglossum nidiformis Mickel,NA
+Elaphoglossum peltatum f. peltatum,Elaphoglossum peltatum (Sw.) Urb.,NA
+Elaphoglossum vestitum (Schltdl. & Cham.) T.Moore,Elaphoglossum vestitum (Schltdl. & Cham.) Schott,NA
+Equisetum x fontqueri Rothm.,Equisetum font-queri Rothm.,NA
+Equisetum x litorale Kuehlew. ex Rupr.,Equisetum × litorale Kühlew. ex Rupr.,NA
+Gaga angustifolia (Kunth) F.W.Li & Windham,Gaga angustifolia (Kunth) Fay W.Li & Windham,NA
+Gaga marginata (Kunth) F.W.Li & Windham,Gaga marginata (Kunth) Fay W.Li & Windham,NA
+Goniophlebium amoenum (Wall. ex Mett.) Bedd.,Goniophlebium amoenum (Wall. ex Mett.) J.Sm. ex Bedd.,NA
+Goniophlebium mengtzeense (Christ) Rodl-Linder,Goniophlebium mengtzeense (Christ) G.Roedl-Linder,NA
+Goniophlebium percussum (Cav.) Wagner & Grether,Goniophlebium percussum (Cav.) W.H.Wagner & Grether,NA
+Gymnocarpium x brittonianum (Sarvela) Pryer & Haufler,Gymnocarpium × brittonianum (Sarvela) K.M.Pryer & Haufler,NA
+Gymnosphaera phlebodes (Lehnert & Coritico) S.Y.Ng,Gymnosphaera phlebodes (Lehnert & Coritico) S.Y.Dong,NA
+"Haplopteris heterophylla C.W.Chen, Y.H.Chang & Y.C.Liu","Haplopteris heterophylla C.W.Chen, Y.H.Chang & Yea C.Liu",NA
+Hemionitis ekmanii Maxon,Hemionitis ekmanii (Maxon) Christenh.,NA
+Hiya brooksiae (Alderw.) Hui Shang,Hiya brooksiae (Alderw.) H.Shang,NA
+Hiya nigrescens (Hook.) Hui Shang,Hiya nigrescens (Hook.) H.Shang,NA
+Hiya scabristipes (Brownsey) Hui Shang,Hiya scabristipes (Brownsey) H.Shang,NA
+"Hymenasplenium quangnamense Li Bing Zhang, K.W.Xu & Liang Zhan","Hymenasplenium quangnamense Li Bing Zhang, K.W.Xu & Liang Zhang",NA
+"Hymenasplenium tholiformis Liang Zhang, W.B.Ju & K.W.Xu","Hymenasplenium tholiforme Liang Zhang, W.B.Ju & K.W.Xu",NA
+Hymenophyllum apiculatum Mett.,Hymenophyllum apiculatum Mett.; Kuhn,NA
+Hymenophyllum deplanchei Mett.,Hymenophyllum deplanchei Mett.; Kuhn,NA
+Hymenophyllum devolii Lai,Hymenophyllum devolii M.J.Lai,NA
+Hymenophyllum dimidiatum Mett.,Hymenophyllum dimidiatum Mett.; Kuhn,NA
+Hymenophyllum magellanicum Willd. ex Kunze,Hymenophyllum magellanicum Willd.; Kze.,NA
+Hymenophyllum pumilum T.Moore,Hymenophyllum pumilum C.Moore; Bak.,NA
+Hymenophyllum rufum Fee Fee,Hymenophyllum rufum Fée,NA
+Hymenophyllum schomburgkii C.Pres,Hymenophyllum schomburgkii C.Presl,NA
+Hypodematium angustifolium C.S.Lee & K.Lee,Hypodematium angustifolium C.S.Lee & K.H.Lee,NA
+Hypolepis viscosa H.Karst.,Hypolepis viscosa (H.Karst.) Mett.,NA
+Jamesonia laxa Mett.,Jamesonia laxa Kunze,NA
+Lastraea glabra var. glabra Brack.,Lastrea glabra Brack.,NA
+Lepisorus albertii (Regel) Ching,Lepisorus alberti (Regel) Ching,NA
+Lepisorus hsiaowutaiensis Ching & S.K.Wu,Lepisorus hsiawutaiensis Ching & S.K.Wu,NA
+Lepisorus rostratus (Bedd.) B.K.Nayar & S.Kaur,Lepisorus rostratus (Hook.) B.K.Nayar & Kaur,NA
+Lepisorus rufofuscus T.Fujiwara,Lepisorus rufofuscus T.Fujiw.,NA
+Leptopteris wilkesiana (Brack.) Gower,Leptopteris wilkesiana (Brack.) Christ,NA
+Lindsaea lancea var. lancea,Lindsaea lancea (L.) Bedd.,NA
+Lindsaea millefolia K.U.Kramer,Lindsaea millefolium K.U.Kramer,NA
+Lomariopsis wrightii Mett.,Lomariopsis wrightii Mett.; Eat.,NA
+Lygodium micans J.W.Sturm,Lygodium micans Sturm,NA
+Mecodium szechuanense Ching & P.S.Chiu,Mecodium szechuanense Ching & Chiu,NA
+Mecodium wangii Ching & P.S.Chiu,Mecodium wangii Ching & Chiu,NA
+Microgramma lindbergii (Mett.) Sota,Microgramma lindbergii (Mett.) de la Sota,NA
+Microlepia firma Mett. ex Kuhn,Microlepia firma Mett.; Kuhn,NA
+Microsorum glossophyllum (Copel.) Copel.. 1947,Microsorum glossophyllum (Copel.) Copel.,NA
+Myriopteris fendleri E.Fourn.,Myriopteris fendleri Fourn.,NA
+"Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & N.Nakato","Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & Nakato",NA
+Onocleopsis hintonii F.Ballard,Onocleopsis hintonii Ballard,NA
+Ophioderma redactophyllum Chantanaorr. & Li Bing Zhang,Ophioderma redactophylla Chantanaorr. & Li Bing Zhang,NA
+"Ophioglossum aletum Patel, Reddy & Goswami","Ophioglossum aletum M.Patel, M.N.Reddy & H.K.Goswami",NA
+"Ophioglossum trilokinathii B.L.Yadav, M.K.Meghvansi, K.Meena & C.B.Gena","Ophioglossum trilokinathii B.L.Yadav, Meghvansi, Meena & Gena",NA
+Pilularia americana A.Braun,Pilularia americana A.Br.,NA
+Pilularia minuta Durieu,Pilularia minuta Durieu; A.Br.,NA
+Platycerium holttumii de Jonch.& Hennipman,Platycerium holttumii Joncheere & Hennipman,NA
+Platycerium superbum Jonch. & Hennipman,Platycerium superbum Joncheere & Hennipman,NA
+Platygyria x inaequibasis Ching & S.K.Wu,Platygyria inaequibasis Ching & S.K.Wu,NA
+Pleopeltis angusta var. angusta,Pleopeltis angusta Bojer,NA
+Pleopeltis polypodioides var. polypodioides,Pleopeltis polypodioides (L.) E.G.Andrews & Windham,NA
+Polybotrya glandulosa Mett.,Polybotrya glandulosa Mett.; Kuhn,NA
+Polybotrya pubens Mart.,Polybotrya pubens Mart.; Kze.,NA
+Polypodium subpetiolatum Hook.,Polypodium subpetiolatum Hk.,NA
+Polystichum chingiae Ching,Polystichum chingae Ching,NA
+Polystichum cystostegia (Hook.) J.B.Armstr.,Polystichum cystostegia (Hook.) Armstr.,NA
+Polystichum distans E.Fourn.,Polystichum distans Fourn.,NA
+Polystichum marquesense E.D.Br.,Polystichum marquesense E.Brown,NA
+Polystichum microchlamys var. azumiense Seriz.,Polystichum microchlamys var. azumiense,NA
+Polystichum polyblepharum Nakai,Polystichum polyblepharum C.Presl,NA
+Polystichum polyblepharum var. polyblepharum,Polystichum polyblepharum C.Presl,NA
+Polystichum polyblepharum var. scabiosum Sa.Kurata,Polystichum polyblepharon var. scabiosum Sa.Kurata,NA
+Polystichum rapense E.D.Br.,Polystichum rapense E.Brown,NA
+Polystichum rochaleanum Glaz.,Polystichum rochaleanum Glaz.; Fee,NA
+Polystichum sinotsus-simense Ching & Zheng Y.Liu,Polystichum sinotsussimense Ching & Z.Y.Liu,NA
+Pteris asperula (Bedd.) Hieron.,Pteris asperula J.Sm. ex Hieron.,NA
+Pteris comans G.Forst.,Pteris comans Forst.,NA
+Pteris ensiformis Burm.f.,Pteris ensiformis Burm.,NA
+Pteris inaequalis C.Presl,Pteris inaequalis Baker,NA
+Pteris litoralis Rech.,Pteris litoralis Rechinger,NA
+Pteris lydgatei (Baker) H.Christ,Pteris lidgatei (Baker) Christ,NA
+Pteris microptera Mett.,Pteris microptera Mett.; Kuhn,NA
+Pteris nipponica W.C.Shieh,Pteris nipponica Shieh,NA
+Pteris stenophylla C.Presl,Pteris stenophylla Link,NA
+Pteris usambarensis Hieron.,Pteris usambarensis Hier.,NA
+Pteris vittata 'nano',Pteris vittata L.,NA
+Pteris woodwardioides Bory ex Willd.,Pteris woodwardioides Bory; Willd.,NA
+Pteris x sefuricola Kurata,Pteris sefuricola Sa.Kurata,NA
+Pyrrosia lanceolata Farw.,Pyrrosia lanceolatus (L.) Farw.,NA
+Pyrrosia longifolia (Burm.f.) C.V.Morton,Pyrrosia longifolia (Burm.f.) Morton,NA
+Pyrrosia matsudae (Hayata) Tagawa,Pyrrosia matsudai (Hayata) Tagawa,NA
+Rouxopteris boryi (Kunze) H.M.Liu,Rouxopteris boryi (Kunze) Hong M.Liu,NA
+Sadleria wagneriana D.D.Palmer & Flynn,Sadleria wagneriana D.D.Palmer & T.Flynn,NA
+Salvinia molesta D.S. Mitch.,Salvinia molesta D.Mitch.,NA
+Salvinia oblongifolia Martius,Salvinia oblongifolia Mart.,NA
+Schizaea biroi V.A.Richt.,Schizaea biroi Richter,NA
+Schizaea dichotoma (L.) J.Sm.,Schizaea dichotoma Kunze,NA
+Schizaea fluminensis Miers ex J.W.Sturm,Schizaea fluminensis Miers; Sturm,NA
+"Schizaea medusa L.Y.Kuo, B.F.Ke, F.W.Li, & Rouhan","Schizaea medusa L.Y.Kuo, B.F.Ke, Fay W.Li & Rouhan",NA
+"Selliguea albipes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert","Selliguea albopes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert",NA
+Selliguea feeoides Copel.,Selliguea feeioides Copel.,NA
+Serpocaulon menisciifolium (Langsd. & Fisch.) A.R.Sm.,Serpocaulon meniscifolium (Langsd. & Fisch.) A.R.Sm.,NA
+Sphaerostephanos heterocarpos (Blume) Holttum,Sphaerostephanos heterocarpus (Blume) Holttum,NA
+Sphaerostephanos polycarpos (Blume) Copel.,Sphaerostephanos polycarpa (Blume) Copel.,NA
+Sticherus brackenridgei (Fourn.) St.John,Sticherus brackenridgii (Fourn.) H.St.John,NA
+Sticherus flabellatus (R.Br.) H.St.John,Sticherus flabellatus (R.Br.) St.John,NA
+Sticherus tener Ching,Sticherus tenera (R.Br.) Ching,NA
+Stigmatopteris ichtiosma (Sodiro) C.Chr.,Stigmatopteris ichthiosma (Sodiro) C.Chr.,NA
+Struthiopteris spicant (L.) F.W.Weiss,Struthiopteris spicant (L.) Weiss,NA
+Syngramma alismifolia C.Presl,Syngramma alismifolia (C.Presl) J.Sm.,NA
+Syngramma borneensis Hook.,Syngramma borneensis (Hook.) J.Sm.,NA
+Syngramma cartilagidens Baker,Syngramma cartilagidens (Baker) Diels,NA
+Syngramma lobbiana Hook.,Syngramma lobbiana (Hook.) J.Sm.,NA
+Syngramma valleculata Baker,Syngramma valleculata (Baker) C.Chr.,NA
+Syngramma vittiformis J.Sm.,Syngramma vittiforme J.Sm.,NA
+Syngramma wallichii Hook.,Syngramma wallichii (Hook.) Bedd.,NA
+Tapeinidium denhami (Hook.) C.Chr.,Tapeinidium denhamii (Hook.) C.Chr.,NA
+Tectaria jardini (Mett.) E.D.Br.,Tectaria jardinii (Mett.) E.D.Br.,NA
+Tectaria marchionica E.D.Brown,Tectaria marchionica E.Brown,NA
+Tectaria melanocaulos (Blume) Copel.,Tectaria melanocaula (Blume) Copel.,NA
+Tectaria stenoptera Ching,Tectaria stenopteros (Baker) Ching,NA
+Thelypteris arida (D.Don) C.V.Morton,Thelypteris arida (D.Don) Morton,NA
+Thelypteris esquirolii var. glabrata (Christ) K.Iwats.,Thelypteris esquirolii (Christ) Ching,NA
+Thelypteris hattorii var. nemoralis (Ching) Sa.Kurata,Thelypteris hattori var. nemoralis (Ching) Sa.Kurata,NA
+Thelypteris x pseudoliukiuensis Seriz.,Thelypteris pseudoliukiuensis Seriz.,NA
+Thylacopteris papillosa Kunze ex J.Sm.,Thylacopteris papillosa Kze.; J.Sm.,NA
+Tmesipteris vieillardii P.A.Dang.,Tmesipteris vieillardii Dangeard,NA
+Trichomanes ankersii C.Parker ex Hook. & Grev.,Trichomanes ankersii C.S.Parker ex Hook. & Grev.,NA
+Trichomanes radicans type I,Trichomanes radicans Sw.,NA
+Trichomanes radicans type I',Trichomanes radicans Sw.,NA
+Trichomanes radicans type II,Trichomanes radicans Sw.,NA
+Trichomanes radicans type III,Trichomanes radicans Sw.,NA
+Trichomanes radicans type IV,Trichomanes radicans Sw.,NA
+Trichomanes tanaicum J.W.Sturm,Trichomanes tanaicum Hk.; Sturm,NA
+Trichomanes tubiflora (F.S.Wagner) Christenh.,Trichomanes tubiflorum (F.S.Wagner) Christenh.,NA
+Trichomanes vittaria DC.,Trichomanes vittaria DC.; Poir.,NA
+"Vandenboschia confusa Dubuisson, Deblauwe & Boucheron-Dubuisson","Vandenboschia confusa Dubuisson, Deblauwe & Bouch.-Dubuisson",NA
+x Cystocarpium roskamianum Fraser-Jenk.,× Cystocarpium × roskamianum Fraser-Jenk.,NA
+x Lindsaeosoria flynnii W.H.Wagner,× Lindsaeosoria × flynnii W.H.Wagner,NA
+Arachniodes coadnata (Ching) Nakaike,Arachniodes coadunata (Ching) Nakaike,NA
+Asplenium fontanum subsp. fontanum,Asplenium fontanum (L.) Bernh.,NA
+Gymnocarpium dryopteris var. aokigaharaense Nakaike,Gymnocarpium dryopteris (L.) Newman,NA
+Ophioderma pendulum L.,Ophioderma pendula (L.) C.Presl,NA
+Diplazium okudairai,Diplazium okudairae Makino,NA
+Asplenium foresiense Legrand,Asplenium forisiense Le Grand,spelling mistake in species name
+Christella jinhongensis (Ching ex K.H.Shing) A.R.Sm. & S.E.Fawc.,Christella jinghongensis (Ching ex K.H.Shing) A.R.Sm. & S.E.Fawc.,spelling mistake in species name
+Dryopteris glandulosolanosa C. Chr.,Dryopteris glandulosa-lanosa C.Chr.,spelling mistake in species name
+Heterogonium subglabrum Holttum,Heterogonium subglabratum Holttum,spelling mistake in species name
+Melpomene michaelis Lehnert,Melpomene michaelium Lehnert,spelling mistake in species name
+Notholaena montieliae Yatsk. & Arbelaez,Notholaena montielae Yatsk. & Arbeláez,spelling mistake in species name
+Pecluma ptilotos (Kunze) M.G.Price,Pecluma ptilota (Kunze) M.G.Price,spelling mistake in species name
+Pteris ottaria Bedd.,Pteris otaria Bedd.,spelling mistake in species name
+Terpsichore asplenifolia (L.) A.R.Sm.,Terpsichore aspleniifolia (L.) A.R.Sm.,spelling mistake in species name
+Trichomanes osmundoides DC. ex Poir.,Trichomanes osmundioides DC. ex Poir.,spelling mistake in species name
+Cibotium regale Verschaff. ex Regel,Cibotium regale Verschaff. & Lem.,author variant
+Cyathea holdridgeana Nisman & L.Gomez,Cyathea holdridgeana Nisman & M.Gómez,author variant
+Davallia epiphylla (G.Forst.) Sw.,Davallia epiphylla (G.Forst.) Spreng.,author variant
+Grammitis grisebachii (Underw. ex C.Chr.) Proctor,Grammitis grisebachii (Underw. ex C.Chr.) Copel.,author variant
+Dryopteris insularis var. chichisimensis (Nakai ex H.Ito) H.Ito,Dryopteris insularis subsp. chichishimensis (Nakai ex H.Itô) H.Itô,spelling and author variant
+Whittieria hengduanensis,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
+Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
