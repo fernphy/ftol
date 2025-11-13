@@ -89,7 +89,7 @@ tar_plan(
   tar_file_read(
     gb_release,
     path(data_raw, "restez/gb_release.txt"),
-    as.numeric(readLines(!!.x))
+    parse_gb_release(!!.x)
   ),
   # Path to GenBank README
   tar_file(gb_readme_path, path(data_raw, "restez/README.genbank")),
