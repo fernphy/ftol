@@ -1886,7 +1886,7 @@ fetch_metadata <- function(
       ~ entrez_summary_gb(
         search_res = search_res,
         col_select = col_select,
-        retstart = .x,
+        retstart = .x
       )
     )
   } else {
@@ -2512,7 +2512,7 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
       acceptedNameUsage = "Trichomanes singaporianum (Bosch) Alderw.",
       stamp_modified = FALSE
     ) |>
-     # 2025-07-17 need to update in Rhakhis
+    # 2025-07-17 need to update in Rhakhis
     # Lindsaea millefolium should be accepted, with
     # Odontosoria decomposita as synonym
     dwctaxon::dct_modify_row(
@@ -2570,7 +2570,7 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
       acceptedNameUsage = "Vandenboschia radicans (Sw.) Copel.",
       stamp_modified = FALSE
     ) |>
-        # 2025-07-18 need to update in Rhakhis
+    # 2025-07-18 need to update in Rhakhis
     dwctaxon::dct_modify_row(
       scientificName = "Lindsaea parasitica (Roxb. ex Griff.) Hieron.",
       taxonomicStatus = "accepted",
@@ -2641,14 +2641,21 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
   ppg |>
     filter(taxonRank %in% species_and_below) |>
     filter(taxonomicStatus %in% c("accepted", "synonym")) |>
-    mutate(nomenclaturalStatus = replace_na(
-      nomenclaturalStatus, "assumed valid")) |>
-    filter(!nomenclaturalStatus %in% c(
-      "invalid",
-      "rejected",
-      "illegitimate",
-      "superfluous"
-    ))
+    mutate(
+      nomenclaturalStatus = replace_na(
+        nomenclaturalStatus,
+        "assumed valid"
+      )
+    ) |>
+    filter(
+      !nomenclaturalStatus %in%
+        c(
+          "invalid",
+          "rejected",
+          "illegitimate",
+          "superfluous"
+        )
+    )
 }
 
 #' Extract relevant dates from the GenBank README file
@@ -2935,20 +2942,20 @@ count_non_missing <- function(seq) {
 # The new taxid needs to be defined in clean_ncbi_names()
 get_custom_ncbi_taxids <- function() {
   tribble(
-  ~accession, ~taxid, ~taxid_new, ~comment,
-  "AB574951", "872345", "872342b", "True Deparia petersenii var. yakusimensis",
-  "KY296510", "872345", "872342b", "True Deparia petersenii var. yakusimensis",
-  "KY296519", "872345", "872342b", "True Deparia petersenii var. yakusimensis",
-  "KY296537", "872345", "872342b", "True Deparia petersenii var. yakusimensis"
-)
+    ~accession , ~taxid   , ~taxid_new , ~comment                                    ,
+    "AB574951" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296510" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296519" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296537" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis"
+  )
 }
 
 # Change a taxid in the raw data downloaded from GenBank to match a
 # custom entry created in clean NCBI taxonomy data
 # For example, Arachniodes amabilis var. yakusimensis in original NCBI
 # data includes Deparia petersenii var. yakusimensis as a synonym,
-# but these are both accepted names. So we can't just modify 
-# Arachniodes amabilis var. yakusimensis as a synonym of 
+# but these are both accepted names. So we can't just modify
+# Arachniodes amabilis var. yakusimensis as a synonym of
 # Deparia petersenii var. yakusimensis, but need to create a new name
 modify_ncbi_taxid <- function(raw_meta, update_table) {
   raw_meta |>
@@ -2965,7 +2972,11 @@ modify_ncbi_taxid <- function(raw_meta, update_table) {
 }
 
 filter_and_update_raw_meta <- function(
-  raw_meta_all, accs_exclude, accs_in_local_db, custom_ncbi_taxids) {
+  raw_meta_all,
+  accs_exclude,
+  accs_in_local_db,
+  custom_ncbi_taxids
+) {
   raw_meta_all %>%
     unique() %>%
     # Drop excluded sequences from metadata
@@ -2974,7 +2985,6 @@ filter_and_update_raw_meta <- function(
     inner_join(accs_in_local_db, by = "accession") %>%
     # Update NCBI taxid with custom taxids
     modify_ncbi_taxid(custom_ncbi_taxids)
-
 }
 
 #' Combine sanger sequence metadata with sequences, join to resolved names
@@ -4838,15 +4848,15 @@ trim_plastome_genes <- function(plastome_genes_aligned) {
 #' @return A tibble
 load_filter_tibble <- function() {
   tibble::tribble(
-    ~species,
-    ~min_loci,
-    ~min_len,
-    "Alsophila_crinita",
-    2,
-    600,
-    "Phanerophlebia_macrosora",
-    2,
-    600
+    ~species                   ,
+    ~min_loci                  ,
+    ~min_len                   ,
+    "Alsophila_crinita"        ,
+                             2 ,
+                           600 ,
+    "Phanerophlebia_macrosora" ,
+                             2 ,
+                           600
   ) %>%
     assert(is_uniq, species) %>%
     assert(not_na, everything())
@@ -8600,7 +8610,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     # implications for generic classification
     filter(
       !(taxid == "328217" &
-      scientific_name == "Davallia polypodioides (Sw.) D.Don")
+        scientific_name == "Davallia polypodioides (Sw.) D.Don")
     ) %>%
     filter(
       !(taxid == "328217" &
@@ -8622,7 +8632,8 @@ clean_ncbi_names <- function(ncbi_names_raw) {
     # should be accepted, but NCBI has as synonym of  Teratophyllum leptocarpum
     mutate(
       accepted = case_when(
-        taxid == "2912853" & scientific_name == "Lomariopsis leptocarpa Fee" ~ TRUE,
+        taxid == "2912853" &
+          scientific_name == "Lomariopsis leptocarpa Fee" ~ TRUE,
         taxid == "2912853" ~ FALSE,
         TRUE ~ accepted
       )
@@ -8636,7 +8647,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       taxid = case_when(
         taxid == "872345" &
           scientific_name ==
-          "Deparia petersenii var. yakusimensis (H.Ito) M.Kato" ~ "872345b",
+            "Deparia petersenii var. yakusimensis (H.Ito) M.Kato" ~ "872345b",
         TRUE ~ taxid
       )
     ) %>%
@@ -8644,7 +8655,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       accepted = case_when(
         taxid == "872345b" &
           scientific_name ==
-          "Deparia petersenii var. yakusimensis (H.Ito) M.Kato" ~ TRUE,
+            "Deparia petersenii var. yakusimensis (H.Ito) M.Kato" ~ TRUE,
         TRUE ~ accepted
       )
     ) %>%
@@ -10148,55 +10159,55 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
     "this_study" = tribble(
       # IMPORTANT: tip_1_manual and tip_2_manual should define the **crown**
       # group, regardless of `affinities_group`
-      ~affinities,
-      ~affinities_group,
-      ~tip_1_manual,
-      ~tip_2_manual,
-      "Polystichum",
-      "stem",
-      "Polystichum_craspedosorum",
-      "Polystichum_sinense",
-      "Pleopeltis",
-      "crown",
-      "Pleopeltis_bombycina",
-      "Pleopeltis_conzattii",
-      "Lepisorus",
-      "crown",
-      "Lepisorus_longifolius",
-      "Lepisorus_angustus",
-      "Polypodium s.l.",
-      "stem",
-      "Pleurosoriopsis_makinoi",
-      "Polypodium_pellucidum",
-      "Cyathea+Alsophila+Gymnosphaera",
-      "crown",
-      "Alsophila_poolii",
-      "Cyathea_epaleata",
-      "Ophioglossum",
-      "stem",
-      "Rhizoglossum_bergianum",
+      ~affinities                      ,
+      ~affinities_group                ,
+      ~tip_1_manual                    ,
+      ~tip_2_manual                    ,
+      "Polystichum"                    ,
+      "stem"                           ,
+      "Polystichum_craspedosorum"      ,
+      "Polystichum_sinense"            ,
+      "Pleopeltis"                     ,
+      "crown"                          ,
+      "Pleopeltis_bombycina"           ,
+      "Pleopeltis_conzattii"           ,
+      "Lepisorus"                      ,
+      "crown"                          ,
+      "Lepisorus_longifolius"          ,
+      "Lepisorus_angustus"             ,
+      "Polypodium s.l."                ,
+      "stem"                           ,
+      "Pleurosoriopsis_makinoi"        ,
+      "Polypodium_pellucidum"          ,
+      "Cyathea+Alsophila+Gymnosphaera" ,
+      "crown"                          ,
+      "Alsophila_poolii"               ,
+      "Cyathea_epaleata"               ,
+      "Ophioglossum"                   ,
+      "stem"                           ,
+      "Rhizoglossum_bergianum"         ,
       "Ophioglossum_parvifolium"
     ),
     "ts2016" = tribble(
-      ~affinities,
-      ~affinities_group,
-      ~tip_1_manual,
-      ~tip_2_manual,
-      "Alsophila+Cyathea",
-      "stem",
-      "Cyathea_minuta",
-      "Alsophila_capensis",
-      "Diplazium+Athyrium",
-      "stem",
-      "Ephemeropteris_tejeroi",
-      "Diplazium_caudatum",
-      "Pleopeltis",
-      "crown",
-      "Pleopeltis_bombycina",
-      "Pleopeltis_conzattii",
-      "Polypodium s.l.",
-      "stem",
-      "Pleurosoriopsis_makinoi",
+      ~affinities               ,
+      ~affinities_group         ,
+      ~tip_1_manual             ,
+      ~tip_2_manual             ,
+      "Alsophila+Cyathea"       ,
+      "stem"                    ,
+      "Cyathea_minuta"          ,
+      "Alsophila_capensis"      ,
+      "Diplazium+Athyrium"      ,
+      "stem"                    ,
+      "Ephemeropteris_tejeroi"  ,
+      "Diplazium_caudatum"      ,
+      "Pleopeltis"              ,
+      "crown"                   ,
+      "Pleopeltis_bombycina"    ,
+      "Pleopeltis_conzattii"    ,
+      "Polypodium s.l."         ,
+      "stem"                    ,
+      "Pleurosoriopsis_makinoi" ,
       "Polypodium_pellucidum"
     ),
     stop("Must choose either 'this_study' or 'ts2016'")
@@ -10554,15 +10565,15 @@ calibrate_root_node <- function(tree, node_name, time, tip_1, tip_2) {
   ) #nolint
 
   tribble(
-    ~mrca,
-    ~min,
-    ~max,
-    ~taxon_1,
-    ~taxon_2,
-    glue::glue("mrca = {node_name} {tip_1} {tip_2}"),
-    glue::glue("min = {node_name} {time}"),
-    glue::glue("max = {node_name} {time}"),
-    tip_1,
+    ~mrca                                            ,
+    ~min                                             ,
+    ~max                                             ,
+    ~taxon_1                                         ,
+    ~taxon_2                                         ,
+    glue::glue("mrca = {node_name} {tip_1} {tip_2}") ,
+    glue::glue("min = {node_name} {time}")           ,
+    glue::glue("max = {node_name} {time}")           ,
+    tip_1                                            ,
     tip_2
   ) %>%
     mutate(across(everything(), as.character))
