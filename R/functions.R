@@ -1,5 +1,17 @@
 # Data loading ----
 
+# For some reason, starting with release 268, the contents of
+# gb_release.txt started including an extra 0 (so 2680 instead of 268)
+# Convert this back to a three digit number
+parse_gb_release <- function(gb_release_txt_path) {
+  gb_release <- as.numeric(readLines(gb_release_txt_path))
+  ndigits <- nchar(gb_release)
+  if (ndigits == 4) {
+    gb_release <- round(gb_release / 10, digits = 0)
+  }
+  gb_release
+}
+
 #' Download and load the PPG reference CSV file
 #'
 #' Downloads a specific version of the PPG reference data from GitHub,
