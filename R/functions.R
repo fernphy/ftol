@@ -1797,14 +1797,28 @@ entrez_summary_gb <- function(
   max_hits = 500
 ) {
   # Download data
-  rentrez::entrez_summary(
+  search_res <- rentrez::entrez_summary(
     db = "nuccore",
     retstart = retstart,
     retmax = max_hits,
     web_history = search_res$web_history
-  ) %>%
-    # Extract selected columns from result
-    purrr::map_dfr(magrittr::extract, col_select) %>%
+  )
+
+  ## build a *named* list: one element per column
+  res <- lapply(col_select, function(nm) {
+    rentrez::extract_from_esummary(search_res, nm)
+  })
+
+  ## give the list names (repair any duplicates / empties)
+  names(res) <- make.names(col_select, unique = TRUE)
+
+  ## now convert to tibble
+  res_df <- tibble::as_tibble(res) %>%
+    mutate(
+      subtype = map(subtype, ~ if (is.null(.x)) NA_character_ else .x),
+      subname = map(subname, ~ if (is.null(.x)) NA_character_ else .x)
+    ) %>%
+    unnest(c(subtype, subname)) %>%
     # Make sure taxid column is character
     mutate(taxid = as.character(taxid)) %>%
     assert(not_na, taxid)
