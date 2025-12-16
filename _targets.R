@@ -30,9 +30,9 @@ tar_option_set(
 tar_plan(
   # Load data ----
   # - PPG taxonomic database (https://github.com/pteridogroup/ppg)
-  ppg_full = load_ppg(ver = "0.0.0.9000"),
+  ppg_full = load_ppg(ver = "0.0.0.9002"),
   # - Format for matching species names with taxastand
-  ppg_db = format_ppg_for_ts(ppg_full, ppg_names_to_add),
+  ppg_db = format_ppg_for_ts(ppg_full),
   # Modified PPGI taxonomy
   # with new genera and slightly different treatments following World Ferns list
   ppg_tl = dwc_to_tl(ppg_full),
@@ -64,12 +64,6 @@ tar_plan(
   tar_file_read(
     manual_matches,
     path(data_raw, "pterido_manual_match.csv"),
-    read_csv(!!.x)
-  ),
-  # Names to add to PPG (ideally, shouldn't need to do this)
-  tar_file_read(
-    ppg_names_to_add,
-    path(data_raw, "ppg_names_to_add.csv"),
     read_csv(!!.x)
   ),
   # Reference alignments for assembling genes

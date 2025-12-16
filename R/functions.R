@@ -26,7 +26,7 @@ parse_gb_release <- function(gb_release_txt_path) {
 #' @examples
 #' ppg_data <- load_ppg("0.0.0.9000")
 #'
-load_ppg <- function(ver = "0.0.0.9000") {
+load_ppg <- function(ver = "0.0.0.9001") {
   temp_file <- tempfile(fileext = ".zip")
 
   temp_dir <- fs::path_dir(temp_file)
