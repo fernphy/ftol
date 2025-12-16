@@ -8554,7 +8554,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       species = case_when(
         taxid == "2928218" ~ "Tectaria pallescens",
         TRUE ~ species
-      )      
+      )
     ) %>%
     # Change MISSING back to NA
     mutate(scientific_name = na_if(scientific_name, "MISSING"))
@@ -9473,6 +9473,69 @@ assess_monophy <- function(
     select(species, all_of(tax_levels)) %>%
     as.data.frame() %>%
     MonoPhy::AssessMonophyly(tree, .)
+}
+
+# Make a tibble of taxa to exlcude from monophyly check
+make_taxa_exclude_tbl <- function() {
+  taxa_exclude <- tibble::tibble(
+    taxon = c(
+      # Commented list of false positives from past runs
+      "Abacopteris",
+      "Abrodictyum",
+      # "Adiantopsis",
+      # "Amauropelta",
+      # "Athyrium",
+      # "Arachniodes",
+      # "Blechnum",
+      # "Callistopteris",
+      # "Crepidomanes",
+      # "Calochlaena",
+      "Choristosoria",
+      # "Cyathea",
+      "Dasygrammitis",
+      # "Dicksonia",
+      # "Didymoglossum",
+      # "Dipteris",
+      # "Diplazium",
+      # "Diploblechnum",
+      # "Dryopteridoideae",
+      # "Dryopteris",
+      "Goniopteris",
+      "Lecanopteris",
+      "Leptochilus",
+      # "Leucotrichum",
+      # "Lomariocycas",
+      # "Lytoneuron",
+      # "Metathelypteris",
+      # "Meniscium",
+      "Mesophlebion",
+      # "Mycopteris",
+      # "Notogrammitis",
+      "Olfersia",
+      # "Ormopteris",
+      # "Phanerophlebia",
+      # "Pneumatopteris",
+      # "Pellaeopsis",
+      # "Polybotryoideae",
+      # "Polybotrya",
+      # "Polystichopsis",
+      # "Polypodiales",
+      # "Polystichum",
+      "Pronephrium",
+      # "Pseudocyclosorus",
+      # "Reholttumia",
+      "Quechuapteris",
+      # "Saccoloma",
+      "Sceptridium",
+      # "Strophocaulon",
+      # "Syngramma",
+      # "Thelypteris",
+      # "Trichomanes",
+      "Tomophyllum",
+      "Xiphopterella"
+    )
+  )
+  taxa_exclude
 }
 
 # Dating prep ----
