@@ -8544,6 +8544,18 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         TRUE ~ accepted
       )
     ) %>%
+    # Tectaria pallescens
+    # nom inval is included in name as "Tectaria pallescens (nom. inval.)"
+    mutate(
+      scientific_name = case_when(
+        taxid == "2928218" ~ "Tectaria pallescens S.Y.Dong & C.W.Chen",
+        TRUE ~ scientific_name
+      ),
+      species = case_when(
+        taxid == "2928218" ~ "Tectaria pallescens",
+        TRUE ~ species
+      )      
+    ) %>%
     # Change MISSING back to NA
     mutate(scientific_name = na_if(scientific_name, "MISSING"))
 }
