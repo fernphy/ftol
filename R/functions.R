@@ -2274,8 +2274,34 @@ write_tree_from_tbl <- function(
 #'
 #' @examples
 #' filtered_ppg <- format_ppg_for_ts(ppg)
-format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
+format_ppg_for_ts <- function(ppg_full) {
   require(dwctaxon)
+
+  # Make tibble of records with nomenclaturalStatus that would normally
+  # exclude them, but that need to be kept for matching
+  recs_keep <-
+    tibble(
+      taxonID = c(
+        "wfo-1000074366", # Cyathea glauca E.Fourn.
+        "wfo-1000071469", # Adiantum scabrum Wall.
+        "wfo-0001270633", # Elaphoglossum reptans A.Rojas
+        "wfo-1000072665", # Athyrium cumingianum (C.Presl) Milde
+        "wfo-1000073039", # Alsophila alata Sodiro
+        "wfo-0001346647", # Austroblechnum colensoi (Hook.f.) Gasper & V.A.O.Dittrich
+        "wfo-0001384691", # Blechnum niponicum var. minimum (Tagawa) Nakaike
+        "wfo-0001346889", # Parablechnum gregsonii (Tindale) Gasper & Salino
+        "wfo-0001346921", # Parablechnum schiedeanum (Schltdl. ex C.Presl) Gasper & Salino
+        "wfo-0001346926", # Parablechnum stipitellatum (Sodiro) Gasper & Salino
+        "wfo-0001108696", # Polypodium polycarpon Cav. ex Sw.
+        "wfo-0001109289", # Pteris excelsa Gaudich.
+        "wfo-0001117194", # Woodsia intermedia Tagawa
+        "wfo-1000040863", # Tectaria pallescens S.Y.Dong & C.W.Chen
+        "wfo-0001347387", # Abrodictyum pseudorigidum Bauret & Dubuisson
+        "wfo-0001226866", # Deparia concinna (Z.R.Wang) M.Kato
+        "wfo-0001114903" # Dryopteris pacifica (Nakai) Tagawa
+      ),
+      keep = TRUE
+    )
 
   ppg <-
     ppg_full |>
@@ -2285,106 +2311,241 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
         str_squish()
     ) |>
     select(-scientificNameAuthorship) |>
-    dwctaxon::dct_add_row(new_dat = ppg_names_to_add, stamp_modified = FALSE) |>
+    # Abrodictyum obscurum var. siamense (Christ) K.Iwats.-> synonym of Trichomanes siamense Christ
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001117600
     dwctaxon::dct_modify_row(
-      scientificName = "Ophioglossum aletum M.Patel, M.N.Reddy & H.K.Goswami",
+      scientificName = "Trichomanes siamense Christ",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
+    dwctaxon::dct_modify_row(
+      scientificName = "Abrodictyum obscurum var. siamense (Christ) K.Iwats.",
+      nomenclaturalStatus = "valid",
       taxonomicStatus = "synonym",
-      acceptedNameUsage = "Ophioglossum reticulatum L.",
+      acceptedNameUsage = "Trichomanes siamense Christ",
       stamp_modified = FALSE
     ) |>
+    # Cyathea paucifolia Domin -> synonym of Alsophila paucifolia Baker
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001120935
     dwctaxon::dct_modify_row(
-      taxonID = "wfo-1000067448",
-      # From Metathelypteris hattori
-      # should not need to do this in next version of ppg
-      scientificName = "Metathelypteris hattorii (H.Ito) Ching",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001386239",
-      # From Diplazium sanctae var. rosae Christ
-      # should not need to do this in next version of ppg
-      scientificName = "Diplazium sanctae-rosae Christ",
+      scientificName = "Alsophila paucifolia Baker",
+      nomenclaturalStatus = "valid",
       taxonomicStatus = "accepted",
       stamp_modified = FALSE
     ) |>
     dwctaxon::dct_modify_row(
-      scientificName = "Bolbitis deltigera (Hook.) C.Chr.",
+      scientificName = "Cyathea paucifolia Domin",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "synonym",
+      acceptedNameUsage = "Alsophila paucifolia Baker",
+      stamp_modified = FALSE
+    ) |>
+    # Cyathea corcovadensis (Raddi) Domin -> synonym of Alsophila corcovadensis (Raddi) C.Chr.
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001279037
+    dwctaxon::dct_modify_row(
+      scientificName = "Alsophila corcovadensis (Raddi) C.Chr.",
+      nomenclaturalStatus = "invalid",
+      stamp_modified = FALSE
+    ) |>
+    dwctaxon::dct_modify_row(
+      scientificName = "Cyathea corcovadensis (Raddi) Domin",
+      nomenclaturalStatus = "valid",
       taxonomicStatus = "accepted",
       stamp_modified = FALSE
     ) |>
     dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris yenpingensis C.Chr. & Ching",
+      scientificName = "Alsophila corcovadensis Fée",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "accepted",
+      acceptedNameUsage = "Cyathea glaziovii Domin",
+      stamp_modified = FALSE
+    ) |>
+    # Pseudocyclosorus pubescens -> synonym of Christella molliuscula
+    # Checking with S. Fawcett before making change in Rhakhis
+    dwctaxon::dct_modify_row(
+      scientificName = "Christella molliuscula (Kuhn) Holttum",
+      nomenclaturalStatus = "valid",
       taxonomicStatus = "accepted",
       stamp_modified = FALSE
     ) |>
     dwctaxon::dct_modify_row(
-      scientificName = "Diplazium zangnanense R.Wei & M.J.Lian",
+      scientificName = "Pseudocyclosorus pubescens (D.Don) Kovalchuk",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "synonym",
+      acceptedNameUsage = "Christella molliuscula (Kuhn) Holttum",
+      stamp_modified = FALSE
+    ) |>
+    # Thelypteris hastata -> synonym of Goniopteris hastata
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001109411
+    dwctaxon::dct_modify_row(
+      taxonID = "wfo-0001128035",
+      nomenclaturalStatus = "valid",
       taxonomicStatus = "accepted",
       stamp_modified = FALSE
     ) |>
     dwctaxon::dct_modify_row(
-      scientificName = "Diplazium platyphyllum Christ",
-      taxonomicStatus = "accepted",
+      taxonID = "wfo-0001109411",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "synonym",
+      acceptedNameUsageID = "wfo-0001128035",
       stamp_modified = FALSE
     ) |>
+    # Thelypteris singalanensis -> change to synonym of Metathelypteris singalanensis
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001328339
     dwctaxon::dct_modify_row(
-      scientificName = "Leptochilus ovatifolius Zhe Zhang, S.W.Yao & Yi Huang",
-      taxonomicStatus = "accepted",
+      taxonID = "wfo-0001328339",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "synonym",
+      acceptedNameUsageID = "wfo-0001227690",
       stamp_modified = FALSE
     ) |>
+    # Hemionitis flavescens -> change to synonym of Choristosoria viridis
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001422615
     dwctaxon::dct_modify_row(
-      scientificName = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
-      taxonomicStatus = "accepted",
+      taxonID = "wfo-0001422615",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "synonym",
+      acceptedNameUsageID = "wfo-1000079641",
       stamp_modified = FALSE
     ) |>
+    # Alsophila amintae D.S.Conant
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001107193
     dwctaxon::dct_modify_row(
-      scientificName = "Cheilanthes qiaojiaensis Z.R.He & W.M.Chu",
-      taxonomicStatus = "accepted",
+      taxonID = "wfo-0001107193",
+      scientificName = "Alsophila aminta D.S.Conant",
+      nomenclaturalStatus = "valid",
       stamp_modified = FALSE
     ) |>
+    # Polystichum ensiforme
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000082046
+    dwctaxon::dct_modify_row(
+      taxonID = "wfo-1000082046",
+      taxonomicStatus = "accepted",
+      nomenclaturalStatus = "valid",
+      stamp_modified = FALSE
+    ) |>
+    # Pteris quinquepartita Copel.
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000151108
+    dwctaxon::dct_modify_row(
+      taxonID = "wfo-0000151108",
+      taxonomicStatus = "accepted",
+      nomenclaturalStatus = "valid",
+      stamp_modified = FALSE
+    ) |>
+    # dwctaxon::dct_add_row(new_dat = ppg_names_to_add, stamp_modified = FALSE) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001126518
+    # dwctaxon::dct_modify_row(
+    #   taxonID = "wfo-1000067448",
+    #   # From Metathelypteris hattori
+    #   # should not need to do this in next version of ppg
+    #   scientificName = "Metathelypteris hattorii (H.Ito) Ching",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001386239
+    # dwctaxon::dct_modify_row(
+    #   taxonID = "wfo-0001386239",
+    #   # From Diplazium sanctae var. rosae Christ
+    #   # should not need to do this in next version of ppg
+    #   scientificName = "Diplazium sanctae-rosae Christ",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001272544
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Bolbitis deltigera (Hook.) C.Chr.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001123053
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris yenpingensis C.Chr. & Ching",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000077328
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Diplazium zangnanense R.Wei & M.J.Lian",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001122930
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Diplazium platyphyllum Christ",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000076430
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Leptochilus ovatifolius Zhe Zhang, S.W.Yao & Yi Huang",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001110794
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000026069
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Cheilanthes qiaojiaensis Z.R.He & W.M.Chu",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
     # Can delete these if Choristosoria becomes accepted in next PPG
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria calomelanos (Sw.) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Pellaea calomelanos (Sw.) Link",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria glauca (Sim) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis viridis (Forssk.) Christenh.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria induta (Kunze) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis induta (Kunze) Christenh.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria lacerata (N.C.Anthony & Schelpe) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis multifida (Sw.) Christenh.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria multifida (Sw.) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis multifida (Sw.) Christenh.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria quadripinnata (Forssk.) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis quadripinnata (Forssk.) Christenh.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Choristosoria viridis (Forssk.) Windham & Schuettp.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Hemionitis viridis (Forssk.) Christenh.",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-4000008112
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria calomelanos (Sw.) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Pellaea calomelanos (Sw.) Link",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria glauca (Sim) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis viridis (Forssk.) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria induta (Kunze) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis induta (Kunze) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria lacerata (N.C.Anthony & Schelpe) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis multifida (Sw.) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria multifida (Sw.) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis multifida (Sw.) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria quadripinnata (Forssk.) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis quadripinnata (Forssk.) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Choristosoria viridis (Forssk.) Windham & Schuettp.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Hemionitis viridis (Forssk.) Christenh.",
+    #   stamp_modified = FALSE
+    # ) |>
     # end Choristosoria
     #
     # Ophioglossum chaloneri
@@ -2392,42 +2553,49 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
     # has as synonym of O reticulatum
     # not sure, so include here for now to see if different
     # currently "unchecked" in Rhakhis 2025-06-16
-    dwctaxon::dct_modify_row(
-      scientificName = "Ophioglossum chaloneri H.K.Goswami, M.Patel & K.K.Nag",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Pteris involuta Sw.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Asplenium planicaule Lowe",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Asplenium cuspidatum Lam.",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Neurodium lanceolatum (L.) Fée",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Pleopeltis marginata A.R.Sm. & Tejero",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Pellaea hastata var. glauca Sim",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Cheilanthes hastata (L.f.) Kunze",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED as synonym of O reticulatum:
+    # https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000023825
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Ophioglossum chaloneri H.K.Goswami, M.Patel & K.K.Nag",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000079639
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Pteris involuta Sw.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Cheilanthes involuta (Sw.) Schelpe & N.C.Anthony",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001128147
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Asplenium planicaule Lowe",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Asplenium cuspidatum Lam.",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001109178
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Neurodium lanceolatum (L.) Fée",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Pleopeltis marginata A.R.Sm. & Tejero",
+    #   stamp_modified = FALSE
+    # ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1200104043
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Pellaea hastata var. glauca Sim",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Cheilanthes hastata (L.f.) Kunze",
+    #   stamp_modified = FALSE
+    # ) |>
     # Whittieria hengduanensis Z.L.Liang & Li Bing Zhang
     # new taxon, in Ophiglossum but not comb made yet
+    # Don't want to add comb ined to Rhakhis, so modify here
     dwctaxon::dct_add_row(
       scientificName = "Ophioglossum hengduanensis (Z.L.Liang & Li Bing Zhang) comb. ined.",
       taxonomicStatus = "accepted",
@@ -2445,41 +2613,45 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
     # not synonym of Athyrium newtonii
     # https://bsapubs.onlinelibrary.wiley.com/doi/10.3732/ajb.1600392
     # 2025-06-25 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris schnellii Tardieu",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000143322
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris schnellii Tardieu",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
     # Dryopteris schnellii accepted in Sessa et al 2012,
     # not synonym of Diplazium armatum
     # 2025-06-25 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris spinosa Copel.",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000143359
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris spinosa Copel.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
     # Asplenium x flexuosum Schrad. accepted by Sessa
     # not synonym of Diplazium_flexuosum
     # 2025-06-25 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Asplenium flexuosum Schrad.",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Diplazium flexuosum C.Presl",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Asplenium flexuosum Schrad.",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001117374
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Asplenium flexuosum Schrad.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Diplazium flexuosum C.Presl",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Asplenium flexuosum Schrad.",
+    #   stamp_modified = FALSE
+    # ) |>
     # Dryopteris triangularis accepted in Sessa et al 2012,
     # not synonym of Gymnocarpium dryopteris
     # 2025-06-25 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris triangularis Herter",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000143437
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris triangularis Herter",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
     # Lomariopsis leptocarpa Fée
     # not synonym of  Teratophyllum leptocarpum (Fée) Holttum
     # Wu Y-H, Sun C-Y, Ebihara A, Lu NT, Rouhan G, Kuo L-Y (2021) Two new
@@ -2487,100 +2659,112 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
     # PhytoKeys 187: 161-176. https://doi.org/10.3897/phytokeys.187.77035
     #
     # 2025-07-14 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Lomariopsis leptocarpa Fée",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Teratophyllum leptocarpum (Fée) Holttum",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Lomariopsis leptocarpa Fée",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001117300
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Lomariopsis leptocarpa Fée",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Teratophyllum leptocarpum (Fée) Holttum",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Lomariopsis leptocarpa Fée",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-17 need to update in Rhakhis
     # Trichomanes singaporianum should be accepted, with
     # Cephalomanes singaporianum as synonym
-    dwctaxon::dct_modify_row(
-      scientificName = "Trichomanes singaporianum (Bosch) Alderw.",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Cephalomanes singaporianum Bosch",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Trichomanes singaporianum (Bosch) Alderw.",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000145655
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Trichomanes singaporianum (Bosch) Alderw.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Cephalomanes singaporianum Bosch",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Trichomanes singaporianum (Bosch) Alderw.",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-17 need to update in Rhakhis
     # Lindsaea millefolium should be accepted, with
     # Odontosoria decomposita as synonym
-    dwctaxon::dct_modify_row(
-      scientificName = "Lindsaea millefolium K.U.Kramer",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Odontosoria decomposita (Baker) C.Chr.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Lindsaea millefolium K.U.Kramer",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001118593
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Lindsaea millefolium K.U.Kramer",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Odontosoria decomposita (Baker) C.Chr.",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Lindsaea millefolium K.U.Kramer",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-17 need to update in Rhakhis
     # Lindsaea viridis should be accepted, with
     # Odontosoria viridis as synonym
-    dwctaxon::dct_modify_row(
-      scientificName = "Lindsaea viridis Colenso",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Odontosoria viridis Kuhn",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Lindsaea viridis Colenso",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000141166
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Lindsaea viridis Colenso",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Odontosoria viridis Kuhn",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Lindsaea viridis Colenso",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-18 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris salvinii (Baker) Kuntze",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Ctenitis salvinii (Baker) Stolze",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Dryopteris salvinii (Baker) Kuntze",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001113482
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris salvinii (Baker) Kuntze",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Ctenitis salvinii (Baker) Stolze",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Dryopteris salvinii (Baker) Kuntze",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-18 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris subcrenulata (Baker) C.Chr.",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Ctenitis subcrenulata (Baker) Li Bing Zhang, Rouhan & Yi F.Duan",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Dryopteris subcrenulata (Baker) C.Chr.",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001108287
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Dryopteris subcrenulata (Baker) C.Chr.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Ctenitis subcrenulata (Baker) Li Bing Zhang, Rouhan & Yi F.Duan",
+    #   taxonomicStatus = "synonym",
+    #   acceptedNameUsage = "Dryopteris subcrenulata (Baker) C.Chr.",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-18 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Trichomanes radicans Sw.",
-      acceptedNameUsage = "Vandenboschia radicans (Sw.) Copel.",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001109613
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Trichomanes radicans Sw.",
+    #   acceptedNameUsage = "Vandenboschia radicans (Sw.) Copel.",
+    #   stamp_modified = FALSE
+    # ) |>
     # 2025-07-18 need to update in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Lindsaea parasitica (Roxb. ex Griff.) Hieron.",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Lindsaea parasitica (Roxb.) Wall. ex Hieron.",
-      nomenclaturalStatus = "invalid",
-      stamp_modified = FALSE
-    ) |>
+    # FIXED: Only Lindsaea parasitica (Roxb.) Wall. ex Hieron. is in IPNI,
+    # so we'll go with that one
+    # https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001256977
+    # https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000073947
+    #
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Lindsaea parasitica (Roxb. ex Griff.) Hieron.",
+    #   taxonomicStatus = "accepted",
+    #   stamp_modified = FALSE
+    # ) |>
+    # dwctaxon::dct_modify_row(
+    #   scientificName = "Lindsaea parasitica (Roxb.) Wall. ex Hieron.",
+    #   nomenclaturalStatus = "invalid",
+    #   stamp_modified = FALSE
+    # ) |>
     # Fill IDs
     dwctaxon::dct_fill_col(
       fill_to = "acceptedNameUsageID",
@@ -2647,15 +2831,23 @@ format_ppg_for_ts <- function(ppg_full, ppg_names_to_add) {
         "assumed valid"
       )
     ) |>
-    filter(
-      !nomenclaturalStatus %in%
-        c(
-          "invalid",
-          "rejected",
-          "illegitimate",
-          "superfluous"
-        )
-    )
+    left_join(recs_keep, by = join_by(taxonID)) |>
+    # Filter by nomenclatural status, taking into account exceptions
+    mutate(
+      keep = case_when(
+        keep == TRUE ~ TRUE,
+        nomenclaturalStatus %in%
+          c(
+            "invalid",
+            "rejected",
+            "illegitimate",
+            "superfluous"
+          ) ~ FALSE,
+        .default = TRUE
+      )
+    ) |>
+    filter(keep) |>
+    select(-keep)
 }
 
 #' Extract relevant dates from the GenBank README file
