@@ -9745,78 +9745,53 @@ make_fossil_species_map <- function(
     assert(not_na, everything()) %>%
     assert(is_uniq, species)
 
-  fossil_calibration_points %>%
-    select(affinities) %>%
+  # Map affinities to species: prep 1
+  # Create unified taxonomy lookup (taxon -> genus)
+  taxonomy_lookup <- ppgi_taxonomy_in_tree |>
+    pivot_longer(
+      cols = c(subfamily, family, order),
+      names_to = "rank",
+      values_to = "taxon"
+    ) |>
+    filter(!is.na(taxon)) |>
+    select(taxon, genus) |>
+    unique()
+
+  # Map affinities to species: prep 2
+  # Create unified species lookup (taxon -> species)
+  species_lookup <- bind_rows(
+    tip_tbl |> select(taxon = genus, species),
+    equisetum_subgen_in_tree |> select(taxon = subgenus, species),
+    deep_clades |> select(taxon = clade_1, species),
+    deep_clades |> select(taxon = clade_2, species),
+    eupolypods_taxa |> select(taxon = clade, species)
+  ) |>
+    filter(!is.na(taxon)) |>
+    unique()
+
+  # Map affinities to species: main pipeline
+  fossil_calibration_points |>
+    select(affinities) |>
+    unique() |>
     # Split affinities that are composed of multiple taxa separated by '+'
-    mutate(aff_split = affinities) %>%
-    separate_rows(aff_split, sep = "\\+") %>%
-    # Affinities comprise subgenus (Equisetum only), subfamily, family, order
-    # - join genus by subfamily
+    mutate(aff_split = affinities) |>
+    separate_rows(aff_split, sep = "\\+") |>
+    # Join to get genus, falling back to aff_split itself
     left_join(
-      select(
-        ppgi_taxonomy_in_tree,
-        aff_split = subfamily,
-        genus_1 = genus
-      ),
-      by = "aff_split"
-    ) %>%
-    # - join genus by family
+      taxonomy_lookup,
+      by = c("aff_split" = "taxon"),
+      relationship = "many-to-many"
+    ) |>
+    unique() |>
+    mutate(genus = coalesce(genus, aff_split)) |>
+    # Join to get species by genus
     left_join(
-      select(
-        ppgi_taxonomy_in_tree,
-        aff_split = family,
-        genus_2 = genus
-      ),
-      by = "aff_split"
-    ) %>%
-    # - join genus by order
-    left_join(
-      select(
-        ppgi_taxonomy_in_tree,
-        aff_split = order,
-        genus_3 = genus
-      ),
-      by = "aff_split"
-    ) %>%
-    mutate(genus = coalesce(genus_1, genus_2, genus_3, aff_split)) %>%
-    select(affinities, aff_split, genus) %>%
-    unique() %>%
-    assert(not_na, everything()) %>%
-    # - join species by genus
-    left_join(tip_tbl, by = "genus") %>%
-    # Join equisetum species by subgenus
-    left_join(
-      select(
-        equisetum_subgen_in_tree,
-        species_2 = species,
-        aff_split = subgenus
-      ),
-      by = "aff_split"
-    ) %>%
-    # Join deeper groups by species
-    left_join(
-      select(deep_clades, species_3 = species, aff_split = clade_1),
-      by = "aff_split"
-    ) %>%
-    left_join(
-      select(deep_clades, species_4 = species, aff_split = clade_2),
-      by = "aff_split"
-    ) %>%
-    left_join(
-      select(eupolypods_taxa, species_5 = species, aff_split = clade),
-      by = "aff_split"
-    ) %>%
-    mutate(
-      species = coalesce(
-        species,
-        species_2,
-        species_3,
-        species_4,
-        species_5
-      )
-    ) %>%
-    select(affinities, species) %>%
-    unique() %>%
+      species_lookup,
+      by = c("genus" = "taxon"),
+      relationship = "many-to-many"
+    ) |>
+    select(affinities, species) |>
+    unique() |>
     assert(not_na, everything())
 }
 
