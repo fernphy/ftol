@@ -2311,6 +2311,26 @@ format_ppg_for_ts <- function(ppg_full) {
         str_squish()
     ) |>
     select(-scientificNameAuthorship) |>
+    # Dryopteris pycnolepis Z.Y.Zuo & S.Y.Dong
+    # raise to accepted
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000084794
+    dwctaxon::dct_modify_row(
+      scientificName = "Dryopteris pycnolepis Z.Y.Zuo & S.Y.Dong",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
+    # Leptochilus phanerophlebius
+    # raise to accepted
+    # should not need to do this in next version of ppg
+    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000083908
+    dwctaxon::dct_modify_row(
+      scientificName = "Leptochilus phanerophlebius Liang Zhang, Z.L.Liang & Zhi Y.Yu",
+      nomenclaturalStatus = "valid",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
     # Abrodictyum obscurum var. siamense (Christ) K.Iwats.-> synonym of Trichomanes siamense Christ
     # should not need to do this in next version of ppg
     # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001117600
