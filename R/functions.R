@@ -9929,7 +9929,8 @@ make_ts_fossil_species_map <- function(
         aff_split = family,
         genus_1 = genus
       ),
-      by = "aff_split"
+      by = "aff_split",
+      relationship = "many-to-many"
     ) %>%
     # - join genus by order
     left_join(
@@ -9938,7 +9939,8 @@ make_ts_fossil_species_map <- function(
         aff_split = order,
         genus_2 = genus
       ),
-      by = "aff_split"
+      by = "aff_split",
+      relationship = "many-to-many"
     ) %>%
     # - join genus by genus
     left_join(
@@ -9947,13 +9949,14 @@ make_ts_fossil_species_map <- function(
         aff_split = genus,
         genus_3 = genus
       ),
-      by = "aff_split"
+      by = "aff_split",
+      relationship = "many-to-many"
     ) %>%
     mutate(genus = coalesce(genus_3, genus_2, genus_1)) %>%
     select(affinities, aff_split, genus) %>%
     unique() %>%
     # - join species by genus
-    left_join(tip_tbl, by = "genus") %>%
+    left_join(tip_tbl, by = "genus", relationship = "many-to-many") %>%
     # Join deeper groups by species
     left_join(
       select(deep_clades, species_2 = species, aff_split = clade),
