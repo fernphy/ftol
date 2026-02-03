@@ -402,8 +402,11 @@ tar_plan(
   # Resolve species names in plastome metadata
   # (drops accession if name could not be resolved and fix some names)
   plastome_metadata_renamed = resolve_pterido_plastome_names(
-    plastome_ncbi_names_raw, plastome_metadata_raw, plastome_outgroups,
-    ref_names_parsed = ppg_ref_names, ref_names_data = ppg_db,
+    plastome_ncbi_names_raw,
+    plastome_metadata_raw,
+    plastome_outgroups,
+    ref_names_parsed = ppg_ref_names,
+    ref_names_data = ppg_db,
     manual_matches = manual_matches
   ),
   # Extract plastome sequences
