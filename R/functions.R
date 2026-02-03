@@ -9821,7 +9821,6 @@ parse_ts_calibrations <- function(testo_sundue_2016_si_path) {
         "Drynaria heraclea"
       ) %>%
         str_replace_all("Alsophila/Cyathea clade", "Alsophila+Cyathea") %>%
-        str_replace_all("Isoetales", "Isoëtales") %>%
         str_replace_all(" ", "_")
     ) %>%
     transmute(
