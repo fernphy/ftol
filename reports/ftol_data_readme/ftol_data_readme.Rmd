@@ -608,6 +608,10 @@ MD5 checksum: `r tools::md5sum(sanger_sampling_ftolr)`
 
 CHANGE LOG
 
+2026-02-03
+
+- Update to GenBank release 269
+
 2024-10-30
 
 - Update to GenBank release 261
