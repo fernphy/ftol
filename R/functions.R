@@ -10267,11 +10267,11 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Polypodium_pellucidum"          ,
       "Cyathea+Alsophila+Gymnosphaera" ,
       "crown"                          ,
-      "Alsophila_bryophila"               ,
+      "Alsophila_bryophila"            ,
       "Cyathea_epaleata"               ,
       "Ophioglossum"                   ,
       "stem"                           ,
-      "Ophioderma_pendula"         ,
+      "Ophioderma_pendula"             ,
       "Ophioglossum_parvifolium"
     ),
     "ts2016" = tribble(
@@ -10282,7 +10282,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Alsophila+Cyathea"       ,
       "stem"                    ,
       "Cyathea_minuta"          ,
-      "Alsophila_bryophila"      ,
+      "Alsophila_bryophila"     ,
       "Diplazium+Athyrium"      ,
       "stem"                    ,
       "Ephemeropteris_tejeroi"  ,
