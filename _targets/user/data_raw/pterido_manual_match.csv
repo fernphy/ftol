@@ -73,8 +73,6 @@ Athyrium newtonii Baker,Athyrium newtonii (Baker) Diels,NA
 Athyrium rhachidosorum (Hand.-Mazz.) Ching,Athyrium rhachidisorum (Hand.-Mazz.) Ching,NA
 Azolla nilotica Decne.,Azolla nilotica Dcne.,NA
 Blechnum vieillardii var. simplex Fourn.,Blechnum vieillardii var. simplex E.Fourn.,NA
-Blechnum x caudatum Cav.,Blechnum caudatum Cav.,NA
-Blechnum x confluens Schltdl. & Cham.,Blechnum confluens Schltdl. & Cham.,NA
 Bolbitis gemmifera (Hieron.) C.Chr.,Bolbitis gemmifer (Hieron.) C.Chr.,NA
 Bommeria pedata (Sw.) E.Fourn.,Bommeria pedata (Sw.) Fourn.,NA
 Bosmania membranacea subsp. carinata (W.M.Chu & Z.R.He) R.Wei & X.C.Zhang,Bosmania membranacea (D.Don) Testo,NA
@@ -144,7 +142,7 @@ Dryopteris shiroumensis Kurata & Nakam.,Dryopteris shiroumensis Sa.Kurata & Naka
 Dryopteris sichotensis Kom.,Dryopteris sichotensis Komarov,NA
 "Dryopteris sororia (Maxon) M. McHenry, Sundue & Barrington","Dryopteris sororia (Maxon) M.A.McHenry, Sundue & Barrington",NA
 Dryopteris subbipinnata W.H. Wagner & Hobdy,Dryopteris subbipinnata W.H.Wagner & R.W.Hobdy,NA
-Dryopteris subreflexipinna Ogata,Dryopteris subreflexipinna M.Ogata,NA
+Dryopteris subreflexipinna Ogata,Dryopteris × subreflexipinna M.Ogata,NA
 Dryopteris x makabensis Ka.Yamam. & N.Murak.,Dryopteris × makabensis Kaor.Yamam. & N.Murak.,NA
 Elaphoglossum affine (M.Martens & Galeotti) T.Moore,Elaphoglossum affine (M.Martens & Galeotti) Moore.,NA
 Elaphoglossum backhousianum T.Moore,Elaphoglossum backhouseanum T.Moore,NA
@@ -154,7 +152,7 @@ Elaphoglossum nervosum (Bory) Christ,Elaphoglossum nervosum C.Chr.,NA
 Elaphoglossum nidiforme Mickel,Elaphoglossum nidiformis Mickel,NA
 Elaphoglossum peltatum f. peltatum,Elaphoglossum peltatum (Sw.) Urb.,NA
 Elaphoglossum vestitum (Schltdl. & Cham.) T.Moore,Elaphoglossum vestitum (Schltdl. & Cham.) Schott,NA
-Equisetum x fontqueri Rothm.,Equisetum font-queri Rothm.,NA
+Equisetum x fontqueri Rothm.,Equisetum × font-queri Rothm.,NA
 Equisetum x litorale Kuehlew. ex Rupr.,Equisetum × litorale Kühlew. ex Rupr.,NA
 Gaga angustifolia (Kunth) F.W.Li & Windham,Gaga angustifolia (Kunth) Fay W.Li & Windham,NA
 Gaga marginata (Kunth) F.W.Li & Windham,Gaga marginata (Kunth) Fay W.Li & Windham,NA
@@ -198,7 +196,6 @@ Microlepia firma Mett. ex Kuhn,Microlepia firma Mett.; Kuhn,NA
 Microsorum glossophyllum (Copel.) Copel.. 1947,Microsorum glossophyllum (Copel.) Copel.,NA
 Myriopteris fendleri E.Fourn.,Myriopteris fendleri Fourn.,NA
 "Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & N.Nakato","Onoclea intermedia (C.Chr.) M.Kato, T.Suzuki & Nakato",NA
-Onocleopsis hintonii F.Ballard,Onocleopsis hintonii Ballard,NA
 Ophioderma redactophyllum Chantanaorr. & Li Bing Zhang,Ophioderma redactophylla Chantanaorr. & Li Bing Zhang,NA
 "Ophioglossum aletum Patel, Reddy & Goswami","Ophioglossum aletum M.Patel, M.N.Reddy & H.K.Goswami",NA
 "Ophioglossum trilokinathii B.L.Yadav, M.K.Meghvansi, K.Meena & C.B.Gena","Ophioglossum trilokinathii B.L.Yadav, Meghvansi, Meena & Gena",NA
@@ -207,7 +204,6 @@ Pilularia minuta Durieu,Pilularia minuta Durieu; A.Br.,NA
 Platycerium holttumii de Jonch.& Hennipman,Platycerium holttumii Joncheere & Hennipman,NA
 Platycerium superbum Jonch. & Hennipman,Platycerium superbum Joncheere & Hennipman,NA
 Platygyria x inaequibasis Ching & S.K.Wu,Platygyria inaequibasis Ching & S.K.Wu,NA
-Pleopeltis angusta var. angusta,Pleopeltis angusta Bojer,NA
 Pleopeltis polypodioides var. polypodioides,Pleopeltis polypodioides (L.) E.G.Andrews & Windham,NA
 Polybotrya glandulosa Mett.,Polybotrya glandulosa Mett.; Kuhn,NA
 Polybotrya pubens Mart.,Polybotrya pubens Mart.; Kze.,NA
@@ -306,7 +302,7 @@ Cibotium regale Verschaff. ex Regel,Cibotium regale Verschaff. & Lem.,author var
 Cyathea holdridgeana Nisman & L.Gomez,Cyathea holdridgeana Nisman & M.Gómez,author variant
 Davallia epiphylla (G.Forst.) Sw.,Davallia epiphylla (G.Forst.) Spreng.,author variant
 Grammitis grisebachii (Underw. ex C.Chr.) Proctor,Grammitis grisebachii (Underw. ex C.Chr.) Copel.,author variant
-Dryopteris insularis var. chichisimensis (Nakai ex H.Ito) H.Ito,Dryopteris insularis subsp. chichishimensis (Nakai ex H.Itô) H.Itô,spelling and author variant
+Dryopteris insularis var. chichisimensis (Nakai ex H.Ito) H.Ito,Dryopteris insularis var. chichisimensis (Nakai ex H.Itô) H.Itô,spelling and author variant
 Whittieria hengduanensis,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
 Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
 Blechnum capense var. gregsonii Watts,Blechnum capense var. gregsoni Watts,NA
