@@ -30,7 +30,7 @@ tar_option_set(
 tar_plan(
   # Load data ----
   # - PPG taxonomic database (https://github.com/pteridogroup/ppg)
-  ppg_full = load_ppg(ver = "0.0.0.9002"),
+  ppg_full = load_ppg(ver = "0.0.0.9004"),
   # - Format for matching species names with taxastand
   ppg_db = format_ppg_for_ts(ppg_full),
   # Modified PPGI taxonomy
