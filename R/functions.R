@@ -8706,7 +8706,12 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       )
     ) %>%
     # Change MISSING back to NA
-    mutate(scientific_name = na_if(scientific_name, "MISSING"))
+    mutate(scientific_name = na_if(scientific_name, "MISSING")) |>
+    # WFO (PPG) uses × for hybrids
+    mutate(
+      species = str_replace_all(species, " x ", " × "),
+      scientific_name = str_replace_all(scientific_name, " x ", " × ")
+    )
 }
 
 #' Exclude invalid names from taxonomic name resolution
