@@ -2977,10 +2977,10 @@ count_non_missing <- function(seq) {
 get_custom_ncbi_taxids <- function() {
   tribble(
     ~accession , ~taxid   , ~taxid_new , ~comment                                    ,
-    "AB574951" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
-    "KY296510" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
-    "KY296519" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis" ,
-    "KY296537" , "872345" , "872342b"  , "True Deparia petersenii var. yakusimensis"
+    "AB574951" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296510" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296519" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis" ,
+    "KY296537" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis"
   )
 }
 
