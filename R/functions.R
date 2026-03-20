@@ -12,6 +12,72 @@ parse_gb_release <- function(gb_release_txt_path) {
   gb_release
 }
 
+#' Download file with retry logic
+#'
+#' Downloads a file from a URL with automatic retry on failure.
+#' Uses exponential backoff between retries.
+#'
+#' @param url URL to download from
+#' @param destfile Destination file path
+#' @param max_retries Maximum number of retry attempts (default: 5)
+#' @param quiet Whether to suppress download progress messages (default: FALSE)
+#' @param ... Additional arguments passed to download.file()
+#'
+#' @return Invisible NULL on success, stops with error on failure
+#'
+download_with_retry <- function(
+  url,
+  destfile,
+  max_retries = 5,
+  quiet = FALSE,
+  ...
+) {
+  retry_count <- 0
+  wait_time <- 2
+
+  while (retry_count <= max_retries) {
+    result <- tryCatch(
+      {
+        if (retry_count > 0) {
+          message(sprintf(
+            "  Retry %d/%d downloading from %s after %.1f seconds...",
+            retry_count,
+            max_retries,
+            basename(url),
+            wait_time
+          ))
+          Sys.sleep(wait_time)
+        }
+        download.file(url, destfile, quiet = quiet, ...)
+        TRUE # success marker
+      },
+      error = function(e) {
+        if (retry_count < max_retries) {
+          message(sprintf(
+            "  Download failed: %s",
+            conditionMessage(e)
+          ))
+          FALSE # retry marker
+        } else {
+          stop(sprintf(
+            "Failed to download from %s after %d retries. Last error: %s",
+            url,
+            max_retries,
+            conditionMessage(e)
+          ))
+        }
+      }
+    )
+
+    if (result == TRUE) {
+      return(invisible(NULL)) # Success!
+    } else {
+      retry_count <- retry_count + 1
+      wait_time <- wait_time * 2 # exponential backoff
+    }
+  }
+}
+
 #' Download and load the PPG reference CSV file
 #'
 #' Downloads a specific version of the PPG reference data from GitHub,
@@ -35,7 +101,8 @@ load_ppg <- function(ver = "0.0.0.9001") {
     "https://github.com/pteridogroup/ppg/archive/refs/tags/v{ver}.zip"
   )
 
-  download.file(url, temp_file)
+  # Download with retry logic for network issues
+  download_with_retry(url, temp_file, quiet = FALSE)
 
   unzip(
     temp_file,
@@ -1796,13 +1863,59 @@ entrez_summary_gb <- function(
   retstart = 0,
   max_hits = 500
 ) {
-  # Download data
-  search_res <- rentrez::entrez_summary(
-    db = "nuccore",
-    retstart = retstart,
-    retmax = max_hits,
-    web_history = search_res$web_history
-  )
+  # Download data with retry logic
+  # NCBI API can fail temporarily, especially with web history
+  max_retries <- 5
+  retry_count <- 0
+  wait_time <- 2 # initial wait time in seconds
+
+  while (retry_count <= max_retries) {
+    result <- tryCatch(
+      {
+        # Add small delay before request to avoid rate limiting
+        if (retry_count > 0) {
+          message(sprintf(
+            "  Retry %d/%d after %.1f seconds (retstart = %d)...",
+            retry_count,
+            max_retries,
+            wait_time,
+            retstart
+          ))
+          Sys.sleep(wait_time)
+        }
+
+        rentrez::entrez_summary(
+          db = "nuccore",
+          retstart = retstart,
+          retmax = max_hits,
+          web_history = search_res$web_history
+        )
+      },
+      error = function(e) {
+        if (retry_count < max_retries) {
+          # Return special marker to indicate retry
+          list(retry = TRUE, error = e)
+        } else {
+          # Max retries exceeded, propagate error
+          stop(sprintf(
+            "Failed to fetch data after %d retries. Last error: %s",
+            max_retries,
+            conditionMessage(e)
+          ))
+        }
+      }
+    )
+
+    # Check if we need to retry
+    if (is.list(result) && !is.null(result$retry) && result$retry) {
+      retry_count <- retry_count + 1
+      wait_time <- wait_time * 2 # exponential backoff
+    } else {
+      # Success! Break out of loop
+      search_res <- result
+      break
+    }
+  }
 
   ## build a *named* list: one element per column
   res <- lapply(col_select, function(nm) {
@@ -1879,15 +1992,31 @@ fetch_metadata <- function(
     # will be downloaded starting from that point
     start_vals <- c(0, seq_len(n_chunks) * max_hits)
 
+    message(sprintf(
+      "Fetching %d records in %d chunks...",
+      search_res$count,
+      length(start_vals)
+    ))
+
     # Loop over start values and download up to max_hits for each,
     # then combine
     rentrez_results <- purrr::map_df(
       start_vals,
-      ~ entrez_summary_gb(
-        search_res = search_res,
-        col_select = col_select,
-        retstart = .x
-      )
+      function(start_val) {
+        chunk_num <- which(start_vals == start_val)
+        message(sprintf(
+          "  Chunk %d/%d (records %d-%d)",
+          chunk_num,
+          length(start_vals),
+          start_val + 1,
+          min(start_val + max_hits, search_res$count)
+        ))
+        entrez_summary_gb(
+          search_res = search_res,
+          col_select = col_select,
+          retstart = start_val
+        )
+      }
     )
   } else {
     rentrez_results <- entrez_summary_gb(
