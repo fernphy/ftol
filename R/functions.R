@@ -8287,7 +8287,7 @@ extract_ncbi_names <- function(
     # Make sure there are no hidden fields in `class`
     verify(all(str_count(class, "\\|") == 1)) %>%
     # Drop field separators in `class`
-    mutate(class = str_remove_all(class, "\\\t\\|")) %>%
+    mutate(class = str_remove_all(class, "\\t\\|")) %>%
     # Only keep useful names: exclude common names,
     # alternative spellings (`equivalent name`), type material,
     # temporary names with 'sp.' (`includes`)
@@ -8433,7 +8433,31 @@ parse_ncbi_tax_record <- function(record) {
         )
       ) %>%
       filter(!is.na(species)) %>%
-      mutate(accepted = TRUE)
+      mutate(accepted = TRUE) %>%
+      # Keep only the first match if multiple authority records exist
+      slice(1)
+  }
+
+  # Sometimes NCBI puts the accepted scientific name in "synonym" class
+  # instead of "authority" class, so check there too if not found above
+  if (nrow(acc_sci_names_dat) == 0 && length(synonyms) > 0) {
+    acc_sci_names_dat <- tibble(scientific_name = synonyms) %>%
+      mutate(
+        species = str_extract(
+          scientific_name,
+          stringr::fixed(accepted_species)
+        )
+      ) %>%
+      filter(!is.na(species)) %>%
+      mutate(accepted = TRUE) %>%
+      # Keep only the first match if multiple synonym records exist
+      slice(1)
+
+    # Remove the accepted scientific name from synonyms list
+    # to avoid counting it again as a synonym
+    if (nrow(acc_sci_names_dat) > 0) {
+      synonyms <- setdiff(synonyms, acc_sci_names_dat$scientific_name)
+    }
   }
 
   # If "synonym" and other sci names are given, one (or more) of them are
@@ -8449,15 +8473,18 @@ parse_ncbi_tax_record <- function(record) {
   # If "synonym" is present but no other sci names are given, "synonym" is
   # actually the scientific name of the species
   if (length(synonyms) > 0 && length(sci_names) == 0) {
-    acc_sci_names_dat <- tibble(scientific_name = synonyms) %>%
-      mutate(
-        species = str_extract(
-          scientific_name,
-          stringr::fixed(accepted_species)
-        )
-      ) %>%
-      filter(!is.na(species)) %>%
-      mutate(accepted = TRUE)
+    # But only if we haven't already found the accepted scientific name above
+    if (nrow(acc_sci_names_dat) == 0) {
+      acc_sci_names_dat <- tibble(scientific_name = synonyms) %>%
+        mutate(
+          species = str_extract(
+            scientific_name,
+            stringr::fixed(accepted_species)
+          )
+        ) %>%
+        filter(!is.na(species)) %>%
+        mutate(accepted = TRUE)
+    }
   }
 
   # Combine scientific names of synonyms and accepted names
