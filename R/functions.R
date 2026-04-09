@@ -5640,10 +5640,12 @@ resolve_pterido_plastome_names <- function(
       "Dryopteris tenuicula C.G. Matthew & Christ",
       "Dryopteris x kominatoensis Tagawa",
       "Diplazium lherminieri Fee",
-      "Platycerium angolense Welw."
+      "Platycerium angolense Welw.",
+      "Dryopteris × australis (Wherry) Small",
+      "Diplazium okudairai Makino"
     ),
     match = c(
-      "Bolbitis laxireticulata K.Iwats.",
+      "Bolbitis × laxireticulata K.Iwats.",
       "Dryopteris gaoligongensis Z.Y.Zuo, J.Mei Lu & D.Z.Li",
       "Dryopteris sinonepalensis Z.Y.Zuo & Fraser-Jenk.",
       "Dennstaedtia glauca C.Chr. ex Looser",
@@ -5656,9 +5658,11 @@ resolve_pterido_plastome_names <- function(
       "Dryopteris liankwangensis Ching",
       "Schizaea sprucei Hk.; Bak.",
       "Dryopteris tenuicula Matthew & Christ",
-      "Dryopteris kominatoensis Tagawa",
+      "Dryopteris × kominatoensis Tagawa",
       "Diplazium lherminieri Hieron.",
-      "Platycerium angolense Welw.; Bak."
+      "Platycerium angolense Welw.; Bak.",
+      "Dryopteris australis (Wherry) Small",
+      "Diplazium okudairae Makino"
     )
   ) |>
     bind_rows(manual_matches) |>
@@ -5674,14 +5678,15 @@ resolve_pterido_plastome_names <- function(
     match_canon = TRUE,
     collapse_infra = TRUE
   ) |>
-    # Asplenium scolopendrium Lour. is a synonym of A. nidus, exclude this
-    filter(
-      !(query == "Asplenium scolopendrium var. scolopendrium" &
-        reference == "Asplenium scolopendrium Lour.")
-    ) |>
     # Exclude samples only identified to species
     filter(
       !str_detect(query, " sp\\.$")
+    ) |>
+    # TODO May be able to use this name this once PPG issue is resolved
+    # Exclude one name with uncertain status
+    # https://github.com/pteridogroup/ppg/issues/125
+    filter(
+      !str_detect(query, "Dryopteris wuliangshanicola")
     )
 
   # Resolve synonyms
