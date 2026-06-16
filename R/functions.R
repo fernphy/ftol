@@ -156,12 +156,7 @@ dwc_to_tl <- function(ppg) {
     ppg |>
     # Only keeping higher, accepted taxa
     filter(taxonRank %in% higher_tax_levels_all) |>
-    filter(taxonomicStatus == "accepted") |>
-    # TODO fix these in Rhakhis
-    # Remove bad taxa
-    filter(
-      taxonID != "wfo-1000070090" # Todea Bernh., PPG I has Todea Willd. ex Bernh.
-    )
+    filter(taxonomicStatus == "accepted")
 
   # Identify higher taxonomic levels actually used
   higher_tax_levels_used <- higher_tax_levels_all[
@@ -539,7 +534,8 @@ create_patel_inclusion_list <- function(
           "Amauropelta_angustifrons", # rbcL AB575009 seq is hybrid Thelypteris angustifrons x Thelypteris cystopteroides # nolint
           "Pelazoneuron_augescens", # accession num KR816701 is mis-id (rogue)
           "Pseudophegopteris_tibetana", # accession num JN168050 is mis-id (rogue)
-          "Reholttumia_ecallosa" # possibly a mis-ID as per SF 2022-05-31, add to exclusion list # nolint
+          "Reholttumia_ecallosa", # possibly a mis-ID as per SF 2022-05-31, add to exclusion list # nolint
+          "Pseudocyclosorus_pubescens" # we don't actually know the correct name is https://github.com/pteridogroup/ppg/issues/143
         )
     )
 }
@@ -2427,7 +2423,8 @@ format_ppg_for_ts <- function(ppg_full) {
         "wfo-1000040863", # Tectaria pallescens S.Y.Dong & C.W.Chen
         "wfo-0001347387", # Abrodictyum pseudorigidum Bauret & Dubuisson
         "wfo-0001226866", # Deparia concinna (Z.R.Wang) M.Kato
-        "wfo-0001114903" # Dryopteris pacifica (Nakai) Tagawa
+        "wfo-0001114903", # Dryopteris pacifica (Nakai) Tagawa
+        "wfo-1000068417" # Dryopteris anadroma Mitsuta
       ),
       keep = TRUE
     )
@@ -2440,179 +2437,66 @@ format_ppg_for_ts <- function(ppg_full) {
         str_squish()
     ) |>
     select(-scientificNameAuthorship) |>
-    # Dryopteris pycnolepis Z.Y.Zuo & S.Y.Dong
-    # raise to accepted
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000084794
-    dwctaxon::dct_modify_row(
-      scientificName = "Dryopteris pycnolepis Z.Y.Zuo & S.Y.Dong",
-      nomenclaturalStatus = "valid",
+    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
+    dwctaxon::dct_add_row(
+      scientificName = "Arachniodes × tohtomiensis Shimura & Hori",
       taxonomicStatus = "accepted",
+      taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # Leptochilus phanerophlebius
-    # raise to accepted
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000083908
-    dwctaxon::dct_modify_row(
-      scientificName = "Leptochilus phanerophlebius Liang Zhang, Z.L.Liang & Zhi Y.Yu",
-      nomenclaturalStatus = "valid",
+    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
+    dwctaxon::dct_add_row(
+      scientificName = "Lepisorus tajimaensis T.Fujiw.",
       taxonomicStatus = "accepted",
+      taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # Abrodictyum obscurum var. siamense (Christ) K.Iwats.-> synonym of Trichomanes siamense Christ
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001117600
-    dwctaxon::dct_modify_row(
-      scientificName = "Trichomanes siamense Christ",
-      nomenclaturalStatus = "valid",
+    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
+    dwctaxon::dct_add_row(
+      scientificName = "Tmesipteris eucampta Perrie & D.J.Ohlsen",
       taxonomicStatus = "accepted",
+      taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Abrodictyum obscurum var. siamense (Christ) K.Iwats.",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Trichomanes siamense Christ",
-      stamp_modified = FALSE
-    ) |>
-    # Cyathea paucifolia Domin -> synonym of Alsophila paucifolia Baker
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001120935
-    dwctaxon::dct_modify_row(
-      scientificName = "Alsophila paucifolia Baker",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Cyathea paucifolia Domin",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Alsophila paucifolia Baker",
-      stamp_modified = FALSE
-    ) |>
-    # Cyathea corcovadensis (Raddi) Domin -> synonym of Alsophila corcovadensis (Raddi) C.Chr.
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001279037
-    dwctaxon::dct_modify_row(
-      scientificName = "Alsophila corcovadensis (Raddi) C.Chr.",
-      nomenclaturalStatus = "invalid",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Cyathea corcovadensis (Raddi) Domin",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Alsophila corcovadensis Fée",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "accepted",
-      acceptedNameUsage = "Cyathea glaziovii Domin",
-      stamp_modified = FALSE
-    ) |>
-    # Pseudocyclosorus pubescens -> synonym of Christella molliuscula
-    # Checking with S. Fawcett before making change in Rhakhis
-    dwctaxon::dct_modify_row(
-      scientificName = "Christella molliuscula (Kuhn) Holttum",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Pseudocyclosorus pubescens (D.Don) Kovalchuk",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Christella molliuscula (Kuhn) Holttum",
-      stamp_modified = FALSE
-    ) |>
-    # Thelypteris hastata -> synonym of Goniopteris hastata
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001109411
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001128035",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001109411",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsageID = "wfo-0001128035",
-      stamp_modified = FALSE
-    ) |>
-    # Thelypteris singalanensis -> change to synonym of Metathelypteris singalanensis
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001328339
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001328339",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsageID = "wfo-0001227690",
-      stamp_modified = FALSE
-    ) |>
-    # Hemionitis flavescens -> change to synonym of Choristosoria viridis
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001422615
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001422615",
-      nomenclaturalStatus = "valid",
-      taxonomicStatus = "synonym",
-      acceptedNameUsageID = "wfo-1000079641",
-      stamp_modified = FALSE
-    ) |>
-    # Alsophila amintae D.S.Conant
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0001107193
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0001107193",
-      scientificName = "Alsophila aminta D.S.Conant",
-      nomenclaturalStatus = "valid",
-      stamp_modified = FALSE
-    ) |>
-    # Polystichum ensiforme
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-1000082046
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-1000082046",
-      taxonomicStatus = "accepted",
-      nomenclaturalStatus = "valid",
-      stamp_modified = FALSE
-    ) |>
-    # Pteris quinquepartita Copel.
-    # should not need to do this in next version of ppg
-    # FIXED: https://list.worldfloraonline.org/rhakhis/ui/index.html#wfo-0000151108
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-0000151108",
-      taxonomicStatus = "accepted",
-      nomenclaturalStatus = "valid",
-      stamp_modified = FALSE
-    ) |>
+    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
     # Whittieria hengduanensis Z.L.Liang & Li Bing Zhang
     # new taxon, in Ophiglossum but not comb made yet
     # Don't want to add comb ined to Rhakhis, so modify here
+    dwctaxon::dct_modify_row(
+      scientificName = "Ophioglossum hengduanense (Z.L.Liang & Li Bing Zhang) R.Kr.Singh & V.K.Rawat",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
+    dwctaxon::dct_modify_row(
+      scientificName = "Whittieria hengduanensis Z.L.Liang & Li Bing Zhang",
+      taxonomicStatus = "synonym",
+      acceptedNameUsage = "Ophioglossum hengduanense (Z.L.Liang & Li Bing Zhang) R.Kr.Singh & V.K.Rawat",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # Lellingeria reunionensis Parris
+    # maybe not validly published, so don't add to Rhakhis
     dwctaxon::dct_add_row(
-      scientificName = "Ophioglossum hengduanensis (Z.L.Liang & Li Bing Zhang) comb. ined.",
+      scientificName = "Lellingeria reunionensis Parris",
       taxonomicStatus = "accepted",
       taxonRank = "species",
       stamp_modified = FALSE
     ) |>
+    # Terpsichore pacifica Sundue
+    # maybe not validly published, so don't add to Rhakhis
     dwctaxon::dct_add_row(
-      scientificName = "Whittieria hengduanensis Z.L.Liang & Li Bing Zhang",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Ophioglossum hengduanensis (Z.L.Liang & Li Bing Zhang) comb. ined.",
+      scientificName = "Terpsichore pacifica Sundue",
+      taxonomicStatus = "accepted",
       taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # Fill IDs
-    dwctaxon::dct_fill_col(
-      fill_to = "acceptedNameUsageID",
-      fill_from = "taxonID",
-      match_to = "scientificName",
-      match_from = "acceptedNameUsage"
+    # Terpsichore vascoana Sundue
+    # maybe not validly published, so don't add to Rhakhis
+    dwctaxon::dct_add_row(
+      scientificName = "Terpsichore vascoana Sundue",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
     )
 
   ppg |>
