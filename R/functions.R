@@ -2549,19 +2549,20 @@ format_ppg_for_ts <- function(ppg_full) {
   )
 
   ppg |>
-    filter(taxonRank %in% species_and_below) |>
-    filter(taxonomicStatus %in% c("accepted", "synonym")) |>
+    left_join(recs_keep, by = join_by(taxonID)) |>
     mutate(
       nomenclaturalStatus = replace_na(
         nomenclaturalStatus,
         "assumed valid"
       )
     ) |>
-    left_join(recs_keep, by = join_by(taxonID)) |>
     # Filter by nomenclatural status, taking into account exceptions
     mutate(
       keep = case_when(
-        keep == TRUE ~ TRUE,
+        keep == TRUE ~ TRUE, # top priority: keep all in keep list
+        !taxonRank %in% species_and_below ~ FALSE, # remove NOT species and below
+        !taxonomicStatus %in% c("accepted", "synonym") ~ FALSE, # remove NOT accepted or synonym
+        # remove invalid nomenclatural status
         nomenclaturalStatus %in%
           c(
             "invalid",
@@ -5550,6 +5551,7 @@ resolve_pterido_plastome_names <- function(
     )
   ) |>
     bind_rows(manual_matches) |>
+    select(-comments) |>
     unique()
 
   # Match names to world ferns
