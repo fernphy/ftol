@@ -22,6 +22,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # cmake -> R package nanonext
 # libpng-dev -> R package png
 # libbz2-dev liblzma-devel -> R package Rhtslib -> R package gmbecker/genbankr
+# libuv1-dev -> fs
 
 # python3-biopython biopython for superCRUNCH
 
@@ -73,6 +74,7 @@ RUN apt-get update \
     liblzma-dev \
     libbz2-dev \
     python3-biopython \
+    libuv1-dev \
   && apt-get clean
 
 ########################
@@ -199,7 +201,7 @@ RUN wget https://github.com/dportik/SuperCRUNCH/archive/refs/tags/v$SC_VERSION.t
 
 # - Create conda environment
 RUN conda update --name base --channel defaults conda && \
-  conda install -n base conda-libmamba-solver && \
+  conda install -n base -c defaults conda-libmamba-solver && \
   conda config --set solver libmamba && \
   conda env create --prefix $ENV_PREFIX --file SuperCRUNCH-$SC_VERSION/$APPNAME-conda-env.yml && \
   conda clean --all --yes
@@ -220,7 +222,7 @@ RUN echo '#!/bin/bash' >> /usr/local/bin/$APPNAME && \
 # .Rprofile, but for some reason this is being ignored by {targets} when
 # running steps in parallel
 
-RUN R -q -e 'install.packages("conflicted")'
+RUN R -q -e 'install.packages(c("rlang", "conflicted"), repos = "https://cran.r-project.org")'
 
 COPY R/resolve_conflicts.R /resolve_conflicts.R
 
@@ -249,7 +251,8 @@ WORKDIR /tmp/project
 # Restore, but don't use cache
 COPY R/renv_install.R /tmp/project/renv_install.R
 
-RUN Rscript /tmp/project/renv_install.R && \
+RUN PATH="${PATH#$CONDA_DIR/bin:}" XML_CONFIG=/usr/bin/xml2-config \
+  Rscript /tmp/project/renv_install.R && \
   rm /tmp/project/renv_install.R
 
 ############
