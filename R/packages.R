@@ -1,20 +1,12 @@
 # Specify packages used in workflow
-workflow_packages <- c(
-  "conflicted",
-  "assertr",
-  "glue",
-  "ape",
-  "fs",
-  "future",
-  "future.callr",
-  "taxastand",
-  "tflow",
-  "tidyverse",
-  "contentid"
-)
-
-# Load the packages for interactive sessions
-if (interactive()) invisible(
-  lapply(
-    workflow_packages, library, character.only = TRUE, quietly = TRUE)
-  )
+library(conflicted)
+library(assertr)
+library(glue)
+library(ape)
+library(fs)
+library(future)
+library(future.callr)
+library(taxastand)
+library(tflow)
+library(tidyverse)
+library(contentid)

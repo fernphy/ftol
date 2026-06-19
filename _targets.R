@@ -22,7 +22,6 @@ results_dir <- "_targets/user/results"
 # - Local parallelization with 20 workers
 tar_option_set(
   workspace_on_error = TRUE,
-  packages = workflow_packages,
   imports = c("taxastand"),
   controller = crew_controller_local(workers = 20)
 )
