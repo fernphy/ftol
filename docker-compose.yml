@@ -8,4 +8,6 @@ services:
       - "~/:/home/rstudio/ftol"
     environment:
       DISABLE_AUTH: "true"
+      HOST_UID: "${UID}"
+      HOST_GID: "${GID}"
     working_dir: /home/rstudio/ftol

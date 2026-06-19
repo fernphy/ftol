@@ -88,19 +88,55 @@ The complete workflow takes 1-2 weeks to complete, with phylogenetic analysis ta
 
 ### Running with Docker
 
-Launch a container in the background:
+The container entrypoint accepts `HOST_UID` and `HOST_GID` environment
+variables. When provided, it remaps the internal container user to your host
+UID/GID before running any process. This ensures that files written to mounted
+volumes (including git objects created by the targets pipeline) are owned by
+your host user rather than root.
+
+#### Building the image
 
 ```
-docker run \
-  --rm \
-  -dt \
-  -v ${PWD}:/wd \
-  -w /wd \
-  -e USERID=$(id -u) \
-  -e GROUPID=$(id -g) \
-  -v $HOME/.gitconfig:/home/user/.gitconfig:ro \
-  -v $HOME/.ssh:/home/user/.ssh:ro \
-  joelnitta/ftol:latest bash
+docker build -t joelnitta/ftol:latest .
+```
+
+#### Batch workflow
+
+[run.sh](run.sh) runs the targets pipeline inside a container and exits when
+done:
+
+```
+bash run.sh
+```
+
+`HOST_UID` and `HOST_GID` are set automatically from the calling user.
+
+#### Interactive workflow (VS Code)
+
+[docker-compose.yml](docker-compose.yml) is provided for an interactive session
+with VS Code attached to a running container.
+
+Create a `.env` file in the project root supplying your host UID and GID (check
+with `id -u` and `id -g`):
+
+```
+UID=1001
+GID=1001
+```
+
+Start the container in the background:
+
+```
+docker compose up -d
+```
+
+Attach VS Code using the **Dev Containers: Attach to Running Container**
+command. The container user owns `/renv`, so R packages can be installed
+directly without root. To perform root-level operations (e.g. `apt-get`),
+open a separate shell as root:
+
+```
+docker exec -u root -it <container_name> bash
 ```
 
 ## License

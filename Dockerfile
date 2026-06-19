@@ -280,4 +280,14 @@ RUN (crontab -l ; echo "0 0 * * * bash /home/setup_gb.sh >> /var/log/cron.log 2>
 # 
 # as long as the container is up, it will run the job once per day
 
+### gosu — used by entrypoint.sh to drop from root to host user ###
+RUN curl -fsSL https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64 \
+    -o /usr/local/bin/gosu \
+  && chmod +x /usr/local/bin/gosu
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
 WORKDIR /home/

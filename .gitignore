@@ -27,3 +27,4 @@ _supp_store
 scratch
 setup_gb.log
 .secrets
+.env
