@@ -89,3 +89,5 @@ GU935551,rps4,Supposed to be Choristosoria pentagona but seems like mistake for 
 GU935551,rps4-trnS,Supposed to be Choristosoria pentagona but seems like mistake for Doryopteris pentagona
 KP337975,rbcL,Correct accession for Alsophila corcovadensis (Raddi) C. Chr. but this name is invalid and needs a new combination
 PX170254,plastome,Supposed to be Davallia but blasts to Drynaria
+JN572240,trnL-trnF,The name Christella molliuscula is ambiguous https://github.com/pteridogroup/ppg/issues/143
+JN572323,rbcL,The name Christella molliuscula is ambiguous https://github.com/pteridogroup/ppg/issues/143

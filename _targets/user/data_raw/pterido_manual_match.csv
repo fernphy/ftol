@@ -69,7 +69,7 @@ Athyrium asplenioides (Michx.) Eaton,Athyrium asplenioides (Michx.) Desv.,NA
 Athyrium bourgaei E.Fourn.,Athyrium bourgaeui Fourn.,NA
 Athyrium drepanopterum (Kunze) A.Braun ex Milde,Athyrium drepanopteron (Kunze) A.Braun ex Milde,NA
 Athyrium newtonii Baker,Athyrium newtonii (Baker) Diels,NA
-"Athyrium oppositipennum var. pubescens (Tagawa) Yea C.Liu, W.L.Chiou & H.Y.Liu","Athyrium oppositipennum var. pubescens (Tagawa) Tagawa",NA
+"Athyrium oppositipennum var. pubescens (Tagawa) Yea C.Liu, W.L.Chiou & H.Y.Liu",Athyrium oppositipennum var. pubescens (Tagawa) Tagawa,NA
 Athyrium rhachidosorum (Hand.-Mazz.) Ching,Athyrium rhachidisorum (Hand.-Mazz.) Ching,NA
 Azolla nilotica Decne.,Azolla nilotica Dcne.,NA
 Blechnum vieillardii var. simplex Fourn.,Blechnum vieillardii var. simplex E.Fourn.,NA
@@ -149,7 +149,6 @@ Elaphoglossum backhousianum T.Moore,Elaphoglossum backhouseanum T.Moore,NA
 Elaphoglossum coriaceum Bonap.,Elaphoglossum coriaceum Bonaparte,NA
 Elaphoglossum dussii Underw. ex Maxon,Elaphoglossum dussii Underw. & Maxon,NA
 Elaphoglossum nervosum (Bory) Christ,Elaphoglossum nervosum C.Chr.,NA
-Elaphoglossum nidiforme Mickel,Elaphoglossum nidiformis Mickel,NA
 Elaphoglossum peltatum f. peltatum,Elaphoglossum peltatum (Sw.) Urb.,NA
 Elaphoglossum vestitum (Schltdl. & Cham.) T.Moore,Elaphoglossum vestitum (Schltdl. & Cham.) Schott,NA
 Equisetum x fontqueri Rothm.,Equisetum × font-queri Rothm.,NA
@@ -281,8 +280,8 @@ Trichomanes tanaicum J.W.Sturm,Trichomanes tanaicum Hk.; Sturm,NA
 Trichomanes tubiflora (F.S.Wagner) Christenh.,Trichomanes tubiflorum (F.S.Wagner) Christenh.,NA
 Trichomanes vittaria DC.,Trichomanes vittaria DC.; Poir.,NA
 "Vandenboschia confusa Dubuisson, Deblauwe & Boucheron-Dubuisson","Vandenboschia confusa Dubuisson, Deblauwe & Bouch.-Dubuisson",NA
-x Cystocarpium roskamianum Fraser-Jenk.,× Cystocarpium × roskamianum Fraser-Jenk.,NA
-x Lindsaeosoria flynnii W.H.Wagner,× Lindsaeosoria × flynnii W.H.Wagner,NA
+x Cystocarpium roskamianum Fraser-Jenk.,× Cystocarpium roskamianum Fraser-Jenk.,NA
+x Lindsaeosoria flynnii W.H.Wagner,Lindsaeosoria × flynnii W.H.Wagner,NA
 Arachniodes coadnata (Ching) Nakaike,Arachniodes coadunata (Ching) Nakaike,NA
 Asplenium fontanum subsp. fontanum,Asplenium fontanum (L.) Bernh.,NA
 Gymnocarpium dryopteris var. aokigaharaense Nakaike,Gymnocarpium dryopteris (L.) Newman,NA
@@ -306,5 +305,33 @@ Dryopteris insularis var. chichisimensis (Nakai ex H.Ito) H.Ito,Dryopteris insul
 Whittieria hengduanensis,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
 Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,Whittieria hengduanensis Z.L.Liang & Li Bing Zhang,NA
 Blechnum capense var. gregsonii Watts,Blechnum capense var. gregsoni Watts,NA
-Ctenitis eriocaulis Alston,Ctenitis eriocaulos (Fée) Alston,NA,
-Alsophila amintae D.S.Conant, Alsophila aminta D.S.Conant,NA
+Ctenitis eriocaulis Alston,Ctenitis eriocaulos (Fée) Alston,"NA,"
+Alsophila amintae D.S.Conant,Alsophila aminta D.S.Conant,NA
+Asplenium × glenniei Baker,Asplenium glenniei Baker,NA
+Bolbitis arguta (Fee) Ching,Bolbitis × arguta (Fée) Ching,NA
+Dicksonia fibrosia Col.,Dicksonia fibrosa Colenso,NA
+Diplazium okudairai Makino,Diplazium okudairae Makino,NA
+Dryopteris toyamae Tagawa,Dryopteris × toyamae Tagawa,NA
+Pleopeltis munchii (Christ) A.R.Sm.,Pleopeltis muenchii (Christ) A.R.Sm.,NA
+Aglaomorpha × leporella (K.I.Goebel) C.Chr.,Aglaomorpha leporella (K.I.Goebel) C.Chr.,NA
+Asplenium × mantoniae Varoczy & Vida,Asplenium mantoniae Váróczy & Vida,NA
+Asplenium × protomajoricum Pangua & Prada,Asplenium × protomajoricum Pangua & C.Prada,NA
+Asplenium × tenuivarians Z.R.Wang ex Ebihara,Asplenium tenuivarians Z.R.Wang ex Ebihara,NA
+Bolbitis laxireticulata K.Iwats.,Bolbitis × laxireticulata K.Iwats.,NA
+Danaea × jamaicensis Underw.,Danaea jamaicensis Underw.,NA
+Dryopteris × makabensis Ka.Yamam. & N.Murak.,Dryopteris × makabensis Kaor.Yamam. & N.Murak.,NA
+Equisetum trachyodon (A.Braun) W.D.J.Koch,Equisetum trachyodon A.Braun,NA
+Equisetum × litorale Kuehlew. ex Rupr.,Equisetum × litorale Kühlew. ex Rupr.,NA
+Gymnocarpium × brittonianum (Sarvela) Pryer & Haufler,Gymnocarpium × brittonianum (Sarvela) K.M.Pryer & Haufler,NA
+Platygyria × inaequibasis Ching & S.K.Wu,Platygyria inaequibasis Ching & S.K.Wu,NA
+Pteris × sefuricola Kurata,Pteris sefuricola Sa.Kurata,NA
+Thelypteris × pseudoliukiuensis Seriz.,Thelypteris pseudoliukiuensis Seriz.,NA
+Athyrium iseanum var. angustisectum Tagawa,Athyrium iseanum Rosenst.,NA
+Angiopteris involuta Li J.Jiang & Z.R.He,Angiopteris involuta L.J.Jiang & Z.R.He,NA
+Goniophlebium argutum (Wall. ex Hook.) J.Sm. ex Hook.,Goniophlebium argutum (Wall. ex Hook.) J.Sm. ex Bedd.,NA
+Adiantum fructuosum Kunze,Adiantum fructuosum Poepp. ex Spreng.,NA
+Elaphoglossum tenuiculum T.Moore,Elaphoglossum tenuiculum (Fée) T.Moore ex C.Chr.,NA
+Lindsaea meifolia Mett.,Lindsaea meifolia (Kunth) Mett. ex Kuhn,NA
+Arachniodes × tohtomiensis Shimura & Hori,Arachniodes × tohtomiensis Shimura & K.Hori,NA
+Dicranopteris caudata (Copel.) St.John,Dicranopteris caudata (Copel.) H.St.John,NA
+Polystichum submarginale (Baker) Ching ex L.L.Xiang,Polystichum submarginale (Baker) Ching ex P.S.Wang,NA

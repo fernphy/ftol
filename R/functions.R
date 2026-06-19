@@ -2436,44 +2436,23 @@ format_ppg_for_ts <- function(ppg_full) {
       scientificName = paste(scientificName, scientificNameAuthorship) |>
         str_squish()
     ) |>
+    # duplicated Cyathea andina
+    # https://github.com/pteridogroup/ppg/issues/150
+    filter(
+      taxonID != "wfo-0001108903"
+    ) |>
+    # duplicated Dicranopteris gigantea
+    # will be fixed in ppg v 0.0.0.9008
+    filter(
+      taxonID != "wfo-1000073784"
+    ) |>
+    # duplicated Polystichum polyblepharon
+    # https://github.com/pteridogroup/ppg/issues/151
+    # keep the accepted one for now
+    filter(
+      taxonID != "wfo-0001117070"
+    ) |>
     select(-scientificNameAuthorship) |>
-    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
-    dwctaxon::dct_add_row(
-      scientificName = "Arachniodes × tohtomiensis Shimura & Hori",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
-    dwctaxon::dct_add_row(
-      scientificName = "Lepisorus tajimaensis T.Fujiw.",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
-    dwctaxon::dct_add_row(
-      scientificName = "Tmesipteris eucampta Perrie & D.J.Ohlsen",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Added to Rhakhis, should not need this in next PPG (v0.0.0.9006)
-    # Whittieria hengduanensis Z.L.Liang & Li Bing Zhang
-    # new taxon, in Ophiglossum but not comb made yet
-    # Don't want to add comb ined to Rhakhis, so modify here
-    dwctaxon::dct_modify_row(
-      scientificName = "Ophioglossum hengduanense (Z.L.Liang & Li Bing Zhang) R.Kr.Singh & V.K.Rawat",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Whittieria hengduanensis Z.L.Liang & Li Bing Zhang",
-      taxonomicStatus = "synonym",
-      acceptedNameUsage = "Ophioglossum hengduanense (Z.L.Liang & Li Bing Zhang) R.Kr.Singh & V.K.Rawat",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
     # Lellingeria reunionensis Parris
     # maybe not validly published, so don't add to Rhakhis
     dwctaxon::dct_add_row(
@@ -2497,8 +2476,104 @@ format_ppg_for_ts <- function(ppg_full) {
       taxonomicStatus = "accepted",
       taxonRank = "species",
       stamp_modified = FALSE
-    )
-
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_modify_row(
+      scientificName = "Angiopteris involuta L.J.Jiang & Z.R.He",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_modify_row(
+      scientificName =
+        "Aleuritopteris hainanensis Bin Zhang, Ting Wang ter & H.F.Chen",
+      taxonomicStatus = "accepted",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Hymenophyllum bifurcatum Y.Nan Zhao & Z.Y.Zuo",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000018687",
+        stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Lepisorus lepidotus Ching ex Z.L.Liang & Li Bing Zhang",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000021173",
+        stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Polystichum oligodontum You Nong, R.H.Jiang & C.Xiong",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000030832",
+        stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Leptochilus nooteboomii C.T.Chen, C.W.Chen & Y.S.Chao",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000021236",
+        stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Leptochilus papuasiaticus C.T.Chen, C.W.Chen & Y.S.Chao",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000021236",
+        stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Leptochilus punctiformis C.T.Chen, C.W.Chen & Y.S.Chao",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000021236",
+        stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Leptochilus regularis (Mett.) C.T.Chen, C.W.Chen & Y.S.Chao",
+        taxonomicStatus = "accepted",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000021236",
+        stamp_modified = FALSE
+    ) |>
+    # New grammitid genus Phaneroloma, needs PPG voting
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Phaneroloma nudicarpum (Copel.) G.S.Armstr. & D.J.Ohlsen",
+        taxonomicStatus = "synonym",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000016135",
+        acceptedNameUsageID = "wfo-0000145237",
+        stamp_modified = FALSE
+    ) |>
+    # New grammitid genus Phaneroloma, needs PPG voting
+    dwctaxon::dct_add_row(
+      scientificName = 
+        "Phaneroloma pulchellum (Ching) G.S.Armstr. & D.J.Ohlsen",
+        taxonomicStatus = "synonym",
+        nomenclaturalStatus = "valid",
+        parentNameUsageID = "wfo-4000016135",
+        acceptedNameUsageID = "wfo-0000145327",
+        stamp_modified = FALSE
+    ) 
+    
   ppg |>
     filter(taxonomicStatus == "synonym") |>
     assert(not_na, acceptedNameUsageID, success_fun = success_logical)
@@ -2575,6 +2650,7 @@ format_ppg_for_ts <- function(ppg_full) {
     ) |>
     filter(keep) |>
     select(-keep)
+
 }
 
 #' Extract relevant dates from the GenBank README file
@@ -5567,12 +5643,6 @@ resolve_pterido_plastome_names <- function(
     # Exclude samples only identified to species
     filter(
       !str_detect(query, " sp\\.$")
-    ) |>
-    # TODO May be able to use this name this once PPG issue is resolved
-    # Exclude one name with uncertain status
-    # https://github.com/pteridogroup/ppg/issues/125
-    filter(
-      !str_detect(query, "Dryopteris wuliangshanicola")
     )
 
   # Resolve synonyms
@@ -8621,6 +8691,42 @@ clean_ncbi_names <- function(ncbi_names_raw) {
       species = case_when(
         taxid == "2928218" ~ "Tectaria pallescens",
         TRUE ~ species
+      )
+    ) %>%
+    # Lellingeria reunionensis 
+    # have two entries, one with (nom. ined.), one without
+    # remove one, set the other to accepted
+    filter(
+      species != "Lellingeria reunionensis (nom. ined.)"
+    ) |>
+    mutate(
+      accepted = case_when(
+        taxid == "933306" ~ TRUE,
+        TRUE ~ accepted
+      )
+    ) %>%
+    # Terpsichore pacifica
+    # have two entries, one with (nom. ined.), one without
+    # remove one, set the other to accepted
+    filter(
+      species != "Terpsichore pacifica (nom. inval.)"
+    ) |>
+    mutate(
+      accepted = case_when(
+        taxid == "741648" ~ TRUE,
+        TRUE ~ accepted
+      )
+    ) %>%
+    # Terpsichore vascoana
+    # have two entries, one with (nom. ined.), one without
+    # remove one, set the other to accepted
+    filter(
+      species != "Terpsichore vascoana (nom. inval.)"
+    ) |>
+    mutate(
+      accepted = case_when(
+        taxid == "741649" ~ TRUE,
+        TRUE ~ accepted
       )
     ) %>%
     # Change MISSING back to NA
