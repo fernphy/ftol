@@ -113,8 +113,8 @@ bash run.sh
 
 #### Interactive workflow (VS Code)
 
-[docker-compose.yml](docker-compose.yml) is provided for an interactive session
-with VS Code attached to a running container.
+A [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) is
+provided for VS Code's Dev Containers workflow.
 
 Create a `.env` file in the project root supplying your host UID and GID (check
 with `id -u` and `id -g`):
@@ -124,16 +124,13 @@ UID=1001
 GID=1001
 ```
 
-Start the container in the background:
+Open the project in VS Code and run **Dev Containers: Reopen in Container**
+from the Command Palette. VS Code manages the container lifecycle and opens
+the project workspace automatically.
 
-```
-docker compose up -d
-```
-
-Attach VS Code using the **Dev Containers: Attach to Running Container**
-command. The container user owns `/renv`, so R packages can be installed
-directly without root. To perform root-level operations (e.g. `apt-get`),
-open a separate shell as root:
+The container user owns `/renv`, so R packages can be installed directly
+without root. To perform root-level operations (e.g. `apt-get`), open a
+separate shell as root:
 
 ```
 docker exec -u root -it <container_name> bash

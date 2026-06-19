@@ -11,3 +11,4 @@ services:
       HOST_UID: "${UID}"
       HOST_GID: "${GID}"
     working_dir: /home/rstudio/ftol
+    command: sleep infinity

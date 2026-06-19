@@ -1,0 +1,6 @@
+{
+    "name": "FTOL",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "analysis",
+    "workspaceFolder": "/home/rstudio/ftol/ftol"
+}
