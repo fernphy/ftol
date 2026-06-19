@@ -2424,7 +2424,8 @@ format_ppg_for_ts <- function(ppg_full) {
         "wfo-0001347387", # Abrodictyum pseudorigidum Bauret & Dubuisson
         "wfo-0001226866", # Deparia concinna (Z.R.Wang) M.Kato
         "wfo-0001114903", # Dryopteris pacifica (Nakai) Tagawa
-        "wfo-1000068417" # Dryopteris anadroma Mitsuta
+        "wfo-1000068417", # Dryopteris anadroma Mitsuta
+        "wfo-4100006530" # Cryptocaulaceae
       ),
       keep = TRUE
     )
@@ -2565,15 +2566,35 @@ format_ppg_for_ts <- function(ppg_full) {
     ) |>
     # New grammitid genus Phaneroloma, needs PPG voting
     dwctaxon::dct_add_row(
-      scientificName = 
+      scientificName =
         "Phaneroloma pulchellum (Ching) G.S.Armstr. & D.J.Ohlsen",
         taxonomicStatus = "synonym",
         nomenclaturalStatus = "valid",
         parentNameUsageID = "wfo-4000016135",
         acceptedNameUsageID = "wfo-0000145327",
         stamp_modified = FALSE
-    ) 
-    
+    ) |>
+    # new family Cryptocaulaceae (2026)
+    # not yet in PPG; to be added when PPG is updated
+    dwctaxon::dct_modify_row(
+      taxonID = "wfo-4100006530",
+      taxonomicStatus = "accepted",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4100005211", # suborder Polypodiineae
+      stamp_modified = FALSE
+    )
+    # Cryptocaulon tenerifrons in Cryptocaulaceae
+    # not yet in PPG; to be added when PPG is updated
+    dwctaxon::dct_add_row(
+      scientificName =
+        "Cryptocaulon tenerifrons (Hook.) Limpan., Yoneoka, Ebihara & L.Y.Kuo",
+      taxonomicStatus = "accepted",
+      nomenclaturalStatus = "valid",
+      taxonRank = "species",
+      parentNameUsageID = "wfo-4100006530",
+      stamp_modified = FALSE
+    )
+
   ppg |>
     filter(taxonomicStatus == "synonym") |>
     assert(not_na, acceptedNameUsageID, success_fun = success_logical)
@@ -2943,6 +2964,31 @@ get_custom_ncbi_taxids <- function() {
     "KY296519" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis" ,
     "KY296537" , "872345" , "872345b"  , "True Deparia petersenii var. yakusimensis"
   )
+}
+
+# Manually supply NCBI name entries for taxids that exist in GenBank accession
+# metadata but are not yet present in the NCBI taxdump.
+get_custom_ncbi_names <- function() {
+  tribble(
+    ~taxid      , ~species                   , ~accepted , ~scientific_name          ,
+    "3478518"   , "Cryptocaulon tenerifrons" , TRUE      , "Cryptocaulon tenerifrons"
+  )
+}
+
+# Append custom names to NCBI-extracted names, warning if any custom taxid is
+# now present in the taxdump (meaning the entry can be removed from
+# get_custom_ncbi_names()).
+add_custom_ncbi_names <- function(ncbi_names, custom_names) {
+  already_in_ncbi <- custom_names$taxid[custom_names$taxid %in% ncbi_names$taxid]
+  if (length(already_in_ncbi) > 0) {
+    warning(
+      "Custom NCBI name(s) with taxid(s) [",
+      paste(already_in_ncbi, collapse = ", "),
+      "] are now present in the NCBI taxdump. ",
+      "Remove the corresponding row(s) from get_custom_ncbi_names()."
+    )
+  }
+  bind_rows(ncbi_names, filter(custom_names, !taxid %in% ncbi_names$taxid))
 }
 
 # Change a taxid in the raw data downloaded from GenBank to match a

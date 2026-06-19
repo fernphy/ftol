@@ -118,6 +118,8 @@ tar_plan(
   ),
   # Specify custom NCBI taxonids
   custom_ncbi_taxids = get_custom_ncbi_taxids(),
+  # Specify custom NCBI names for taxids not yet in the taxdump
+  custom_ncbi_names = get_custom_ncbi_names(),
   # Filter out excluded seqs and update with custom ids
   raw_meta = filter_and_update_raw_meta(
     raw_meta_all,
@@ -152,11 +154,14 @@ tar_plan(
   # Extract species names from NCBI taxonomic database
   tar_target(
     ncbi_names_raw,
-    extract_ncbi_names(
-      taxdump_zip_file,
-      taxid_keep = raw_meta,
-      names_exclude = ncbi_db_names_to_exclude(),
-      workers = 20
+    add_custom_ncbi_names(
+      extract_ncbi_names(
+        taxdump_zip_file,
+        taxid_keep = raw_meta,
+        names_exclude = ncbi_db_names_to_exclude(),
+        workers = 20
+      ),
+      custom_ncbi_names
     ),
     deployment = "main"
   ),
@@ -176,8 +181,10 @@ tar_plan(
     query = ncbi_names_query_round_1$scientific_name,
     reference = ppg_ref_names,
     manual_match = manual_matches,
-    max_dist = 5, match_no_auth = TRUE,
-    match_canon = TRUE, collapse_infra = TRUE,
+    max_dist = 5,
+    match_no_auth = TRUE,
+    match_canon = TRUE,
+    collapse_infra = TRUE,
     collapse_infra_exclude = varieties_to_keep
   ),
   # - resolve synonyms
