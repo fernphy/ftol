@@ -28,12 +28,13 @@ tar_option_set(
 
 tar_plan(
   # Load data ----
-  # - PPG taxonomic database (https://github.com/pteridogroup/ppg)
-  ppg_full = load_ppg(ver = "0.0.0.9007"),
-  # - Format for matching species names with taxastand
+  # PPG taxonomic database (https://github.com/pteridogroup/ppg)
+  ppg_raw = load_ppg(ver = "0.0.0.9007"),
+  # Manually update names as needed (changes not yet in PPG)
+  ppg_full = modify_ppg(ppg_raw),
+  # Format for matching species names with taxastand
   ppg_db = format_ppg_for_ts(ppg_full),
-  # Modified PPGI taxonomy
-  # with new genera and slightly different treatments following World Ferns list
+  # Format higher level taxonomy
   ppg_tl = dwc_to_tl(ppg_full),
   ppgi_taxonomy = taxlist_to_df(ppg_tl),
   # Equisetum subgenus level taxonomy

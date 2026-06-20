@@ -119,9 +119,15 @@ load_ppg <- function(ver = "0.0.0.9001") {
   fs::file_delete(ppg_csv_file)
   fs::file_delete(temp_file)
 
-  res
+  # Format scientific name to include authorship
+  res |>
+    mutate(
+      scientificNameAuthorship = replace_na(scientificNameAuthorship, ""),
+      scientificName = paste(scientificName, scientificNameAuthorship) |>
+        str_squish()
+    ) |>
+    select(-scientificNameAuthorship)
 }
-
 
 #' Convert Darwin Core-formatted data to a taxlist object
 #'
@@ -129,13 +135,13 @@ load_ppg <- function(ver = "0.0.0.9001") {
 #' to a `taxlist` object, including only accepted taxa at genus and higher
 #' taxonomic ranks.
 #'
-#' @param ppg A data frame containing taxonomic data in DwC format. Must include
+#' @param ppg_full A data frame containing taxonomic data in DwC format. Must include
 #'   columns: `taxonID`, `taxonRank`, `taxonomicStatus`, `scientificName`,
 #'   `scientificNameAuthorship`, and `parentNameUsageID`.
 #'
 #' @return A `taxlist` object containing accepted taxa at genus and higher
 #'   levels.
-dwc_to_tl <- function(ppg) {
+dwc_to_tl <- function(ppg_full) {
   require(taxlist)
 
   # Specify all higher taxonomic levels
@@ -153,7 +159,7 @@ dwc_to_tl <- function(ppg) {
 
   # Filter to only accepted taxa at genus and higher
   ppg_sub <-
-    ppg |>
+    ppg_full |>
     # Only keeping higher, accepted taxa
     filter(taxonRank %in% higher_tax_levels_all) |>
     filter(taxonomicStatus == "accepted")
@@ -163,13 +169,22 @@ dwc_to_tl <- function(ppg) {
     higher_tax_levels_all %in% ppg_sub$taxonRank
   ]
 
+  # Parse out author names
+  ppg_sub_parsed <- ppg_sub |>
+    pull(scientificName) |>
+    gn_parse_tidy_quiet()
+
   # Convert to taxonlist format
   ppg_to_convert <- ppg_sub |>
+    left_join(
+      select(ppg_sub_parsed, verbatim, canonicalfull, authorship),
+      by = join_by(scientificName == verbatim)
+    ) |>
     dplyr::select(
       TaxonConceptID = taxonID,
       TaxonUsageID = taxonID,
-      TaxonName = scientificName,
-      AuthorName = scientificNameAuthorship,
+      TaxonName = canonicalfull,
+      AuthorName = authorship,
       Level = taxonRank,
       Parent = parentNameUsageID
     ) |>
@@ -2383,6 +2398,181 @@ write_tree_from_tbl <- function(
 
 # Taxonomic name resolution ----
 
+modify_ppg <- function(ppg_raw) {
+  require(dwctaxon)
+
+  ppg_raw |>
+    # duplicated Cyathea andina
+    # https://github.com/pteridogroup/ppg/issues/150
+    filter(
+      taxonID != "wfo-0001108903"
+    ) |>
+    # duplicated Dicranopteris gigantea
+    # will be fixed in ppg v 0.0.0.9008
+    filter(
+      taxonID != "wfo-1000073784"
+    ) |>
+    # duplicated Polystichum polyblepharon
+    # https://github.com/pteridogroup/ppg/issues/151
+    # keep the accepted one for now
+    filter(
+      taxonID != "wfo-0001117070"
+    ) |>
+    # Lellingeria reunionensis Parris
+    # maybe not validly published, so don't add to Rhakhis
+    dwctaxon::dct_add_row(
+      scientificName = "Lellingeria reunionensis Parris",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # Terpsichore pacifica Sundue
+    # maybe not validly published, so don't add to Rhakhis
+    dwctaxon::dct_add_row(
+      scientificName = "Terpsichore pacifica Sundue",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # Terpsichore vascoana Sundue
+    # maybe not validly published, so don't add to Rhakhis
+    dwctaxon::dct_add_row(
+      scientificName = "Terpsichore vascoana Sundue",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_modify_row(
+      scientificName = "Angiopteris involuta L.J.Jiang & Z.R.He",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_modify_row(
+      scientificName = "Aleuritopteris hainanensis Bin Zhang, Ting Wang ter & H.F.Chen",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = "Hymenophyllum bifurcatum Y.Nan Zhao & Z.Y.Zuo",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000018687",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = "Lepisorus lepidotus Ching ex Z.L.Liang & Li Bing Zhang",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000021173",
+      stamp_modified = FALSE
+    ) |>
+    # will be fixed in ppg v 0.0.0.9008
+    dwctaxon::dct_add_row(
+      scientificName = "Polystichum oligodontum You Nong, R.H.Jiang & C.Xiong",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000030832",
+      stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = "Leptochilus nooteboomii C.T.Chen, C.W.Chen & Y.S.Chao",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000021236",
+      stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = "Leptochilus papuasiaticus C.T.Chen, C.W.Chen & Y.S.Chao",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000021236",
+      stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = "Leptochilus punctiformis C.T.Chen, C.W.Chen & Y.S.Chao",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000021236",
+      stamp_modified = FALSE
+    ) |>
+    # not yet in IPNI; unclear when will be added to PPG
+    dwctaxon::dct_add_row(
+      scientificName = "Leptochilus regularis (Mett.) C.T.Chen, C.W.Chen & Y.S.Chao",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000021236",
+      stamp_modified = FALSE
+    ) |>
+    # New grammitid genus Phaneroloma, needs PPG voting
+    dwctaxon::dct_add_row(
+      scientificName = "Phaneroloma nudicarpum (Copel.) G.S.Armstr. & D.J.Ohlsen",
+      taxonomicStatus = "synonym",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000016135",
+      acceptedNameUsageID = "wfo-0000145237",
+      stamp_modified = FALSE
+    ) |>
+    # New grammitid genus Phaneroloma, needs PPG voting
+    dwctaxon::dct_add_row(
+      scientificName = "Phaneroloma pulchellum (Ching) G.S.Armstr. & D.J.Ohlsen",
+      taxonomicStatus = "synonym",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000016135",
+      acceptedNameUsageID = "wfo-0000145327",
+      stamp_modified = FALSE
+    ) |>
+    # new family Cryptocaulaceae (2026)
+    # not yet in PPG; to be added when PPG is updated
+    dwctaxon::dct_add_row(
+      scientificName = "Cryptocaulaceae Sundue, T.Fujiw., Limpan. & L.Y.Kuo",
+      taxonID = "wfo-4100006530",
+      taxonRank = "family",
+      taxonomicStatus = "accepted",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4100005211", # suborder Polypodiineae
+      stamp_modified = FALSE
+    ) |>
+    # Cryptocaulon tenerifrons in Cryptocaulaceae
+    # not yet in PPG; to be added when PPG is updated
+    dwctaxon::dct_add_row(
+      scientificName = "Cryptocaulon Vongthavone, Tagane, Sundue & T.Fujiw.",
+      taxonID = "wfo-4100006531",
+      taxonomicStatus = "accepted",
+      taxonRank = "genus",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4100006530",
+      stamp_modified = FALSE
+    ) |>
+    # Cryptocaulon tenerifrons in Cryptocaulaceae
+    # not yet in PPG; to be added when PPG is updated
+    dwctaxon::dct_add_row(
+      scientificName = "Cryptocaulon tenerifrons (Hook.) Limpan., Yoneoka, Ebihara & L.Y.Kuo",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4100006531",
+      stamp_modified = FALSE
+    )
+}
+
 #' Format PPG data for name resolution with taxastand
 #'
 #' Filters a PPG (Pteridophyte Phylogeny Group) taxonomy dataframe to
@@ -2424,182 +2614,16 @@ format_ppg_for_ts <- function(ppg_full) {
         "wfo-0001347387", # Abrodictyum pseudorigidum Bauret & Dubuisson
         "wfo-0001226866", # Deparia concinna (Z.R.Wang) M.Kato
         "wfo-0001114903", # Dryopteris pacifica (Nakai) Tagawa
-        "wfo-1000068417", # Dryopteris anadroma Mitsuta
-        "wfo-4100006530" # Cryptocaulaceae
+        "wfo-1000068417" # Dryopteris anadroma Mitsuta
       ),
       keep = TRUE
     )
 
-  ppg <-
-    ppg_full |>
-    mutate(
-      scientificNameAuthorship = replace_na(scientificNameAuthorship, ""),
-      scientificName = paste(scientificName, scientificNameAuthorship) |>
-        str_squish()
-    ) |>
-    # duplicated Cyathea andina
-    # https://github.com/pteridogroup/ppg/issues/150
-    filter(
-      taxonID != "wfo-0001108903"
-    ) |>
-    # duplicated Dicranopteris gigantea
-    # will be fixed in ppg v 0.0.0.9008
-    filter(
-      taxonID != "wfo-1000073784"
-    ) |>
-    # duplicated Polystichum polyblepharon
-    # https://github.com/pteridogroup/ppg/issues/151
-    # keep the accepted one for now
-    filter(
-      taxonID != "wfo-0001117070"
-    ) |>
-    select(-scientificNameAuthorship) |>
-    # Lellingeria reunionensis Parris
-    # maybe not validly published, so don't add to Rhakhis
-    dwctaxon::dct_add_row(
-      scientificName = "Lellingeria reunionensis Parris",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Terpsichore pacifica Sundue
-    # maybe not validly published, so don't add to Rhakhis
-    dwctaxon::dct_add_row(
-      scientificName = "Terpsichore pacifica Sundue",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Terpsichore vascoana Sundue
-    # maybe not validly published, so don't add to Rhakhis
-    dwctaxon::dct_add_row(
-      scientificName = "Terpsichore vascoana Sundue",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_modify_row(
-      scientificName = "Angiopteris involuta L.J.Jiang & Z.R.He",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_modify_row(
-      scientificName =
-        "Aleuritopteris hainanensis Bin Zhang, Ting Wang ter & H.F.Chen",
-      taxonomicStatus = "accepted",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Hymenophyllum bifurcatum Y.Nan Zhao & Z.Y.Zuo",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000018687",
-        stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Lepisorus lepidotus Ching ex Z.L.Liang & Li Bing Zhang",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000021173",
-        stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Polystichum oligodontum You Nong, R.H.Jiang & C.Xiong",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000030832",
-        stamp_modified = FALSE
-    ) |>
-    # not yet in IPNI; unclear when will be added to PPG
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Leptochilus nooteboomii C.T.Chen, C.W.Chen & Y.S.Chao",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000021236",
-        stamp_modified = FALSE
-    ) |>
-    # not yet in IPNI; unclear when will be added to PPG
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Leptochilus papuasiaticus C.T.Chen, C.W.Chen & Y.S.Chao",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000021236",
-        stamp_modified = FALSE
-    ) |>
-    # not yet in IPNI; unclear when will be added to PPG
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Leptochilus punctiformis C.T.Chen, C.W.Chen & Y.S.Chao",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000021236",
-        stamp_modified = FALSE
-    ) |>
-    # not yet in IPNI; unclear when will be added to PPG
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Leptochilus regularis (Mett.) C.T.Chen, C.W.Chen & Y.S.Chao",
-        taxonomicStatus = "accepted",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000021236",
-        stamp_modified = FALSE
-    ) |>
-    # New grammitid genus Phaneroloma, needs PPG voting
-    dwctaxon::dct_add_row(
-      scientificName = 
-        "Phaneroloma nudicarpum (Copel.) G.S.Armstr. & D.J.Ohlsen",
-        taxonomicStatus = "synonym",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000016135",
-        acceptedNameUsageID = "wfo-0000145237",
-        stamp_modified = FALSE
-    ) |>
-    # New grammitid genus Phaneroloma, needs PPG voting
-    dwctaxon::dct_add_row(
-      scientificName =
-        "Phaneroloma pulchellum (Ching) G.S.Armstr. & D.J.Ohlsen",
-        taxonomicStatus = "synonym",
-        nomenclaturalStatus = "valid",
-        parentNameUsageID = "wfo-4000016135",
-        acceptedNameUsageID = "wfo-0000145327",
-        stamp_modified = FALSE
-    ) |>
-    # new family Cryptocaulaceae (2026)
-    # not yet in PPG; to be added when PPG is updated
-    dwctaxon::dct_modify_row(
-      taxonID = "wfo-4100006530",
-      taxonomicStatus = "accepted",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4100005211", # suborder Polypodiineae
-      stamp_modified = FALSE
-    )
-    # Cryptocaulon tenerifrons in Cryptocaulaceae
-    # not yet in PPG; to be added when PPG is updated
-    dwctaxon::dct_add_row(
-      scientificName =
-        "Cryptocaulon tenerifrons (Hook.) Limpan., Yoneoka, Ebihara & L.Y.Kuo",
-      taxonomicStatus = "accepted",
-      nomenclaturalStatus = "valid",
-      taxonRank = "species",
-      parentNameUsageID = "wfo-4100006530",
-      stamp_modified = FALSE
-    )
-
-  ppg |>
+  ppg_full |>
     filter(taxonomicStatus == "synonym") |>
     assert(not_na, acceptedNameUsageID, success_fun = success_logical)
 
-  all_ranks <- ppg |>
+  all_ranks <- ppg_full |>
     filter(!is.na(taxonRank)) |>
     pull(taxonRank) |>
     unique() |>
@@ -2644,7 +2668,7 @@ format_ppg_for_ts <- function(ppg_full) {
     msg = "Ranks specified as above and below species don't match data"
   )
 
-  ppg |>
+  ppg_full |>
     left_join(recs_keep, by = join_by(taxonID)) |>
     mutate(
       nomenclaturalStatus = replace_na(
@@ -2671,7 +2695,6 @@ format_ppg_for_ts <- function(ppg_full) {
     ) |>
     filter(keep) |>
     select(-keep)
-
 }
 
 #' Extract relevant dates from the GenBank README file
@@ -2970,8 +2993,8 @@ get_custom_ncbi_taxids <- function() {
 # metadata but are not yet present in the NCBI taxdump.
 get_custom_ncbi_names <- function() {
   tribble(
-    ~taxid      , ~species                   , ~accepted , ~scientific_name          ,
-    "3478518"   , "Cryptocaulon tenerifrons" , TRUE      , "Cryptocaulon tenerifrons"
+    ~taxid    , ~species                   , ~accepted , ~scientific_name           ,
+    "3478518" , "Cryptocaulon tenerifrons" , TRUE      , "Cryptocaulon tenerifrons"
   )
 }
 
@@ -2979,7 +3002,9 @@ get_custom_ncbi_names <- function() {
 # now present in the taxdump (meaning the entry can be removed from
 # get_custom_ncbi_names()).
 add_custom_ncbi_names <- function(ncbi_names, custom_names) {
-  already_in_ncbi <- custom_names$taxid[custom_names$taxid %in% ncbi_names$taxid]
+  already_in_ncbi <- custom_names$taxid[
+    custom_names$taxid %in% ncbi_names$taxid
+  ]
   if (length(already_in_ncbi) > 0) {
     warning(
       "Custom NCBI name(s) with taxid(s) [",
@@ -8739,7 +8764,7 @@ clean_ncbi_names <- function(ncbi_names_raw) {
         TRUE ~ species
       )
     ) %>%
-    # Lellingeria reunionensis 
+    # Lellingeria reunionensis
     # have two entries, one with (nom. ined.), one without
     # remove one, set the other to accepted
     filter(
