@@ -169,22 +169,30 @@ dwc_to_tl <- function(ppg_full) {
     higher_tax_levels_all %in% ppg_sub$taxonRank
   ]
 
-  # Parse out author names
-  ppg_sub_parsed <- ppg_sub |>
-    pull(scientificName) |>
-    gn_parse_tidy_quiet()
-
   # Convert to taxonlist format
   ppg_to_convert <- ppg_sub |>
-    left_join(
-      select(ppg_sub_parsed, verbatim, canonicalfull, authorship),
-      by = join_by(scientificName == verbatim)
+    # Separate out author name while handling nothogenus `× `
+    mutate(
+      scientificName = str_replace_all(
+        scientificName, "^× ", "×"
+      )
+    ) |>
+    separate(
+      scientificName,
+      into = c("scientificName", "author"),
+      sep = " ",
+      extra = "merge"
+    ) |>
+    mutate(
+      scientificName = str_replace_all(
+        scientificName, "^×", "× "
+      )
     ) |>
     dplyr::select(
       TaxonConceptID = taxonID,
       TaxonUsageID = taxonID,
-      TaxonName = canonicalfull,
-      AuthorName = authorship,
+      TaxonName = scientificName,
+      AuthorName = author,
       Level = taxonRank,
       Parent = parentNameUsageID
     ) |>
@@ -233,6 +241,8 @@ taxlist_to_df <- function(ppg_tl) {
     mutate(tl_id = as.character(tl_id)) |>
     left_join(select(ppg_df_raw, tl_id, name), by = join_by(tl_id)) |>
     select(-tl_id) |>
+    filter(!is.na(name)) |>
+    unique() |>
     pivot_wider(names_from = rank, values_from = name) |>
     # remove leading '×' from nothogenera
     mutate(genus = str_remove_all(genus, "^× "))
