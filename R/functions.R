@@ -8166,6 +8166,21 @@ make_parts_table <- function(aln_tbl, aln_seq) {
   return(res)
 }
 
+#' Write an IQ-TREE partition file in RAxML format
+#'
+#' @param parts_table Tibble with columns "locus", "start", "end"
+#' @param out_path Path to write the partition file
+#'
+#' @return Path to the written partition file
+#'
+write_iqtree_partition_file <- function(parts_table, out_path) {
+  lines <- paste0(
+    "DNA, ", parts_table$locus, " = ", parts_table$start, "-", parts_table$end
+  )
+  writeLines(lines, out_path)
+  return(out_path)
+}
+
 # Managing data ----
 
 #' Make a zipped archive of raw data
@@ -9229,7 +9244,7 @@ iqtree <- function(
     m,
     if (!is.null(seed)) "-seed",
     seed,
-    if (!is.null(spp)) "-spp",
+    if (!is.null(spp)) "-p",
     fs::path_abs(spp),
     if (isTRUE(redo)) "-redo",
     other_args

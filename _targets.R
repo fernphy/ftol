@@ -26,6 +26,16 @@ tar_option_set(
   controller = crew_controller_local(workers = 20)
 )
 
+# Set the iqtree ML options outside of the plan
+# this way we can turn it on/off without re-triggering the target
+plastome_tree_redo_setting <- TRUE
+sanger_tree_fast_redo_setting <- TRUE
+sanger_ml_tree_redo_setting <- TRUE
+
+plastome_tree_nt_setting <- 20
+sanger_tree_fast_nt_setting <- 6
+sanger_ml_tree_nt_setting <- 6
+
 tar_plan(
   # Load data ----
   # PPG taxonomic database (https://github.com/pteridogroup/ppg)
@@ -564,20 +574,32 @@ tar_plan(
   plastome_alignment = concatenate_to_ape(plastome_alignment_tbl),
 
   # Phylogenetic analysis ----
+  # Write out parition file
+  tar_file(
+    plastome_partition_file,
+    write_iqtree_partition_file(
+      plastome_parts_table,
+      path(int_dir, "iqtree/plastome/plastome_partitions.txt")
+    )
+  ),
   # Backbone consensus tree
   tar_target(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      m = "MFP", # test model followed by ML analysis
+      m = "MFP+MERGE", # merge partitions by BIC after model testing
       bb = 1000,
-      nt = 12, # run 12 cores in parallel
+      nt = plastome_tree_nt_setting,
       seed = 20220123,
-      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
+      redo = plastome_tree_redo_setting,
+      echo = TRUE,
+      wd = path(int_dir, "iqtree/plastome"),
+      spp = plastome_partition_file,
       other_args = c(
         "-mset", "GTR", # only test GTR models
         "-mrate", "E,I,G,I+G", # don't test free-rate models
-        "-t", "PARS"
+        "-t", "PARS",
+        "--rcluster-max", "10" # limit partition merge search to top 10% of candidates
       ),
       tree_path = path(
         int_dir, "iqtree/plastome/plastome_alignment.phy.contree"
@@ -598,8 +620,12 @@ tar_plan(
     sanger_tree_fast,
     iqtree(
       sanger_alignment,
-      m = "GTR+I+G", nt = 6, seed = 20220129,
-      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger_fast"),
+      m = "GTR+I+G",
+      nt = sanger_tree_fast_nt_setting,
+      seed = 20220129,
+      redo = sanger_tree_fast_redo_setting,
+      echo = TRUE,
+      wd = path(int_dir, "iqtree/sanger_fast"),
       other_args = c(
         "-fast",
         "-t", "PARS",
@@ -639,12 +665,13 @@ tar_plan(
         "-g", path_abs(constraint_tree_file)
       ),
       bb = 1000,
-      nt = 6, # run 6 cores in parallel for each replicate
+      # number of cores to run in parallel for each replicat
+      nt = sanger_ml_tree_nt_setting,
       seed = iqtree_sanger_seeds,
       # redo settings:
       # - FALSE to re-start incomplete iqtree run on same data
       # - TRUE when starting pipeline from new data
-      redo = TRUE,
+      redo = sanger_ml_tree_redo_setting,
       wd = iqtree_sanger_dirs,
       tree_path = c(
         ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
