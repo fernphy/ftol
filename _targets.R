@@ -597,12 +597,11 @@ tar_plan(
       spp = plastome_partition_file,
       other_args = c(
         "-mset", "GTR", # only test GTR models
-        "-mrate", "E,I,G,I+G", # don't test free-rate models
         "-t", "PARS",
         "--rcluster-max", "10" # limit partition merge search to top 10% of candidates
       ),
       tree_path = path(
-        int_dir, "iqtree/plastome/plastome_alignment.phy.contree"
+        int_dir, "iqtree/plastome/plastome_partitions.txt.contree"
       )
     ),
     deployment = "main"
@@ -660,7 +659,6 @@ tar_plan(
       m = "MFP", # run modelfinder and use best model
       other_args = c(
         "-mset", "GTR", # only test GTR family of models
-        "-mrate", "E,I,G,I+G",
         "-t", "PARS",
         "-g", path_abs(constraint_tree_file)
       ),
@@ -673,9 +671,10 @@ tar_plan(
       # - TRUE when starting pipeline from new data
       redo = sanger_ml_tree_redo_setting,
       wd = iqtree_sanger_dirs,
+      spp = sanger_partition_file,
       tree_path = c(
-        ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
-        con_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.contree")
+        ml_tree = path(iqtree_sanger_dirs, "sanger_partitions.txt.treefile"),
+        con_tree = path(iqtree_sanger_dirs, "sanger_partitions.txt.contree")
       ),
       depends = non_mono_check
     ),
@@ -686,7 +685,7 @@ tar_plan(
   tar_target(
     sanger_ml_log_rep,
     read_lines_tar(
-      path(iqtree_sanger_dirs, "sanger_alignment.phy.log"),
+      path(iqtree_sanger_dirs, "sanger_partitions.txt.log"),
       depends = sanger_ml_tree_rep
     ),
     pattern = map(iqtree_sanger_dirs, sanger_ml_tree_rep)
@@ -924,6 +923,13 @@ tar_plan(
   ),
   sanger_parts_table = make_parts_table(
     sanger_alignment_tbl, sanger_alignment
+  ),
+  tar_file(
+    sanger_partition_file,
+    write_iqtree_partition_file(
+      sanger_parts_table,
+      path(int_dir, "iqtree/sanger_partitions.txt")
+    )
   ),
   plastome_tree_rooted = root_fern_tree(plastome_tree),
   # Write out data for ftolr ----
