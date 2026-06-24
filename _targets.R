@@ -587,7 +587,7 @@ tar_plan(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      m = "MFP+MERGE", # merge partitions by BIC after model testing
+      m = "MFP", # test model followed by ML analysis
       bb = 1000,
       nt = plastome_tree_nt_setting,
       seed = 20220123,
@@ -597,8 +597,7 @@ tar_plan(
       spp = plastome_partition_file,
       other_args = c(
         "-mset", "GTR", # only test GTR models
-        "-t", "PARS",
-        "--rcluster-max", "10" # limit partition merge search to top 10% of candidates
+        "-t", "PARS"
       ),
       tree_path = path(
         int_dir, "iqtree/plastome/plastome_partitions.txt.contree"
