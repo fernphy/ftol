@@ -9246,7 +9246,7 @@ iqtree <- function(
     seed,
     if (!is.null(spp)) "-p",
     fs::path_abs(spp),
-    if (isTRUE(redo)) "-redo",
+    if (isTRUE(redo)) "--redo",
     other_args
   )
 
