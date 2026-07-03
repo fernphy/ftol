@@ -573,10 +573,26 @@ tar_plan(
   sanger_alignment = concatenate_to_ape(sanger_alignment_tbl),
   plastome_alignment = concatenate_to_ape(plastome_alignment_tbl),
   # - plastome without 3rd codon positions: codon-aware alignment, then removal
-  # Step 1: codon-aware alignment per locus (full 3 positions, no trimal yet)
-  plastid_genes_aligned_codon = codon_align_seqs_tbl(plastid_genes_aligned),
-  # Step 2: concatenate for visual inspection
+  # Step 1: group by locus, then codon-align each locus in parallel
+  tar_group_by(
+    plastid_genes_aligned_by_locus,
+    plastid_genes_aligned,
+    target
+  ),
+  tar_target(
+    plastid_genes_aligned_codon,
+    codon_align_locus(plastid_genes_aligned_by_locus),
+    pattern = map(plastid_genes_aligned_by_locus)
+  ),
+  # Step 2: concatenate and write FASTA for visual inspection
   plastome_alignment_codon = concatenate_to_ape(plastid_genes_aligned_codon),
+  tar_file(
+    plastome_alignment_codon_file,
+    write_fasta_tar(
+      plastome_alignment_codon,
+      path(int_dir, "plastome_alignment_codon.fasta")
+    )
+  ),
   # Step 3: strip 3rd codon positions and trim
   plastid_genes_trimmed_no3rd = strip_3rd_and_trim(plastid_genes_aligned_codon),
   plastome_alignment_no3rd = concatenate_to_ape(plastid_genes_trimmed_no3rd),

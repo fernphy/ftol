@@ -5265,45 +5265,84 @@ trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 #' @param plastid_aligned seqtbl of aligned platid genes or spacers
 #' @param name_col_in Name of column in plastid_aligned to use as sequence
 #'   names when trimming with trimal.
+#' Codon-aware alignment for a single plastid locus
 #'
-#' @return Tibble with list-column of trimmed genes (or spacers); each row is
-#' a target gene (or spacer)
+#' Strips alignment gaps from a per-family MAFFT alignment to recover unaligned
+#' sequences, normalizes strand orientation across all families with a
+#' preliminary MAFFT --adjustdirection pass, then performs codon-aware
+#' alignment via DECIPHER::AlignTranslation(). Intended to be called as a
+#' branched targets target, one branch per locus.
 #'
-codon_align_seqs_tbl <- function(plastid_aligned, name_col_in = "species") {
-  plastid_aligned %>%
-    select(seq, species, target, accession) %>%
-    group_by(target) %>%
-    nest(data = c(seq, species, accession)) %>%
-    mutate(
-      align_trimmed = map(
-        data,
-        function(d) {
-          # Strip per-sequence gaps to recover original unaligned sequences
-          aln_char <- as.character(
-            as.matrix(seqtbl_to_dnabin(d, name_col = "accession", seq_col = "seq"))
-          )
-          seqs_str <- apply(aln_char, 1, function(row) {
-            paste(row[row != "-"], collapse = "")
-          })
-          acc_to_sp <- setNames(d[[name_col_in]], d$accession)
+#' @param locus_tbl Tibble for a single locus with columns seq, species,
+#'   target, accession (one row per sequence)
+#' @param name_col_in Name of column to use as sequence labels in output
+#'
+#' @return One-row tibble with columns "target" and "align_trimmed"
+#'   (DNAbin matrix)
+#'
+codon_align_locus <- function(locus_tbl, name_col_in = "species") {
+  locus <- unique(locus_tbl$target)
+  acc_to_sp <- setNames(locus_tbl[[name_col_in]], locus_tbl$accession)
 
-          # Codon-aware alignment via DECIPHER (input must be uppercase).
-          # readingFrame = NA (default): auto-detect per sequence.
-          aln_ss <- DECIPHER::AlignTranslation(
-            Biostrings::DNAStringSet(toupper(seqs_str))
-          )
+  # Strip per-sequence gaps to recover original unaligned sequences
+  aln_char <- as.character(
+    as.matrix(
+      seqtbl_to_dnabin(locus_tbl, name_col = "accession", seq_col = "seq")
+    )
+  )
+  seqs_str <- apply(aln_char, 1, function(row) {
+    paste(row[row != "-"], collapse = "")
+  })
 
-          # Convert aligned DNAStringSet → lowercase character matrix → DNAbin
-          aln_mat <- do.call(rbind, strsplit(tolower(as.character(aln_ss)), ""))
-          rownames(aln_mat) <- acc_to_sp[names(aln_ss)]
-          ape::as.DNAbin(aln_mat)
-        }
-      )
-    ) %>%
-    ungroup() %>%
-    select(-data)
+  # Normalize orientation with MAFFT --adjustdirection.
+  # plastid_genes_aligned is built per-family, so orientation is consistent
+  # within each family group but may differ across families. This step
+  # brings all sequences to a consensus direction before codon alignment.
+  tmp_in <- tempfile(fileext = ".fasta")
+  writeLines(
+    unlist(lapply(names(seqs_str), function(nm) c(paste0(">", nm), seqs_str[[nm]]))),
+    tmp_in
+  )
+  seqs_dnabin <- ape::read.FASTA(tmp_in)
+  dir_aln <- ips::mafft(seqs_dnabin, options = "--adjustdirection",
+                        exec = "/usr/bin/mafft")
+
+  # Strip alignment gaps; drop _R_ suffix MAFFT adds to reversed sequences
+  dir_char <- as.character(as.matrix(dir_aln))
+  rownames(dir_char) <- str_remove_all(rownames(dir_char), "_R_")
+  seqs_corrected <- apply(dir_char, 1, function(row) {
+    paste(row[row != "-"], collapse = "")
+  })
+
+  # Codon-aware alignment via DECIPHER (input must be uppercase).
+  # readingFrame = NA (default): auto-detect per sequence.
+  aln_ss <- DECIPHER::AlignTranslation(
+    Biostrings::DNAStringSet(toupper(seqs_corrected))
+  )
+
+  # Convert aligned DNAStringSet → lowercase character matrix → DNAbin
+  aln_mat <- do.call(rbind, strsplit(tolower(as.character(aln_ss)), ""))
+  rownames(aln_mat) <- acc_to_sp[names(aln_ss)]
+
+  tibble::tibble(
+    target = locus,
+    align_trimmed = list(ape::as.DNAbin(aln_mat))
+  )
 }
 
+#' Strip 3rd codon positions and trim a codon-aligned tibble
+#'
+#' Removes every third column (positions 3, 6, 9, ...) from each locus
+#' alignment, then trims with trimal (gap threshold 0.05). Intended to be
+#' applied to the output of codon_align_locus(), where codon boundaries are
+#' guaranteed to be intact.
+#'
+#' @param codon_aligned_tbl Tibble with columns "target" and "align_trimmed"
+#'   (DNAbin matrices from codon_align_locus())
+#'
+#' @return Tibble with the same structure, with 3rd positions removed and
+#'   columns trimmed by trimal
+#'
 strip_3rd_and_trim <- function(codon_aligned_tbl) {
   codon_aligned_tbl %>%
     mutate(
@@ -6492,6 +6531,27 @@ concatenate_to_ape <- function(aln_tbl, aln_col = "align_trimmed") {
     ape::cbind.DNAbin,
     c(aln_tbl[[aln_col]], fill.with.gaps = TRUE)
   )
+}
+
+#' Write a random subset of loci from a per-locus alignment tibble to FASTA
+#'
+#' Concatenates a random sample of loci and writes the result to a FASTA file.
+#' Useful for spot-checking a codon-aware alignment without loading the full
+#' concatenated matrix.
+#'
+#' @param aln_tbl Tibble with columns "target" and "align_trimmed" (one row
+#'   per locus), e.g. the output of codon_align_locus()
+#' @param out_path Path to write the FASTA file
+#' @param n Number of loci to sample (default 20)
+#' @param seed Optional random seed for reproducibility
+#'
+#' @return Path to the written FASTA file (invisibly)
+#'
+sample_loci_fasta <- function(aln_tbl, out_path, n = 20, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  sampled <- aln_tbl[sample(nrow(aln_tbl), min(n, nrow(aln_tbl))), ]
+  aln <- concatenate_to_ape(sampled)
+  write_fasta_tar(aln, out_path)
 }
 
 # Check gene trees ----
