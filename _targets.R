@@ -572,14 +572,28 @@ tar_plan(
   # - ape format
   sanger_alignment = concatenate_to_ape(sanger_alignment_tbl),
   plastome_alignment = concatenate_to_ape(plastome_alignment_tbl),
+  # - plastome without 3rd codon positions (CDS only, removal before trimming
+  #   so reading frame is intact)
+  plastid_genes_trimmed_no3rd = trim_cds_no3rd(plastid_genes_aligned),
+  plastome_alignment_no3rd = concatenate_to_ape(plastid_genes_trimmed_no3rd),
+  plastome_parts_table_no3rd = make_parts_table(
+    plastid_genes_trimmed_no3rd, plastome_alignment_no3rd
+  ),
 
   # Phylogenetic analysis ----
-  # Write out parition file
+  # Write out partition files
   tar_file(
     plastome_partition_file,
     write_iqtree_partition_file(
       plastome_parts_table,
       path(int_dir, "iqtree/plastome/plastome_partitions.txt")
+    )
+  ),
+  tar_file(
+    plastome_partition_file_no3rd,
+    write_iqtree_partition_file(
+      plastome_parts_table_no3rd,
+      path(int_dir, "iqtree/plastome/plastome_partitions_no3rd.txt")
     )
   ),
   # Backbone consensus tree

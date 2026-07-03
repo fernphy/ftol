@@ -5269,6 +5269,79 @@ trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 #' @return Tibble with list-column of trimmed genes (or spacers); each row is
 #' a target gene (or spacer)
 #'
+#' Assert that a CDS alignment is in reading frame 0
+#'
+#' Selects the reference sequence with the fewest gaps, removes gaps, trims to
+#' a multiple of 3, translates, and asserts no internal stop codons.
+#'
+#' @param aln_mat DNAbin matrix (rows = sequences, cols = alignment positions)
+#' @param locus Character; locus name used in error messages
+#'
+cds_in_frame <- function(aln_mat, locus) {
+  aln_char <- as.character(aln_mat)
+  n_gaps <- rowSums(aln_char == "-")
+  ref_char <- aln_char[which.min(n_gaps), ]
+  ref_ungapped <- ref_char[ref_char != "-"]
+  nc <- length(ref_ungapped)
+  if (nc < 3) return(TRUE)
+  nc_trim <- nc - nc %% 3
+  ref_mat <- matrix(ref_ungapped[seq_len(nc_trim)], nrow = 1)
+  ref_dnabin <- ape::as.DNAbin(ref_mat)
+  aa <- as.character(ape::trans(ref_dnabin))[1L, ]
+  internal_stops <- sum(aa[-length(aa)] == "*")
+  if (internal_stops > 0L) {
+    warning(glue::glue(
+      "{locus}: reference sequence has {internal_stops} internal stop codon(s) ",
+      "in reading frame 0 — skipping 3rd-position removal for this locus"
+    ))
+    return(FALSE)
+  }
+  TRUE
+}
+
+#' Trim CDS alignments after removing third codon positions
+#'
+#' Removes every third column from each gene's MAFFT alignment (while the
+#' reading frame is still intact), then trims with trimal. Intended for
+#' CDS-only input (no spacers).
+#'
+#' @param plastid_aligned Tibble output of align_seqs_tbl(), with columns
+#'   seq, species, target, accession
+#' @param name_col_in Name of column to use as sequence labels
+#'
+#' @return Tibble with columns "target" and "align_trimmed" (DNAbin matrices)
+#'
+trim_cds_no3rd <- function(plastid_aligned, name_col_in = "species") {
+  plastid_aligned %>%
+    select(seq, species, target, accession) %>%
+    group_by(target) %>%
+    nest(data = c(seq, species, accession)) %>%
+    mutate(
+      align_trimmed = map2(
+        data, target,
+        function(d, locus) {
+          aln <- seqtbl_to_dnabin(d, name_col = name_col_in, seq_col = "seq")
+          aln <- as.matrix(aln)
+          n <- ncol(aln)
+          if (n %% 3 != 0) {
+            warning(glue::glue(
+              "{locus}: MAFFT alignment has {n} columns (not divisible by 3); ",
+              "trimming {n %% 3} column(s) from end to restore reading frame"
+            ))
+            n <- n - (n %% 3)
+            aln <- aln[, seq_len(n)]
+          }
+          if (cds_in_frame(aln, locus)) {
+            aln <- aln[, setdiff(seq_len(n), seq(3L, n, by = 3L))]
+          }
+          trimal(aln, other_args = c("-gt", "0.05"), return_seqtbl = FALSE)
+        }
+      )
+    ) %>%
+    ungroup() %>%
+    select(-data)
+}
+
 trim_genes <- function(plastid_aligned, name_col_in = "species") {
   plastid_aligned %>%
     select(seq, species, target, accession) %>%
