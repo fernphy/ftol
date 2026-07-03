@@ -165,19 +165,9 @@
     },
     "Biostrings": {
       "Package": "Biostrings",
-      "Version": "2.74.0",
+      "Version": "2.74.1",
       "Source": "Bioconductor",
       "Repository": "Bioconductor 3.20",
-      "git_url": "https://git.bioconductor.org/packages/Biostrings",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "fcfc37a",
-      "git_last_commit_date": "2024-10-29",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::Biostrings",
-      "RemoteRef": "bioc::Biostrings",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "2.74.0",
       "Requirements": [
         "BiocGenerics",
         "GenomeInfoDb",
@@ -191,18 +181,45 @@
         "stats",
         "utils"
       ],
-      "Hash": "ace1afaf62506ab69ae46c1468551efb"
+      "Hash": "0b723193ff7df55bae3b547d58329026"
     },
     "DBI": {
       "Package": "DBI",
-      "Version": "1.2.3",
+      "Version": "1.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "methods"
       ],
-      "Hash": "065ae649b05f1ff66bb0c793107508f5"
+      "Hash": "dbfa2adb83f8063640982459e153f650"
+    },
+    "DECIPHER": {
+      "Package": "DECIPHER",
+      "Version": "3.2.0",
+      "Source": "Bioconductor",
+      "Repository": "Bioconductor 3.20",
+      "git_url": "https://git.bioconductor.org/packages/DECIPHER",
+      "git_branch": "RELEASE_3_20",
+      "git_last_commit": "7d5caa2",
+      "git_last_commit_date": "2024-10-29",
+      "RemoteType": "bioc",
+      "RemotePkgRef": "bioc::DECIPHER",
+      "RemoteRef": "bioc::DECIPHER",
+      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
+      "RemotePkgPlatform": "source",
+      "RemoteSha": "3.2.0",
+      "Requirements": [
+        "Biostrings",
+        "DBI",
+        "IRanges",
+        "R",
+        "S4Vectors",
+        "XVector",
+        "methods",
+        "stats"
+      ],
+      "Hash": "9071113ebe76fc1314fa7fedc91fc802"
     },
     "DEoptim": {
       "Package": "DEoptim",
@@ -265,7 +282,7 @@
     },
     "GenomeInfoDb": {
       "Package": "GenomeInfoDb",
-      "Version": "1.42.0",
+      "Version": "1.42.3",
       "Source": "Bioconductor",
       "Repository": "Bioconductor 3.20",
       "Requirements": [
@@ -280,7 +297,7 @@
         "stats4",
         "utils"
       ],
-      "Hash": "0935ba1be6c56ba37b20ecf7183553c7"
+      "Hash": "0986fd4a99387bd391117f5962282c1f"
     },
     "GenomeInfoDbData": {
       "Package": "GenomeInfoDbData",
@@ -385,7 +402,7 @@
     },
     "IRanges": {
       "Package": "IRanges",
-      "Version": "2.40.0",
+      "Version": "2.40.1",
       "Source": "Bioconductor",
       "Repository": "Bioconductor 3.20",
       "Requirements": [
@@ -397,7 +414,7 @@
         "stats4",
         "utils"
       ],
-      "Hash": "ecc5317f9624d9992f36e3a900a8ec3b"
+      "Hash": "54ccfdba2fcf18a43d2836b70625b191"
     },
     "KEGGREST": {
       "Package": "KEGGREST",
@@ -1523,13 +1540,13 @@
     },
     "curl": {
       "Package": "curl",
-      "Version": "6.3.0",
+      "Version": "7.1.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
-      "Hash": "e7700f16fc74244e37d6fb9b67af3570"
+      "Hash": "2e004ed19964915a8faf48a574439be9"
     },
     "cyclocomp": {
       "Package": "cyclocomp",
@@ -2522,7 +2539,7 @@
     },
     "httr": {
       "Package": "httr",
-      "Version": "1.4.7",
+      "Version": "1.4.8",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -2533,7 +2550,7 @@
         "mime",
         "openssl"
       ],
-      "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
+      "Hash": "10bcae7793493db63a6872096132e10c"
     },
     "httr2": {
       "Package": "httr2",
@@ -3081,13 +3098,13 @@
     },
     "openssl": {
       "Package": "openssl",
-      "Version": "2.3.3",
+      "Version": "2.4.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "askpass"
       ],
-      "Hash": "05ce1ed077e8c97fbb3ec1cb078f1159"
+      "Hash": "6994d1c3ea954f29de6aeca5da95c99d"
     },
     "optimParallel": {
       "Package": "optimParallel",

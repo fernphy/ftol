@@ -5269,181 +5269,55 @@ trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 #' @return Tibble with list-column of trimmed genes (or spacers); each row is
 #' a target gene (or spacer)
 #'
-#' Assert that a CDS alignment is in reading frame 0
-#'
-#' Selects the reference sequence with the fewest gaps, removes gaps, trims to
-#' a multiple of 3, translates, and asserts no internal stop codons.
-#'
-#' @param aln_mat DNAbin matrix (rows = sequences, cols = alignment positions)
-#' @param locus Character; locus name used in error messages
-#'
-cds_in_frame <- function(aln_mat, locus) {
-  aln_char <- as.character(aln_mat)
-  n_gaps <- rowSums(aln_char == "-")
-  ref_char <- aln_char[which.min(n_gaps), ]
-  ref_ungapped <- ref_char[ref_char != "-"]
-  nc <- length(ref_ungapped)
-  if (nc < 3) return(TRUE)
-  nc_trim <- nc - nc %% 3
-  ref_mat <- matrix(ref_ungapped[seq_len(nc_trim)], nrow = 1)
-  ref_dnabin <- ape::as.DNAbin(ref_mat)
-  aa <- as.character(ape::trans(ref_dnabin))[1L, ]
-  internal_stops <- sum(aa[-length(aa)] == "*")
-  if (internal_stops > 0L) {
-    warning(glue::glue(
-      "{locus}: reference sequence has {internal_stops} internal stop codon(s) ",
-      "in reading frame 0 — skipping 3rd-position removal for this locus"
-    ))
-    return(FALSE)
-  }
-  TRUE
-}
-
-#' Trim CDS alignments after removing third codon positions
-#'
-#' Removes every third column from each gene's MAFFT alignment (while the
-#' reading frame is still intact), then trims with trimal. Intended for
-#' CDS-only input (no spacers).
-#'
-#' @param plastid_aligned Tibble output of align_seqs_tbl(), with columns
-#'   seq, species, target, accession
-#' @param name_col_in Name of column to use as sequence labels
-#'
-#' @return Tibble with columns "target" and "align_trimmed" (DNAbin matrices)
-#'
-trim_cds_no3rd <- function(plastid_aligned, name_col_in = "species") {
+codon_align_seqs_tbl <- function(plastid_aligned, name_col_in = "species") {
   plastid_aligned %>%
     select(seq, species, target, accession) %>%
     group_by(target) %>%
     nest(data = c(seq, species, accession)) %>%
     mutate(
-      align_trimmed = map2(
-        data, target,
-        function(d, locus) {
-          aln <- seqtbl_to_dnabin(d, name_col = name_col_in, seq_col = "seq")
-          aln <- as.matrix(aln)
-          n <- ncol(aln)
-          if (n %% 3 != 0) {
-            warning(glue::glue(
-              "{locus}: MAFFT alignment has {n} columns (not divisible by 3); ",
-              "trimming {n %% 3} column(s) from end to restore reading frame"
-            ))
-            n <- n - (n %% 3)
-            aln <- aln[, seq_len(n)]
-          }
-          if (cds_in_frame(aln, locus)) {
-            aln <- aln[, setdiff(seq_len(n), seq(3L, n, by = 3L))]
-          }
-          trimal(aln, other_args = c("-gt", "0.05"), return_seqtbl = FALSE)
-        }
-      )
-    ) %>%
-    ungroup() %>%
-    select(-data)
-}
-
-codon_align_and_trim_no3rd <- function(plastid_aligned, name_col_in = "species") {
-  plastid_aligned %>%
-    select(seq, species, target, accession) %>%
-    group_by(target) %>%
-    nest(data = c(seq, species, accession)) %>%
-    mutate(
-      align_trimmed = map2(
-        data, target,
-        function(d, locus) {
-          # 1. Strip alignment gaps to recover original unaligned sequences.
-          #    Use accession as identifier (no spaces, safe for FASTA headers).
-          aln <- seqtbl_to_dnabin(d, name_col = "accession", seq_col = "seq")
-          seqs_ungapped <- as.list(ape::del.gaps(as.matrix(aln)))
-          accs <- names(seqs_ungapped)
+      align_trimmed = map(
+        data,
+        function(d) {
+          # Strip per-sequence gaps to recover original unaligned sequences
+          aln_char <- as.character(
+            as.matrix(seqtbl_to_dnabin(d, name_col = "accession", seq_col = "seq"))
+          )
+          seqs_str <- apply(aln_char, 1, function(row) {
+            paste(row[row != "-"], collapse = "")
+          })
           acc_to_sp <- setNames(d[[name_col_in]], d$accession)
 
-          # 2. Extract nt characters and trim to codon boundary
-          nt_chars <- lapply(accs, function(acc) {
-            ch <- as.character(seqs_ungapped[[acc]])
-            r <- length(ch) %% 3L
-            if (r != 0L) {
-              warning(glue::glue(
-                "{locus}/{acc}: trimming {r} trailing nt(s) to codon boundary"
-              ))
-              ch <- ch[seq_len(length(ch) - r)]
-            }
-            ch
-          })
-          names(nt_chars) <- accs
-
-          # 3. Translate to AA strings; drop trailing stop codon (normal CDS end)
-          aa_strs <- lapply(accs, function(acc) {
-            ch <- nt_chars[[acc]]
-            if (length(ch) < 3L) return("")
-            aa <- as.character(
-              ape::trans(ape::as.DNAbin(matrix(ch, nrow = 1L)))
-            )[1L, ]
-            if (length(aa) > 0L && aa[length(aa)] == "*") aa <- aa[-length(aa)]
-            paste(aa, collapse = "")
-          })
-          names(aa_strs) <- accs
-
-          # 4. Write AA FASTA and align with MAFFT in protein mode
-          aa_in <- tempfile(fileext = ".faa")
-          writeLines(
-            unlist(lapply(accs, function(acc) c(paste0(">", acc), aa_strs[[acc]]))),
-            aa_in
+          # Codon-aware alignment via DECIPHER (input must be uppercase).
+          # readingFrame = NA (default): auto-detect per sequence.
+          aln_ss <- DECIPHER::AlignTranslation(
+            Biostrings::DNAStringSet(toupper(seqs_str))
           )
-          aa_out <- tempfile(fileext = "_aln.faa")
-          system2("/usr/bin/mafft", c("--amino", "--quiet", aa_in), stdout = aa_out)
 
-          # 5. Parse aligned AA FASTA
-          raw <- readLines(aa_out)
-          hdr_idx <- which(startsWith(raw, ">"))
-          aa_aln <- setNames(
-            lapply(seq_along(hdr_idx), function(i) {
-              s <- hdr_idx[i] + 1L
-              e <- if (i < length(hdr_idx)) hdr_idx[i + 1L] - 1L else length(raw)
-              strsplit(paste(raw[s:e], collapse = ""), "")[[1L]]
-            }),
-            sub("^>", "", raw[hdr_idx])
-          )
-          aln_len_aa <- length(aa_aln[[accs[1L]]])
-
-          # 6. Back-translate: each gap AA → "---", j-th non-gap AA → 3 nt
-          nt_mat <- matrix(
-            "-", nrow = length(accs), ncol = aln_len_aa * 3L,
-            dimnames = list(accs, NULL)
-          )
-          for (acc in accs) {
-            aa_vec <- aa_aln[[acc]]
-            nt_src <- nt_chars[[acc]]
-            non_gap <- which(aa_vec != "-")
-            for (j in seq_along(non_gap)) {
-              col <- (non_gap[j] - 1L) * 3L + 1L
-              src_s <- (j - 1L) * 3L + 1L
-              src_e <- src_s + 2L
-              if (src_e <= length(nt_src)) {
-                nt_mat[acc, col:(col + 2L)] <- nt_src[src_s:src_e]
-              }
-            }
-          }
-
-          # 7. Relabel rows from accession to species
-          rownames(nt_mat) <- acc_to_sp[rownames(nt_mat)]
-
-          # 8. Remove 3rd codon positions (columns 3, 6, 9, ...)
-          n_cols <- ncol(nt_mat)
-          keep_cols <- setdiff(seq_len(n_cols), seq(3L, n_cols, by = 3L))
-          nt_mat <- nt_mat[, keep_cols, drop = FALSE]
-
-          # 9. Trim with trimal
-          trimal(
-            ape::as.DNAbin(nt_mat),
-            other_args = c("-gt", "0.05"),
-            return_seqtbl = FALSE
-          )
+          # Convert aligned DNAStringSet → lowercase character matrix → DNAbin
+          aln_mat <- do.call(rbind, strsplit(tolower(as.character(aln_ss)), ""))
+          rownames(aln_mat) <- acc_to_sp[names(aln_ss)]
+          ape::as.DNAbin(aln_mat)
         }
       )
     ) %>%
     ungroup() %>%
     select(-data)
+}
+
+strip_3rd_and_trim <- function(codon_aligned_tbl) {
+  codon_aligned_tbl %>%
+    mutate(
+      align_trimmed = map(
+        align_trimmed,
+        function(aln) {
+          n <- ncol(aln)
+          keep <- setdiff(seq_len(n), seq(3L, n, by = 3L))
+          trimal(aln[, keep, drop = FALSE],
+                 other_args = c("-gt", "0.05"),
+                 return_seqtbl = FALSE)
+        }
+      )
+    )
 }
 
 trim_genes <- function(plastid_aligned, name_col_in = "species") {
