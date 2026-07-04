@@ -29,11 +29,9 @@ tar_option_set(
 # Set the iqtree ML options outside of the plan
 # this way we can turn it on/off without re-triggering the target
 plastome_tree_redo_setting <- TRUE
-plastome_backbone_redo_setting <- FALSE
+du2022_redo_setting <- FALSE
 sanger_tree_fast_redo_setting <- TRUE
 sanger_ml_tree_redo_setting <- TRUE
-
-non_mono_genera_plastome <- character(0)
 
 plastome_tree_nt_setting <- 20
 sanger_tree_fast_nt_setting <- 6
@@ -72,6 +70,12 @@ tar_plan(
     accs_exclude,
     path(data_raw, "accs_exclude.csv"),
     read_csv(!!.x)
+  ),
+  # Du et al. (2022) plastome accession list (NC_ mapped to GenBank equivalents)
+  tar_file_read(
+    du2022_accession_list,
+    path(data_raw, "du2022_accessions.csv"),
+    read_csv(!!.x, col_types = cols(.default = "c"))
   ),
   # Manually matched names
   tar_file_read(
@@ -619,49 +623,38 @@ tar_plan(
       path(int_dir, "iqtree/plastome/plastome_partitions_no3rd.txt")
     )
   ),
-  # Backbone tree: exemplar species only, no 3rd codon positions
-  plastome_exemplars = select_plastome_exemplars(
-    plastid_genes_trimmed_no3rd,
-    ppgi_taxonomy,
-    non_mono_genera = non_mono_genera_plastome
+  # Du et al. (2022) reference tree used as backbone constraint
+  # Species: subset of FTOL plastome dataset matching Du et al. accessions
+  du2022_species = plastome_metadata_renamed %>%
+    dplyr::filter(accession %in% du2022_accession_list$accession) %>%
+    dplyr::pull(species),
+  # Filter codon-aligned loci to Du et al. species
+  du2022_genes = filter_genes_to_species(
+    plastid_genes_aligned_codon,
+    du2022_species
   ),
-  plastome_alignment_backbone = plastome_alignment_no3rd[
-    rownames(plastome_alignment_no3rd) %in% plastome_exemplars, ,
-    drop = FALSE
-  ],
-  tar_file(
-    plastome_partition_file_backbone,
-    write_iqtree_partition_file(
-      plastome_parts_table_no3rd,
-      path(int_dir, "iqtree/plastome_backbone/plastome_partitions_no3rd.txt")
-    ),
-    deployment = "main"
-  ),
+  du2022_alignment = concatenate_to_ape(du2022_genes),
   tar_target(
-    plastome_tree_backbone,
+    du2022_tree,
     iqtree(
-      plastome_alignment_backbone,
-      spp = plastome_partition_file_backbone,
-      m = "MFP",
+      du2022_alignment,
+      m = "GTR+F+R5",
       bb = 1000,
       nt = plastome_tree_nt_setting,
       seed = 20220123,
-      redo = plastome_backbone_redo_setting,
+      redo = du2022_redo_setting,
       echo = TRUE,
-      wd = path(int_dir, "iqtree/plastome_backbone"),
+      wd = path(int_dir, "iqtree/du2022"),
       other_args = c("-t", "PARS"),
-      tree_path = path(
-        int_dir,
-        "iqtree/plastome_backbone/plastome_partitions_no3rd.txt.contree"
-      )
+      tree_path = path(int_dir, "iqtree/du2022/du2022_alignment.phy.contree")
     ),
     deployment = "main"
   ),
   tar_file(
     plastome_backbone_constraint_file,
     write_tree_tar(
-      plastome_tree_backbone,
-      path(int_dir, "iqtree/plastome_backbone/backbone.tre")
+      du2022_tree,
+      path(int_dir, "iqtree/du2022/backbone.tre")
     )
   ),
   # Full plastome tree: all species, with 3rd positions, constrained by backbone
