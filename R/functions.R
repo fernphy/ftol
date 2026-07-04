@@ -8285,11 +8285,75 @@ make_parts_table <- function(aln_tbl, aln_seq) {
 #' @return Path to the written partition file
 #'
 write_iqtree_partition_file <- function(parts_table, out_path) {
+  fs::dir_create(fs::path_dir(out_path), recurse = TRUE)
   lines <- paste0(
     "DNA, ", parts_table$locus, " = ", parts_table$start, "-", parts_table$end
   )
   writeLines(lines, out_path)
   return(out_path)
+}
+
+#' Select exemplar species for the plastome backbone tree
+#'
+#' For each genus recognised by PPG with more than one species in the plastome
+#' dataset, selects the single most data-complete species (most loci with any
+#' sequence data) as an exemplar, unless the genus is listed in
+#' \code{non_mono_genera}. All species from singleton genera, unrecognised
+#' genera, and flagged non-monophyletic genera are retained in full.
+#'
+#' @param plastid_genes_trimmed Tibble with columns "target" and
+#'   "align_trimmed" (DNAbin matrices), e.g. output of strip_3rd_and_trim()
+#' @param ppgi_taxonomy Tibble of PPG genus-level taxonomy as produced by
+#'   taxlist_to_df(), with a column "genus"
+#' @param non_mono_genera Character vector of genus names known or suspected
+#'   to be non-monophyletic; all species from these genera are retained
+#'
+#' @return Character vector of selected species names (sorted)
+#'
+select_plastome_exemplars <- function(
+  plastid_genes_trimmed,
+  ppgi_taxonomy,
+  non_mono_genera = character(0)
+) {
+  # Count loci with any sequence data per species
+  n_loci <- plastid_genes_trimmed$align_trimmed %>%
+    lapply(function(mat) {
+      aln_char <- as.character(mat)
+      rownames(mat)[rowSums(aln_char != "-") > 0]
+    }) %>%
+    unlist() %>%
+    table()
+
+  sp_data <- tibble::tibble(
+    species = names(n_loci),
+    n_loci  = as.integer(n_loci),
+    genus   = stringr::word(species, 1, sep = "_")
+  )
+
+  ppg_genera <- unique(ppgi_taxonomy$genus)
+
+  # Genera with >1 species, recognised by PPG, not flagged as non-monophyletic
+  mono_multi_genera <- sp_data %>%
+    dplyr::group_by(genus) %>%
+    dplyr::filter(
+      dplyr::n() > 1,
+      genus %in% ppg_genera,
+      !genus %in% non_mono_genera
+    ) %>%
+    dplyr::pull(genus) %>%
+    unique()
+
+  exemplars <- sp_data %>%
+    dplyr::filter(genus %in% mono_multi_genera) %>%
+    dplyr::group_by(genus) %>%
+    dplyr::slice_max(n_loci, n = 1, with_ties = FALSE) %>%
+    dplyr::pull(species)
+
+  others <- sp_data %>%
+    dplyr::filter(!genus %in% mono_multi_genera) %>%
+    dplyr::pull(species)
+
+  sort(unique(c(exemplars, others)))
 }
 
 # Managing data ----
@@ -9256,6 +9320,7 @@ iqtree <- function(
   m = NULL,
   redo = FALSE,
   spp = NULL,
+  g = NULL,
   seed = NULL,
   echo = FALSE,
   other_args = NULL,
@@ -9299,11 +9364,16 @@ iqtree <- function(
     assertthat::assert_that(assertthat::is.readable(spp))
   }
 
+  if (!is.null(g)) {
+    assertthat::assert_that(assertthat::is.readable(g))
+  }
+
   if (!is.null(seed)) {
     assertthat::assert_that(assertthat::is.number(seed))
   }
 
   wd <- fs::path_norm(wd)
+  fs::dir_create(wd, recurse = TRUE)
 
   # check that iqtree is installed and on the PATH
   tryCatch(
@@ -9357,6 +9427,8 @@ iqtree <- function(
     seed,
     if (!is.null(spp)) "-p",
     fs::path_abs(spp),
+    if (!is.null(g)) "-g",
+    if (!is.null(g)) fs::path_abs(g),
     if (isTRUE(redo)) "--redo",
     other_args
   )

@@ -29,8 +29,11 @@ tar_option_set(
 # Set the iqtree ML options outside of the plan
 # this way we can turn it on/off without re-triggering the target
 plastome_tree_redo_setting <- TRUE
+plastome_backbone_redo_setting <- FALSE
 sanger_tree_fast_redo_setting <- TRUE
 sanger_ml_tree_redo_setting <- TRUE
+
+non_mono_genera_plastome <- character(0)
 
 plastome_tree_nt_setting <- 20
 sanger_tree_fast_nt_setting <- 6
@@ -616,30 +619,73 @@ tar_plan(
       path(int_dir, "iqtree/plastome/plastome_partitions_no3rd.txt")
     )
   ),
-  # Backbone consensus tree
+  # Backbone tree: exemplar species only, no 3rd codon positions
+  plastome_exemplars = select_plastome_exemplars(
+    plastid_genes_trimmed_no3rd,
+    ppgi_taxonomy,
+    non_mono_genera = non_mono_genera_plastome
+  ),
+  plastome_alignment_backbone = plastome_alignment_no3rd[
+    rownames(plastome_alignment_no3rd) %in% plastome_exemplars, ,
+    drop = FALSE
+  ],
+  tar_file(
+    plastome_partition_file_backbone,
+    write_iqtree_partition_file(
+      plastome_parts_table_no3rd,
+      path(int_dir, "iqtree/plastome_backbone/plastome_partitions_no3rd.txt")
+    ),
+    deployment = "main"
+  ),
+  tar_target(
+    plastome_tree_backbone,
+    iqtree(
+      plastome_alignment_backbone,
+      spp = plastome_partition_file_backbone,
+      m = "MFP",
+      bb = 1000,
+      nt = plastome_tree_nt_setting,
+      seed = 20220123,
+      redo = plastome_backbone_redo_setting,
+      echo = TRUE,
+      wd = path(int_dir, "iqtree/plastome_backbone"),
+      other_args = c("-t", "PARS"),
+      tree_path = path(
+        int_dir,
+        "iqtree/plastome_backbone/plastome_partitions_no3rd.txt.contree"
+      )
+    ),
+    deployment = "main"
+  ),
+  tar_file(
+    plastome_backbone_constraint_file,
+    write_tree_tar(
+      plastome_tree_backbone,
+      path(int_dir, "iqtree/plastome_backbone/backbone.tre")
+    )
+  ),
+  # Full plastome tree: all species, with 3rd positions, constrained by backbone
   tar_target(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      m = "MFP", # test model followed by ML analysis
+      spp = plastome_partition_file,
+      m = "MFP",
       bb = 1000,
       nt = plastome_tree_nt_setting,
       seed = 20220123,
       redo = plastome_tree_redo_setting,
       echo = TRUE,
       wd = path(int_dir, "iqtree/plastome"),
-      spp = plastome_partition_file,
-      other_args = c(
-        "-mset", "GTR", # only test GTR models
-        "-t", "PARS"
-      ),
+      g = plastome_backbone_constraint_file,
+      other_args = c("-t", "PARS"),
       tree_path = path(
         int_dir, "iqtree/plastome/plastome_partitions.txt.contree"
       )
     ),
     deployment = "main"
   ),
-  # write out as plastome tree to use as constraint
+  # Write plastome tree as Sanger constraint
   tar_file(
     constraint_tree_file,
     write_tree_tar(
