@@ -255,30 +255,12 @@ RUN PATH="${PATH#$CONDA_DIR/bin:}" XML_CONFIG=/usr/bin/xml2-config \
   Rscript /tmp/project/renv_install.R && \
   rm /tmp/project/renv_install.R
 
-############
-### Cron ###
-############
-
-# cron is used to run R/setup_gb.R automatically once per day
-
-RUN apt-get update && apt-get -y install cron
-
-# Write script to launch R/setup_gb.R from /wd/
-RUN echo "#!/bin/bash" >> /home/setup_gb.sh && \
-  echo "cd /wd" >> /home/setup_gb.sh && \
-  echo "/usr/local/bin/Rscript /wd/R/setup_gb.R" >> /home/setup_gb.sh && \
-  chmod 0644 /home/setup_gb.sh
-
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
-
-# Setup cron job
-RUN (crontab -l ; echo "0 0 * * * bash /home/setup_gb.sh >> /var/log/cron.log 2>&1") | crontab
-
-# To run the cron job, provide the command `cron` to `docker run`:
-# docker run --rm -dt -v ${PWD}:/wd -w /wd --name setup_gb joelnitta/ftol:latest cron -f
-# 
-# as long as the container is up, it will run the job once per day
+# Note: this image no longer bakes in a cron job to check for new GenBank
+# releases. That's now handled by host-level cron calling `docker run` on
+# demand (see docs/nittalab_gb_download.md), the same pattern run.sh already
+# uses for the main pipeline -- baking scheduling into the image conflated
+# "what the container does" with "when it runs", which doesn't hold up
+# outside a long-lived container (e.g. devcontainers, CI, image rebuilds).
 
 ### gosu — used by entrypoint.sh to drop from root to host user ###
 RUN curl -fsSL https://github.com/tianon/gosu/releases/download/1.17/gosu-amd64 \

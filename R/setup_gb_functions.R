@@ -264,14 +264,87 @@ build_fresh_gb_db <- function(records_list, restez_path) {
 
 #' Copy a scratch-built GenBank file to its official data_raw location
 #'
+#' Keeps a single ".bak" copy of the outgoing file before overwriting -- once
+#' a GenBank release is superseded, NCBI's FTP server only serves the current
+#' release's flatfiles, so a filtered database built from a prior release can
+#' never be regenerated later. This is a zero-configuration, always-on safety
+#' net; see archive_outgoing_gb_db() for longer-term external archival across
+#' more than one release.
+#'
 #' @param src_path Path to the file in the scratch working directory
 #' @param dest_path Final destination path (overwritten if it already exists)
+#' @param depends Dummy argument to force a {targets} dependency edge; unused
 #'
 #' @return dest_path
-publish_gb_file <- function(src_path, dest_path) {
+publish_gb_file <- function(src_path, dest_path, depends = NULL) {
   fs::dir_create(fs::path_dir(dest_path), recurse = TRUE)
+  if (fs::file_exists(dest_path)) {
+    fs::file_copy(dest_path, paste0(dest_path, ".bak"), overwrite = TRUE)
+  }
   fs::file_copy(src_path, dest_path, overwrite = TRUE)
   dest_path
+}
+
+#' Archive the outgoing GenBank database to external long-term storage
+#'
+#' Once a GenBank release is superseded, NCBI's FTP server only serves the
+#' current release's flatfiles -- the filtered fern database built from a
+#' prior release can never be regenerated later, so this preserves more than
+#' the single ".bak" copy publish_gb_file() already keeps locally. Copies the
+#' outgoing (about-to-be-replaced) restez files into a release-numbered
+#' subdirectory of archive_dir, matching the existing gb_release_<N>/ naming
+#' convention already used for manual archives. Safe no-op (with a loud
+#' warning, since skipping this does mean permanently losing the ability to
+#' regenerate the outgoing release's data beyond the local .bak) if
+#' archive_dir is NA, doesn't exist, or the copy fails for any reason --
+#' never blocks the pipeline from publishing the new release.
+#'
+#' @param archive_dir Path to the external archive location, or NA to skip
+#' @param current_release Numeric; the OLD release number being replaced (in
+#'   restez's internal x10 format, e.g. 2720 for release 272.0)
+#' @param data_raw Path to the official data_raw directory
+#'
+#' @return Path to the archive subdirectory, or NA if skipped
+archive_outgoing_gb_db <- function(archive_dir, current_release, data_raw) {
+  old_restez_dir <- fs::path(data_raw, "restez")
+  if (!fs::dir_exists(old_restez_dir)) {
+    # Nothing to archive yet (e.g. very first run)
+    return(NA_character_)
+  }
+
+  if (is.na(archive_dir) || !fs::dir_exists(archive_dir)) {
+    warning(
+      "No archive_dir configured/reachable: the outgoing GenBank release's ",
+      "filtered database will only be kept as a local .bak copy. NCBI does ",
+      "not serve old releases' flatfiles, so this cannot be regenerated ",
+      "later if that .bak is ever lost."
+    )
+    return(NA_character_)
+  }
+
+  release_3digit <- round(
+    current_release / ifelse(nchar(current_release) == 4, 10, 1)
+  )
+  dest <- fs::path(archive_dir, sprintf("gb_release_%d", release_3digit))
+
+  tryCatch(
+    {
+      fs::dir_create(dest, recurse = TRUE)
+      fs::dir_copy(old_restez_dir, fs::path(dest, "restez"), overwrite = TRUE)
+      old_tar <- fs::path(data_raw, "restez_sql_db.tar.gz")
+      if (fs::file_exists(old_tar)) {
+        fs::file_copy(old_tar, dest, overwrite = TRUE)
+      }
+      dest
+    },
+    error = function(e) {
+      warning(sprintf(
+        "Failed to archive outgoing GenBank release to %s: %s",
+        archive_dir, conditionMessage(e)
+      ))
+      NA_character_
+    }
+  )
 }
 
 #' Download the GenBank release README into the scratch working directory
@@ -352,17 +425,53 @@ download_taxdmp <- function(dest_path, depends = NULL) {
   dest_path
 }
 
-#' Send an FTOL GenBank-update notification email
+#' Notify that a GenBank download has started
 #'
-#' Shared auth + send logic for the download-started / download-finished
-#' notifications.
-#'
-#' @param subject Email subject line
-#' @param body_html HTML body content
+#' @param latest_release Numeric release number, interpolated into the body
 #' @param depends Dummy argument to force a {targets} dependency edge; unused
 #'
 #' @return Invisible NULL
-send_gb_email <- function(subject, body_html, depends = NULL) {
+send_gb_start_email <- function(latest_release, depends = NULL) {
+  send_gb_email(
+    subject = "FTOL download started",
+    body_html = glue::glue(
+      "FTOL downloading of new GenBank release {latest_release} ",
+      "has started on {Sys.time()}"
+    )
+  )
+}
+
+#' Notify that a GenBank download has finished
+#'
+#' @param latest_release Numeric release number, interpolated into the body
+#' @param depends Dummy argument to force a {targets} dependency edge; unused
+#'
+#' @return Invisible NULL
+send_gb_done_email <- function(latest_release, depends = NULL) {
+  send_gb_email(
+    subject = "FTOL download finished",
+    body_html = glue::glue(
+      "FTOL downloading of new GenBank release {latest_release} has ",
+      "finished on {Sys.time()}. Be sure to upload to FigShare and ",
+      "update hash in R/setup.R"
+    )
+  )
+}
+
+#' Send an FTOL GenBank-update notification email
+#'
+#' Shared auth + send logic, called by send_gb_start_email()/
+#' send_gb_done_email(). Takes the subject/body as already-resolved strings
+#' (rather than interpolating {targets}-tracked values via glue() directly in
+#' the plan) so that dependencies like latest_release are visible to
+#' {targets}' static dependency scanner as real function arguments, not hidden
+#' inside a string literal it can't see into.
+#'
+#' @param subject Email subject line
+#' @param body_html HTML body content
+#'
+#' @return Invisible NULL
+send_gb_email <- function(subject, body_html) {
   email_draft <-
     gmailr::gm_mime() |>
     gmailr::gm_to("joelnitta@gmail.com") |>

@@ -27,6 +27,14 @@ send_email_setting <- as.logical(Sys.getenv("GB_DL_SEND_EMAIL", "TRUE"))
 # validating the pipeline end-to-end without the full multi-day download
 plant_files_cap <- as.numeric(Sys.getenv("GB_DL_FILE_CAP", NA))
 
+# Optional external location for long-term archival of the outgoing release's
+# database before it's overwritten (NCBI only serves the current release's
+# flatfiles, so once overwritten, an old release's filtered database can
+# never be regenerated). A single local .bak copy is always kept regardless
+# of this setting; set this to also copy it somewhere with more headroom for
+# multiple past releases (e.g. an external drive), unset/NA to skip.
+archive_dir_setting <- Sys.getenv("GB_DL_ARCHIVE_DIR", NA)
+
 # Set options:
 # - Modest local parallelization: empirically validated safe against NCBI's
 #   file server (6 concurrent downloads, no throttling/errors), kept well
@@ -71,14 +79,7 @@ tar_plan(
 
   # Notify download has started (fires once per new release; cached on resume)
   start_email = if (send_email_setting) {
-    send_gb_email(
-      subject = "FTOL download started",
-      body_html = glue::glue(
-        "FTOL downloading of new GenBank release {latest_release} ",
-        "has started on {Sys.time()}"
-      ),
-      depends = plant_files
-    )
+    send_gb_start_email(latest_release, depends = plant_files)
   },
 
   # Stream download + filter, one plant-division file at a time ----
@@ -96,6 +97,12 @@ tar_plan(
   ),
 
   # Download GenBank README and write release number ----
+  # (kept in scratch only for now -- NOT published to the official data_raw
+  # location yet. The official gb_release.txt is what release_check reads to
+  # decide whether a new release is available, so it must stay untouched
+  # until every other step below has actually finished; otherwise a crash
+  # partway through would make a resumed run wrongly conclude there's nothing
+  # left to do, while the official database was never actually updated.)
   tar_target(
     gb_readme_scratch_path,
     download_gb_readme(scratch_dir),
@@ -107,32 +114,19 @@ tar_plan(
     format = "file"
   ),
 
-  # Publish to official data_raw location ----
-  tar_target(
-    restez_db_published,
-    publish_gb_file(gb_db_path, path(data_raw, "restez/sql_db")),
-    format = "file"
-  ),
-  tar_target(
-    gb_release_published,
-    publish_gb_file(
-      gb_release_scratch_path, path(data_raw, "restez/gb_release.txt")
-    ),
-    format = "file"
-  ),
-  tar_target(
-    gb_readme_published,
-    publish_gb_file(
-      gb_readme_scratch_path, path(data_raw, "restez/README.genbank")
-    ),
-    format = "file"
+  # Archive the outgoing release before any official files are overwritten ----
+  archive_result = archive_outgoing_gb_db(
+    archive_dir_setting, current_release, data_raw
   ),
 
   # Archive for FigShare ----
+  # Built from the scratch copies (not the official published ones) so this
+  # doesn't need to wait on publishing -- it only needs the new release's
+  # data to exist somewhere, not to already be "official"
   tar_target(
     restez_tar_archive,
     archive_restez_db(
-      restez_db_published, gb_release_published, gb_readme_published,
+      gb_db_path, gb_release_scratch_path, gb_readme_scratch_path,
       path(data_raw, "restez_sql_db.tar.gz")
     ),
     format = "file"
@@ -142,20 +136,45 @@ tar_plan(
   # (done after GenBank data so taxonomic data stays consistent with it)
   tar_target(
     taxdmp_path,
-    download_taxdmp(path(data_raw, "taxdmp.zip"), depends = restez_db_published),
+    download_taxdmp(path(data_raw, "taxdmp.zip"), depends = gb_db_path),
+    format = "file"
+  ),
+
+  # Publish to official data_raw location ----
+  # The true final step: only runs once the archive and taxdmp are confirmed
+  # done, so gb_release.txt (the release_check gate) is the very last thing
+  # to change -- a crash at any point before this leaves the official
+  # location, and therefore release_check, untouched
+  tar_target(
+    restez_db_published,
+    publish_gb_file(
+      gb_db_path, path(data_raw, "restez/sql_db"),
+      depends = list(archive_result, restez_tar_archive, taxdmp_path)
+    ),
+    format = "file"
+  ),
+  tar_target(
+    gb_readme_published,
+    publish_gb_file(
+      gb_readme_scratch_path, path(data_raw, "restez/README.genbank"),
+      depends = list(archive_result, restez_tar_archive, taxdmp_path)
+    ),
+    format = "file"
+  ),
+  tar_target(
+    gb_release_published,
+    publish_gb_file(
+      gb_release_scratch_path, path(data_raw, "restez/gb_release.txt"),
+      depends = list(
+        restez_db_published, gb_readme_published, archive_result,
+        restez_tar_archive, taxdmp_path
+      )
+    ),
     format = "file"
   ),
 
   # Notify download is finished ----
   done_email = if (send_email_setting) {
-    send_gb_email(
-      subject = "FTOL download finished",
-      body_html = glue::glue(
-        "FTOL downloading of new GenBank release {latest_release} has ",
-        "finished on {Sys.time()}. Be sure to upload to FigShare and ",
-        "update hash in R/setup.R"
-      ),
-      depends = list(restez_tar_archive, taxdmp_path)
-    )
+    send_gb_done_email(latest_release, depends = gb_release_published)
   }
 )

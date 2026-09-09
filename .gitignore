@@ -27,5 +27,6 @@ settings.json
 _supp_store
 scratch
 setup_gb.log
+logs
 .secrets
 .env
