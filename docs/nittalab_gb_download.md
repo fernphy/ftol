@@ -112,6 +112,27 @@ jnitta's crontab entry (daily at 00:00):
 creates `.gb_download.lock` on first run (also gitignored). Adjust the image
 tag if `run.sh` moves off `joelnitta/ftol:latest`.
 
+## Enabling and disabling the job
+
+`crontab -e` is interactive; to toggle the entry from a script or a
+non-interactive session, filter the crontab through `crontab -`.
+
+Disable (comment the schedule line out, keeping it in place):
+
+```bash
+crontab -l | sed 's|^0 0 \* \* \*|#DISABLED# 0 0 * * *|' | crontab -
+```
+
+Re-enable:
+
+```bash
+crontab -l | sed 's|^#DISABLED# ||' | crontab -
+```
+
+Confirm with `crontab -l`. Disable the job before running the pipeline by
+hand (see the overlap note above), and whenever the server is being worked
+on; re-enable it afterward.
+
 ## What to expect
 
 - Most days, this will do nothing: `_targets_gb.R`'s `release_check` target
