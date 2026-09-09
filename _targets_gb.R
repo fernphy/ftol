@@ -93,10 +93,17 @@ tar_plan(
   ),
 
   # Build fresh database from filtered records ----
+  # deployment = "main": this target depends on the whole plant_file_records
+  # pattern (thousands of branches). Dispatching that to a crew worker with
+  # the default retrieval = "main" makes the main process spin at 100% CPU
+  # leaking memory instead of transferring the data -- the target never
+  # completes. Running it in the main process sidesteps the transfer; the
+  # build itself is a ~5-second, <1 GB operation.
   tar_target(
     gb_db_path,
     build_fresh_gb_db(plant_file_records, scratch_dir),
-    format = "file"
+    format = "file",
+    deployment = "main"
   ),
 
   # Download GenBank README and write release number ----
