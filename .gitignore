@@ -20,6 +20,7 @@ dockerd.log
 dockerd.pid
 make.o*
 _targets
+_targets_gb_store
 trash
 ftol_data
 settings.json

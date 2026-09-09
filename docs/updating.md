@@ -10,15 +10,11 @@ FTOL uses semantic versioning as follows:
 
 ## Workflow to update FTOL
 
-1: Move `scratch` (raw genbank download) to NAS (can do this as soon as GenBank download is finished):
-
-nittalab server:
-
-```
-mv scratch /mnt/jnitta/project_data/ftol_genbank_raw/gb_release_253
-```
-
-(append GenBank version number, here `_253`).
+1: Run `_targets_gb.R` (`TAR_PROJECT=gb_download`) to download the new GenBank
+release. Unlike the old `R/setup_gb.R` script, this streams each plant
+division file (download -> filter to target accessions -> delete raw file)
+instead of downloading the entire multi-terabyte division to `scratch/`
+first, so there's no large raw download left to move to NAS afterward.
 
 2: Run `R/comp_ftol_ages.r` to make sure age of nodes has not changed dramatically.
 

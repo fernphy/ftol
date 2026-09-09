@@ -9,3 +9,6 @@ targets:
 supp_plan:
   script: _supp_plan.R
   store: _supp_store
+gb_download:
+  script: _targets_gb.R
+  store: _targets_gb_store

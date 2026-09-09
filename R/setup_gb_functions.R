@@ -102,3 +102,283 @@ identify_downloadable_files <- function(flpth) {
   }
   res
 }
+
+#' Get the list of downloadable plant-division .seq files for the current
+#' GenBank release
+#'
+#' Companion to get_plants_index(): instead of an index into the frequency
+#' table of division types, returns the actual filenames for the "Plant"
+#' division, for use as the per-file branching input in _targets_gb.R.
+#'
+#' @param depends Dummy argument to force a {targets} dependency edge; unused
+#'
+#' @return Character vector of .seq filenames
+get_plant_seq_files <- function(depends = NULL) {
+  temp_file <- tempfile()
+  url <- 'https://ftp.ncbi.nlm.nih.gov/genbank/gbrel.txt'
+  curl::curl_download(url = url, destfile = temp_file)
+
+  downloadable_table <- identify_downloadable_files(temp_file)
+  fs::file_delete(temp_file)
+
+  plants_type <- grep(
+    "plant|Plant", unique(downloadable_table[['descripts']]), value = TRUE
+  )
+
+  assertthat::assert_that(
+    length(plants_type) == 1,
+    msg = "Multiple or no matching descriptions detected for plants"
+  )
+
+  downloadable_table[
+    downloadable_table[['descripts']] == plants_type, 'seq_files'
+  ]
+}
+
+#' Optionally cap the list of plant division files, for dry runs
+#'
+#' @param plant_files Character vector of .seq filenames
+#' @param cap Numeric; if not NA, truncate plant_files to this many entries
+#'
+#' @return Character vector of .seq filenames
+cap_plant_files <- function(plant_files, cap = NA) {
+  if (is.na(cap)) {
+    return(plant_files)
+  }
+  head(plant_files, cap)
+}
+
+#' Assert that a new GenBank release is available
+#'
+#' @param latest_release Numeric; latest release number on NCBI's FTP server
+#' @param current_release Numeric; release number of the currently-installed
+#'   local database
+#'
+#' @return TRUE (invisibly) if a new release is available; errors otherwise
+assert_new_gb_release <- function(latest_release, current_release) {
+  assertthat::assert_that(
+    isTRUE(latest_release > current_release),
+    msg = "No new GenBank data available; quitting"
+  )
+  invisible(TRUE)
+}
+
+#' Download one GenBank flatfile, filter to target accessions, delete raw file
+#'
+#' Streaming replacement for restez::db_download() + restez::db_create():
+#' downloads a single division file, uses a fast zgrep pre-check
+#' (restez:::search_gz()) to skip full parsing if none of acc_filter could
+#' possibly be present, and deletes the raw (compressed) flatfile immediately
+#' after parsing regardless of outcome -- so peak disk usage is ~1 file at a
+#' time instead of the entire division.
+#'
+#' @param fl Character; base filename (e.g. "gbpln1.seq"), no .gz extension
+#' @param acc_filter Character vector of GenBank accessions to keep
+#' @param restez_path Path to use as the restez working directory
+#' @param max_tries Maximum download attempts before giving up
+#'
+#' @return Filtered data.frame of matching records, or NULL if none found
+download_and_filter_one_file <- function(
+  fl, acc_filter, restez_path, max_tries = 5
+) {
+  fs::dir_create(restez_path, recurse = TRUE)
+  restez::restez_path_set(restez_path)
+
+  tries <- 0
+  repeat {
+    dl_ok <- tryCatch(
+      {
+        restez:::file_download(fl, overwrite = FALSE)
+        TRUE
+      },
+      error = function(e) {
+        message(sprintf("Download of %s failed: %s", fl, conditionMessage(e)))
+        FALSE
+      }
+    )
+    if (isTRUE(dl_ok)) break
+    tries <- tries + 1
+    if (tries >= max_tries) {
+      stop(sprintf("Failed to download %s after %d tries", fl, max_tries))
+    }
+    Sys.sleep(2^tries)
+  }
+
+  gz_path <- file.path(restez:::dwnld_path_get(), paste0(fl, ".gz"))
+  on.exit(
+    if (file.exists(gz_path)) file.remove(gz_path),
+    add = TRUE
+  )
+
+  has_match <- restez:::search_gz(acc_filter, gz_path)
+  if (!isTRUE(has_match)) {
+    return(NULL)
+  }
+
+  records <- restez:::flatfile_read(gz_path)
+  if (length(records) == 0) {
+    return(NULL)
+  }
+
+  restez:::gb_df_generate(
+    records = records,
+    min_length = 0, max_length = NULL,
+    acc_filter = acc_filter, invert = FALSE
+  )
+}
+
+#' Build a fresh GenBank database from streamed, filtered records
+#'
+#' Combines the (possibly-NULL) per-file results from
+#' download_and_filter_one_file() and writes them into a brand new database at
+#' restez_path -- any pre-existing database there is deleted first, since this
+#' always builds from scratch (no incremental partial-database state to
+#' protect; that safety instead comes from {targets} caching each per-file
+#' branch independently upstream of this step).
+#'
+#' @param records_list List of data.frames (or NULLs), one per input file
+#' @param restez_path Path to use as the restez working directory
+#'
+#' @return Path to the resulting database file
+build_fresh_gb_db <- function(records_list, restez_path) {
+  fs::dir_create(restez_path, recurse = TRUE)
+  restez::restez_path_set(restez_path)
+
+  db_path <- restez:::sql_path_get()
+  if (file.exists(db_path)) {
+    restez::restez_disconnect()
+    fs::file_delete(db_path)
+  }
+
+  combined <- dplyr::bind_rows(purrr::compact(records_list))
+
+  assertthat::assert_that(
+    nrow(combined) > 0,
+    msg = "No matching records found across any plant division files"
+  )
+
+  restez:::gb_sql_add(df = combined)
+
+  db_path
+}
+
+#' Copy a scratch-built GenBank file to its official data_raw location
+#'
+#' @param src_path Path to the file in the scratch working directory
+#' @param dest_path Final destination path (overwritten if it already exists)
+#'
+#' @return dest_path
+publish_gb_file <- function(src_path, dest_path) {
+  fs::dir_create(fs::path_dir(dest_path), recurse = TRUE)
+  fs::file_copy(src_path, dest_path, overwrite = TRUE)
+  dest_path
+}
+
+#' Download the GenBank release README into the scratch working directory
+#'
+#' @param restez_path Path to use as the restez working directory
+#'
+#' @return Path to the downloaded README.genbank
+download_gb_readme <- function(restez_path) {
+  fs::dir_create(restez_path, recurse = TRUE)
+  dest <- file.path(restez_path, "README.genbank")
+  download_with_retry(
+    "https://ftp.ncbi.nlm.nih.gov/genbank/README.genbank", dest
+  )
+  dest
+}
+
+#' Write the GenBank release number file into the scratch working directory
+#'
+#' @param latest_release Numeric release number
+#' @param restez_path Path to use as the restez working directory
+#'
+#' @return Path to the written gb_release.txt
+write_gb_release <- function(latest_release, restez_path) {
+  fs::dir_create(restez_path, recurse = TRUE)
+  restez::restez_path_set(restez_path)
+  restez:::gbrelease_log(release = latest_release)
+  # restez_path_set() nests its working files one level down, in a "restez"
+  # subdirectory of the path given to it -- restez_path_get() reflects that
+  file.path(restez::restez_path_get(), "gb_release.txt")
+}
+
+#' Archive the published restez database files into a single tar.gz for
+#' FigShare
+#'
+#' @param db_path,release_path,readme_path Published restez file paths
+#' @param out_path Destination path for the tar.gz archive
+#'
+#' @return out_path
+archive_restez_db <- function(db_path, release_path, readme_path, out_path) {
+  fs::dir_create(fs::path_dir(out_path), recurse = TRUE)
+  if (fs::file_exists(out_path)) {
+    fs::file_delete(out_path)
+  }
+  # archive_write_files() silently omits nonexistent input files rather than
+  # erroring -- check explicitly so a missing input never produces a
+  # silently-incomplete archive
+  inputs <- c(db_path, release_path, readme_path)
+  assertthat::assert_that(
+    all(fs::file_exists(inputs)),
+    msg = paste(
+      "Cannot build archive, missing input file(s):",
+      paste(inputs[!fs::file_exists(inputs)], collapse = ", ")
+    )
+  )
+  archive::archive_write_files(
+    archive = out_path,
+    files = c(db_path, release_path, readme_path),
+    format = "tar",
+    filter = "gzip"
+  )
+  out_path
+}
+
+#' Download a fresh NCBI taxdmp.zip, backing up the previous one as .bak
+#'
+#' @param dest_path Final destination path for taxdmp.zip
+#' @param depends Dummy argument to force a {targets} dependency edge; unused
+#'
+#' @return dest_path
+download_taxdmp <- function(dest_path, depends = NULL) {
+  fs::dir_create(fs::path_dir(dest_path), recurse = TRUE)
+  if (fs::file_exists(dest_path)) {
+    fs::file_move(dest_path, paste0(dest_path, ".bak"))
+  }
+  download_with_retry(
+    "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip", dest_path
+  )
+  dest_path
+}
+
+#' Send an FTOL GenBank-update notification email
+#'
+#' Shared auth + send logic for the download-started / download-finished
+#' notifications.
+#'
+#' @param subject Email subject line
+#' @param body_html HTML body content
+#' @param depends Dummy argument to force a {targets} dependency edge; unused
+#'
+#' @return Invisible NULL
+send_gb_email <- function(subject, body_html, depends = NULL) {
+  email_draft <-
+    gmailr::gm_mime() |>
+    gmailr::gm_to("joelnitta@gmail.com") |>
+    gmailr::gm_from("pteridogroup.no.reply@gmail.com") |>
+    gmailr::gm_subject(subject) |>
+    gmailr::gm_html_body(body_html)
+
+  options(gargle_oauth_cache = ".secrets")
+  secret_json <- list.files(
+    ".secrets",
+    pattern = "client_secret.*json", full.names = TRUE
+  )
+  gmailr::gm_auth_configure(path = secret_json)
+  gmailr::gm_oauth_client()
+  gmailr::gm_auth("pteridogroup.no.reply@gmail.com")
+
+  gmailr::gm_send_message(email_draft)
+  invisible(NULL)
+}
