@@ -12,3 +12,4 @@ supp_plan:
 gb_download:
   script: _targets_gb.R
   store: _targets_gb_store
+  reporter_make: summary

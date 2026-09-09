@@ -61,36 +61,46 @@ pattern `run.sh` already uses for the main FTOL pipeline.
 
 There's roughly a 3-month gap between GenBank releases, so a low-frequency
 check is enough — daily is a safe, simple default. Since a full run can take
-1-2 days, guard against overlapping invocations with `flock`; `targets`
-itself also refuses to run twice against the same locked store, so a naive
-overlap is harmless (fails fast) but `flock` keeps the logs clean.
+1-2 days, overlapping invocations must be prevented:
+
+- **`flock -n` in the crontab** stops one cron tick from starting while the
+  previous one is still running.
+- **A staleness check in the wrapper** stops a tick from colliding with a
+  run started *outside* cron — e.g. a manual `tar_make` in a devcontainer.
+  This matters because `targets`' own "a pipeline is already running" guard
+  is **PID-based and does not work across containers** (separate PID
+  namespaces — the cron container cannot see the devcontainer's process, and
+  vice versa). Two `tar_make` processes on one store is not automatically
+  refused. The wrapper checks the mtime of `_targets_gb_store/meta/progress`
+  (the running pipeline touches it constantly) and skips the tick, exiting 0,
+  if it was modified in the last hour.
+
+Still: **before running the pipeline by hand, comment out the crontab line**,
+and re-enable it afterward. The staleness check is a backstop, not a
+substitute.
 
 The `docker run` invocation lives in a small wrapper script,
-`gb_download_cron.sh` (repo root, committed alongside `run.sh`), so the
-crontab line stays readable and the quoting stays sane. The wrapper:
+[`gb_download_cron.sh`](../gb_download_cron.sh) (repo root, committed
+alongside `run.sh`), so the crontab line stays readable and the quoting
+stays sane. It brackets the run with `=== gb_download cron start/end ===`
+markers, applies the staleness check above, runs `targets::tar_make()` in the
+container, and on any non-zero exit prints the recorded target errors
+(`tar_meta(fields = "error")`) so the log says *why* it stopped.
 
-```bash
-#!/bin/bash
-set -uo pipefail
-cd /home/jnitta/ftol || exit 1
-echo "=== gb_download cron start: $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
-docker run --rm \
-  -v /home/jnitta/ftol:/wd -w /wd \
-  -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
-  -e TAR_PROJECT=gb_download \
-  -v /mnt/jnitta/project_data/ftol_genbank_raw:/archive \
-  -e GB_DL_ARCHIVE_DIR=/archive \
-  joelnitta/ftol:latest \
-  Rscript -e 'targets::tar_make()'
-status=$?
-echo "=== gb_download cron end (exit ${status}): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
-exit "${status}"
-```
+Key pieces of that `docker run`:
 
-`TAR_PROJECT=gb_download` makes `targets` pick up `script: _targets_gb.R` and
-`store: _targets_gb_store` from `_targets.yaml`. `HOST_UID`/`HOST_GID` make
-`entrypoint.sh` run R as `jnitta` rather than root, so files written into the
-bind mount (and the archive) are owned correctly.
+- `-v /home/jnitta/ftol:/wd -w /wd` — the repo is the working directory, same
+  as `run.sh`.
+- `-e HOST_UID=$(id -u) -e HOST_GID=$(id -g)` — `entrypoint.sh` then runs R
+  as `jnitta` rather than root, so files written into the bind mount (and the
+  archive) are owned correctly.
+- `-e TAR_PROJECT=gb_download` — `targets` picks up `script: _targets_gb.R`,
+  `store: _targets_gb_store` and `reporter_make: summary` from
+  `_targets.yaml`. The `summary` reporter keeps the log to a single
+  self-rewriting status line; a full run maps over ~3,343 per-file branches,
+  so `verbose` (the default) would write thousands of lines.
+- `-v /mnt/jnitta/project_data/ftol_genbank_raw:/archive` +
+  `-e GB_DL_ARCHIVE_DIR=/archive` — the outgoing release archive (see above).
 
 jnitta's crontab entry (daily at 00:00):
 
@@ -105,9 +115,12 @@ tag if `run.sh` moves off `joelnitta/ftol:latest`.
 ## What to expect
 
 - Most days, this will do nothing: `_targets_gb.R`'s `release_check` target
-  errors out immediately with "No new GenBank data available" whenever the
-  latest NCBI release matches what's already installed. That's normal, not a
-  failure to act on.
+  errors out immediately whenever the latest NCBI release matches what's
+  already installed, so the run exits non-zero with `errored | 1` in the
+  summary line and nothing built. That's normal, not a failure to act on.
+  Confirm the reason with
+  `targets::tar_meta(fields = "error", complete_only = TRUE)` (expect
+  "No new GenBank data available").
 - When a new release does appear, expect the full run to take on the order
   of a day or two (network-bound: NCBI serves the whole plant division
   either way, ~1.24 TB compressed, whether streamed file-by-file or
