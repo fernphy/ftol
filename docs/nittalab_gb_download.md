@@ -48,10 +48,14 @@ pattern `run.sh` already uses for the main FTOL pipeline.
    the old one can never be regenerated. A single local `.bak` copy is
    always kept regardless (zero configuration needed for that much), but the
    external drive is where multiple past releases should live long-term.
-   **TODO for nittalab setup: confirm the actual mount path for the external
-   drive Joel has been manually archiving to, and use that path below.** If
-   this isn't findable/known, ask before guessing — silently pointing this
-   at the wrong path would mean archival quietly does nothing.
+   **nittalab setup: the archive location is
+   `/mnt/jnitta/project_data/ftol_genbank_raw`** (NFS mount from the Synology
+   NAS), which already holds the manually-created `gb_release_<N>/` dirs. The
+   pipeline writes new `gb_release_<N>/` subdirs there. Because the pipeline
+   runs inside the container, this host path must be bind-mounted in and
+   `GB_DL_ARCHIVE_DIR` set to the in-container path — the crontab entry below
+   does both (`-v /mnt/jnitta/project_data/ftol_genbank_raw:/archive`,
+   `-e GB_DL_ARCHIVE_DIR=/archive`).
 
 ## Host crontab entry
 
@@ -59,22 +63,44 @@ There's roughly a 3-month gap between GenBank releases, so a low-frequency
 check is enough — daily is a safe, simple default. Since a full run can take
 1-2 days, guard against overlapping invocations with `flock`; `targets`
 itself also refuses to run twice against the same locked store, so a naive
-overlap is harmless (fails fast) but `flock` keeps the logs clean:
+overlap is harmless (fails fast) but `flock` keeps the logs clean.
 
-```cron
-0 0 * * * flock -n /path/to/ftol/.gb_download.lock -c '\
-  cd /path/to/ftol && \
-  docker run --rm \
-    -v $(pwd):/wd -w /wd \
-    -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-    -e GB_DL_ARCHIVE_DIR=/path/to/external/drive \
-    joelnitta/ftol:latest \
-    Rscript -e "Sys.setenv(TAR_PROJECT = \"gb_download\"); targets::tar_make(script = \"_targets_gb.R\")" \
-  >> /path/to/ftol/logs/gb_download_cron.log 2>&1'
+The `docker run` invocation lives in a small wrapper script,
+`gb_download_cron.sh` (repo root, committed alongside `run.sh`), so the
+crontab line stays readable and the quoting stays sane. The wrapper:
+
+```bash
+#!/bin/bash
+set -uo pipefail
+cd /home/jnitta/ftol || exit 1
+echo "=== gb_download cron start: $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+docker run --rm \
+  -v /home/jnitta/ftol:/wd -w /wd \
+  -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+  -e TAR_PROJECT=gb_download \
+  -v /mnt/jnitta/project_data/ftol_genbank_raw:/archive \
+  -e GB_DL_ARCHIVE_DIR=/archive \
+  joelnitta/ftol:latest \
+  Rscript -e 'targets::tar_make()'
+status=$?
+echo "=== gb_download cron end (exit ${status}): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+exit "${status}"
 ```
 
-Adjust the image tag to match whatever `run.sh` currently uses. Create
-`logs/` first if it doesn't exist (it's gitignored).
+`TAR_PROJECT=gb_download` makes `targets` pick up `script: _targets_gb.R` and
+`store: _targets_gb_store` from `_targets.yaml`. `HOST_UID`/`HOST_GID` make
+`entrypoint.sh` run R as `jnitta` rather than root, so files written into the
+bind mount (and the archive) are owned correctly.
+
+jnitta's crontab entry (daily at 00:00):
+
+```cron
+0 0 * * * /usr/bin/flock -n /home/jnitta/ftol/.gb_download.lock /home/jnitta/ftol/gb_download_cron.sh >> /home/jnitta/ftol/logs/gb_download_cron.log 2>&1
+```
+
+`logs/` must exist and be writable by `jnitta` (it's gitignored). `flock`
+creates `.gb_download.lock` on first run (also gitignored). Adjust the image
+tag if `run.sh` moves off `joelnitta/ftol:latest`.
 
 ## What to expect
 

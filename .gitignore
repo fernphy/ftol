@@ -28,5 +28,6 @@ _supp_store
 scratch
 setup_gb.log
 logs
+.gb_download.lock
 .secrets
 .env
