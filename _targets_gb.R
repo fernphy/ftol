@@ -3,8 +3,11 @@ library(targets)
 library(tarchetypes)
 library(crew)
 library(restez)
-library(gmailr)
 library(assertthat)
+# NB: gmailr is NOT attached on purpose. gmailr 2.0 exports a defunct
+# `message()` that would mask base::message() (which R/setup_gb_functions.R
+# and R/functions.R call directly), turning any logged download failure into
+# a spurious "message() is defunct" error. All gmailr use is via `gmailr::`.
 source("R/packages.R")
 source("R/functions.R")
 source("R/setup_gb_functions.R")
