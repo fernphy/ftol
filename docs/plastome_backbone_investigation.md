@@ -822,17 +822,27 @@ backbone-tree construction.
 
 ```r
 # R/functions.R — new function
-filter_genes_to_species <- function(plastid_genes_aligned_codon, species) {
-  plastid_genes_aligned_codon %>%
-    dplyr::mutate(
-      align_trimmed = purrr::map(
-        align_trimmed,
-        function(aln) {
-          keep <- rownames(aln) %in% species
-          aln[keep, , drop = FALSE]
-        }
-      )
-    )
+#' Filter a per-locus alignment tibble to a subset of species
+#'
+#' Subsets the row dimension of every DNAbin matrix in \code{align_trimmed} to
+#' the species listed in \code{species_keep}. Loci where no kept species have
+#' data are dropped entirely.
+#'
+#' @param genes_tbl Tibble with columns \code{target} and \code{align_trimmed}
+#'   (list-column of DNAbin matrices whose row names are species names).
+#' @param species_keep Character vector of species names to retain.
+#'
+#' @return Tibble with the same structure as \code{genes_tbl} but with each
+#'   matrix subset to \code{species_keep}.
+#'
+filter_genes_to_species <- function(genes_tbl, species_keep) {
+  genes_tbl %>%
+    dplyr::mutate(align_trimmed = purrr::map(align_trimmed, function(mat) {
+      keep <- rownames(mat)[rownames(mat) %in% species_keep]
+      if (length(keep) == 0L) return(NULL)
+      mat[keep, , drop = FALSE]
+    })) %>%
+    dplyr::filter(!sapply(align_trimmed, is.null))
 }
 ```
 
