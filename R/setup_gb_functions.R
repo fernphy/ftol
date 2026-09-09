@@ -84,7 +84,7 @@ identify_downloadable_files <- function(flpth) {
                    x = descripts)
   filesize_info <- strsplit(x = filesize_lines, split = '\\s')
   filesize_info <- lapply(X = filesize_info, function(x) x[x != ''])
-  filesizes <- as.integer(vapply(X = filesize_info, FUN = '[[', i = 1,
+  filesizes <- as.numeric(vapply(X = filesize_info, FUN = '[[', i = 1,
                                  FUN.VALUE = character(1)))
   names(filesizes) <- vapply(X = filesize_info, FUN = '[[', i = 2,
                              FUN.VALUE = character(1))
