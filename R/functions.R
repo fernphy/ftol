@@ -5265,100 +5265,10 @@ trim_spacers_by_cluster <- function(plastid_spacers_aligned_clusters) {
 #' @param plastid_aligned seqtbl of aligned platid genes or spacers
 #' @param name_col_in Name of column in plastid_aligned to use as sequence
 #'   names when trimming with trimal.
-#' Codon-aware alignment for a single plastid locus
 #'
-#' Strips alignment gaps from a per-family MAFFT alignment to recover unaligned
-#' sequences, normalizes strand orientation across all families with a
-#' preliminary MAFFT --adjustdirection pass, then performs codon-aware
-#' alignment via DECIPHER::AlignTranslation(). Intended to be called as a
-#' branched targets target, one branch per locus.
+#' @return Tibble with list-column of trimmed genes (or spacers); each row is
+#' a target gene (or spacer)
 #'
-#' @param locus_tbl Tibble for a single locus with columns seq, species,
-#'   target, accession (one row per sequence)
-#' @param name_col_in Name of column to use as sequence labels in output
-#'
-#' @return One-row tibble with columns "target" and "align_trimmed"
-#'   (DNAbin matrix)
-#'
-codon_align_locus <- function(locus_tbl, name_col_in = "species") {
-  locus <- unique(locus_tbl$target)
-  acc_to_sp <- setNames(locus_tbl[[name_col_in]], locus_tbl$accession)
-
-  # Strip per-sequence gaps to recover original unaligned sequences
-  aln_char <- as.character(
-    as.matrix(
-      seqtbl_to_dnabin(locus_tbl, name_col = "accession", seq_col = "seq")
-    )
-  )
-  seqs_str <- apply(aln_char, 1, function(row) {
-    paste(row[row != "-"], collapse = "")
-  })
-
-  # Normalize orientation with MAFFT --adjustdirection.
-  # plastid_genes_aligned is built per-family, so orientation is consistent
-  # within each family group but may differ across families. This step
-  # brings all sequences to a consensus direction before codon alignment.
-  tmp_in <- tempfile(fileext = ".fasta")
-  writeLines(
-    unlist(lapply(names(seqs_str), function(nm) c(paste0(">", nm), seqs_str[[nm]]))),
-    tmp_in
-  )
-  seqs_dnabin <- ape::read.FASTA(tmp_in)
-  dir_aln <- ips::mafft(seqs_dnabin, options = "--adjustdirection",
-                        exec = "/usr/bin/mafft")
-
-  # Strip alignment gaps; drop _R_ suffix MAFFT adds to reversed sequences
-  dir_char <- as.character(as.matrix(dir_aln))
-  rownames(dir_char) <- str_remove_all(rownames(dir_char), "_R_")
-  seqs_corrected <- apply(dir_char, 1, function(row) {
-    paste(row[row != "-"], collapse = "")
-  })
-
-  # Codon-aware alignment via DECIPHER (input must be uppercase).
-  # readingFrame = NA (default): auto-detect per sequence.
-  aln_ss <- DECIPHER::AlignTranslation(
-    Biostrings::DNAStringSet(toupper(seqs_corrected))
-  )
-
-  # Convert aligned DNAStringSet → lowercase character matrix → DNAbin
-  aln_mat <- do.call(rbind, strsplit(tolower(as.character(aln_ss)), ""))
-  rownames(aln_mat) <- acc_to_sp[names(aln_ss)]
-
-  tibble::tibble(
-    target = locus,
-    align_trimmed = list(ape::as.DNAbin(aln_mat))
-  )
-}
-
-#' Strip 3rd codon positions and trim a codon-aligned tibble
-#'
-#' Removes every third column (positions 3, 6, 9, ...) from each locus
-#' alignment, then trims with trimal (gap threshold 0.05). Intended to be
-#' applied to the output of codon_align_locus(), where codon boundaries are
-#' guaranteed to be intact.
-#'
-#' @param codon_aligned_tbl Tibble with columns "target" and "align_trimmed"
-#'   (DNAbin matrices from codon_align_locus())
-#'
-#' @return Tibble with the same structure, with 3rd positions removed and
-#'   columns trimmed by trimal
-#'
-strip_3rd_and_trim <- function(codon_aligned_tbl) {
-  codon_aligned_tbl %>%
-    mutate(
-      align_trimmed = map(
-        align_trimmed,
-        function(aln) {
-          n <- ncol(aln)
-          keep <- setdiff(seq_len(n), seq(3L, n, by = 3L))
-          trimal(aln[, keep, drop = FALSE],
-                 other_args = c("-gt", "0.05"),
-                 return_seqtbl = FALSE)
-        }
-      )
-    )
-}
-
 trim_genes <- function(plastid_aligned, name_col_in = "species") {
   plastid_aligned %>%
     select(seq, species, target, accession) %>%
@@ -6531,50 +6441,6 @@ concatenate_to_ape <- function(aln_tbl, aln_col = "align_trimmed") {
     ape::cbind.DNAbin,
     c(aln_tbl[[aln_col]], fill.with.gaps = TRUE)
   )
-}
-
-#' Write a random subset of loci from a per-locus alignment tibble to FASTA
-#'
-#' Concatenates a random sample of loci and writes the result to a FASTA file.
-#' Useful for spot-checking a codon-aware alignment without loading the full
-#' concatenated matrix.
-#'
-#' @param aln_tbl Tibble with columns "target" and "align_trimmed" (one row
-#'   per locus), e.g. the output of codon_align_locus()
-#' @param out_path Path to write the FASTA file
-#' @param n Number of loci to sample (default 20)
-#' @param seed Optional random seed for reproducibility
-#'
-#' @return Path to the written FASTA file (invisibly)
-#'
-sample_loci_fasta <- function(aln_tbl, out_path, n = 20, seed = NULL) {
-  if (!is.null(seed)) set.seed(seed)
-  sampled <- aln_tbl[sample(nrow(aln_tbl), min(n, nrow(aln_tbl))), ]
-  aln <- concatenate_to_ape(sampled)
-  write_fasta_tar(aln, out_path)
-}
-
-#' Filter a per-locus alignment tibble to a subset of species
-#'
-#' Subsets the row dimension of every DNAbin matrix in \code{align_trimmed} to
-#' the species listed in \code{species_keep}. Loci where no kept species have
-#' data are dropped entirely.
-#'
-#' @param genes_tbl Tibble with columns \code{target} and \code{align_trimmed}
-#'   (list-column of DNAbin matrices whose row names are species names).
-#' @param species_keep Character vector of species names to retain.
-#'
-#' @return Tibble with the same structure as \code{genes_tbl} but with each
-#'   matrix subset to \code{species_keep}.
-#'
-filter_genes_to_species <- function(genes_tbl, species_keep) {
-  genes_tbl %>%
-    dplyr::mutate(align_trimmed = purrr::map(align_trimmed, function(mat) {
-      keep <- rownames(mat)[rownames(mat) %in% species_keep]
-      if (length(keep) == 0L) return(NULL)
-      mat[keep, , drop = FALSE]
-    })) %>%
-    dplyr::filter(!sapply(align_trimmed, is.null))
 }
 
 # Check gene trees ----
@@ -8298,85 +8164,6 @@ make_parts_table <- function(aln_tbl, aln_seq) {
   )
 
   return(res)
-}
-
-#' Write an IQ-TREE partition file in RAxML format
-#'
-#' @param parts_table Tibble with columns "locus", "start", "end"
-#' @param out_path Path to write the partition file
-#'
-#' @return Path to the written partition file
-#'
-write_iqtree_partition_file <- function(parts_table, out_path) {
-  fs::dir_create(fs::path_dir(out_path), recurse = TRUE)
-  lines <- paste0(
-    "DNA, ", parts_table$locus, " = ", parts_table$start, "-", parts_table$end
-  )
-  writeLines(lines, out_path)
-  return(out_path)
-}
-
-#' Select exemplar species for the plastome backbone tree
-#'
-#' For each genus recognised by PPG with more than one species in the plastome
-#' dataset, selects the single most data-complete species (most loci with any
-#' sequence data) as an exemplar, unless the genus is listed in
-#' \code{non_mono_genera}. All species from singleton genera, unrecognised
-#' genera, and flagged non-monophyletic genera are retained in full.
-#'
-#' @param plastid_genes_trimmed Tibble with columns "target" and
-#'   "align_trimmed" (DNAbin matrices), e.g. output of strip_3rd_and_trim()
-#' @param ppgi_taxonomy Tibble of PPG genus-level taxonomy as produced by
-#'   taxlist_to_df(), with a column "genus"
-#' @param non_mono_genera Character vector of genus names known or suspected
-#'   to be non-monophyletic; all species from these genera are retained
-#'
-#' @return Character vector of selected species names (sorted)
-#'
-select_plastome_exemplars <- function(
-  plastid_genes_trimmed,
-  ppgi_taxonomy,
-  non_mono_genera = character(0)
-) {
-  # Count loci with any sequence data per species
-  n_loci <- plastid_genes_trimmed$align_trimmed %>%
-    lapply(function(mat) {
-      aln_char <- as.character(mat)
-      rownames(mat)[rowSums(aln_char != "-") > 0]
-    }) %>%
-    unlist() %>%
-    table()
-
-  sp_data <- tibble::tibble(
-    species = names(n_loci),
-    n_loci  = as.integer(n_loci),
-    genus   = stringr::word(species, 1, sep = "_")
-  )
-
-  ppg_genera <- unique(ppgi_taxonomy$genus)
-
-  # Genera with >1 species, recognised by PPG, not flagged as non-monophyletic
-  mono_multi_genera <- sp_data %>%
-    dplyr::group_by(genus) %>%
-    dplyr::filter(
-      dplyr::n() > 1,
-      genus %in% ppg_genera,
-      !genus %in% non_mono_genera
-    ) %>%
-    dplyr::pull(genus) %>%
-    unique()
-
-  exemplars <- sp_data %>%
-    dplyr::filter(genus %in% mono_multi_genera) %>%
-    dplyr::group_by(genus) %>%
-    dplyr::slice_max(n_loci, n = 1, with_ties = FALSE) %>%
-    dplyr::pull(species)
-
-  others <- sp_data %>%
-    dplyr::filter(!genus %in% mono_multi_genera) %>%
-    dplyr::pull(species)
-
-  sort(unique(c(exemplars, others)))
 }
 
 # Managing data ----

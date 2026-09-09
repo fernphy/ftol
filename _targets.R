@@ -26,17 +26,6 @@ tar_option_set(
   controller = crew_controller_local(workers = 20)
 )
 
-# Set the iqtree ML options outside of the plan
-# this way we can turn it on/off without re-triggering the target
-plastome_tree_redo_setting <- TRUE
-du2022_redo_setting <- FALSE
-sanger_tree_fast_redo_setting <- TRUE
-sanger_ml_tree_redo_setting <- TRUE
-
-plastome_tree_nt_setting <- 20
-sanger_tree_fast_nt_setting <- 6
-sanger_ml_tree_nt_setting <- 6
-
 tar_plan(
   # Load data ----
   # PPG taxonomic database (https://github.com/pteridogroup/ppg)
@@ -70,12 +59,6 @@ tar_plan(
     accs_exclude,
     path(data_raw, "accs_exclude.csv"),
     read_csv(!!.x)
-  ),
-  # Du et al. (2022) plastome accession list (NC_ mapped to GenBank equivalents)
-  tar_file_read(
-    du2022_accession_list,
-    path(data_raw, "du2022_accessions.csv"),
-    read_csv(!!.x, col_types = cols(.default = "c"))
   ),
   # Manually matched names
   tar_file_read(
@@ -579,106 +562,30 @@ tar_plan(
   # - ape format
   sanger_alignment = concatenate_to_ape(sanger_alignment_tbl),
   plastome_alignment = concatenate_to_ape(plastome_alignment_tbl),
-  # - plastome without 3rd codon positions: codon-aware alignment, then removal
-  # Step 1: group by locus, then codon-align each locus in parallel
-  tar_group_by(
-    plastid_genes_aligned_by_locus,
-    plastid_genes_aligned,
-    target
-  ),
-  tar_target(
-    plastid_genes_aligned_codon,
-    codon_align_locus(plastid_genes_aligned_by_locus),
-    pattern = map(plastid_genes_aligned_by_locus)
-  ),
-  # Step 2: concatenate and write FASTA for visual inspection
-  plastome_alignment_codon = concatenate_to_ape(plastid_genes_aligned_codon),
-  tar_file(
-    plastome_alignment_codon_file,
-    write_fasta_tar(
-      plastome_alignment_codon,
-      path(int_dir, "plastome_alignment_codon.fasta")
-    )
-  ),
-  # Step 3: strip 3rd codon positions and trim
-  plastid_genes_trimmed_no3rd = strip_3rd_and_trim(plastid_genes_aligned_codon),
-  plastome_alignment_no3rd = concatenate_to_ape(plastid_genes_trimmed_no3rd),
-  plastome_parts_table_no3rd = make_parts_table(
-    plastid_genes_trimmed_no3rd, plastome_alignment_no3rd
-  ),
 
   # Phylogenetic analysis ----
-  # Write out partition files
-  tar_file(
-    plastome_partition_file,
-    write_iqtree_partition_file(
-      plastome_parts_table,
-      path(int_dir, "iqtree/plastome/plastome_partitions.txt")
-    )
-  ),
-  tar_file(
-    plastome_partition_file_no3rd,
-    write_iqtree_partition_file(
-      plastome_parts_table_no3rd,
-      path(int_dir, "iqtree/plastome/plastome_partitions_no3rd.txt")
-    )
-  ),
-  # Du et al. (2022) reference tree used as backbone constraint
-  # Species: subset of FTOL plastome dataset matching Du et al. accessions
-  du2022_species = plastome_metadata_renamed %>%
-    dplyr::filter(accession %in% du2022_accession_list$accession) %>%
-    dplyr::pull(species),
-  # Filter codon-aligned loci to Du et al. species
-  du2022_genes = filter_genes_to_species(
-    plastid_genes_aligned_codon,
-    du2022_species
-  ),
-  du2022_alignment = concatenate_to_ape(du2022_genes),
-  tar_target(
-    du2022_tree,
-    iqtree(
-      du2022_alignment,
-      m = "GTR+F+R5",
-      bb = 1000,
-      nt = plastome_tree_nt_setting,
-      seed = 20220123,
-      redo = du2022_redo_setting,
-      echo = TRUE,
-      wd = path(int_dir, "iqtree/du2022"),
-      other_args = c("-t", "PARS"),
-      tree_path = path(int_dir, "iqtree/du2022/du2022_alignment.phy.contree")
-    ),
-    deployment = "main"
-  ),
-  tar_file(
-    plastome_backbone_constraint_file,
-    write_tree_tar(
-      du2022_tree,
-      path(int_dir, "iqtree/du2022/backbone.tre")
-    )
-  ),
-  # Full plastome tree: all species, with 3rd positions, constrained by backbone
+  # Backbone consensus tree
   tar_target(
     plastome_tree,
     iqtree(
       plastome_alignment,
-      spp = plastome_partition_file,
-      m = "MFP",
+      m = "MFP", # test model followed by ML analysis
       bb = 1000,
-      nt = plastome_tree_nt_setting,
+      nt = 12, # run 12 cores in parallel
       seed = 20220123,
-      redo = plastome_tree_redo_setting,
-      echo = TRUE,
-      wd = path(int_dir, "iqtree/plastome"),
-      g = plastome_backbone_constraint_file,
-      other_args = c("-t", "PARS"),
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/plastome"),
+      other_args = c(
+        "-mset", "GTR", # only test GTR models
+        "-mrate", "E,I,G,I+G", # don't test free-rate models
+        "-t", "PARS"
+      ),
       tree_path = path(
-        int_dir, "iqtree/plastome/plastome_partitions.txt.contree"
+        int_dir, "iqtree/plastome/plastome_alignment.phy.contree"
       )
     ),
     deployment = "main"
   ),
-  # Write plastome tree as Sanger constraint
+  # write out as plastome tree to use as constraint
   tar_file(
     constraint_tree_file,
     write_tree_tar(
@@ -691,12 +598,8 @@ tar_plan(
     sanger_tree_fast,
     iqtree(
       sanger_alignment,
-      m = "GTR+I+G",
-      nt = sanger_tree_fast_nt_setting,
-      seed = 20220129,
-      redo = sanger_tree_fast_redo_setting,
-      echo = TRUE,
-      wd = path(int_dir, "iqtree/sanger_fast"),
+      m = "GTR+I+G", nt = 6, seed = 20220129,
+      redo = TRUE, echo = TRUE, wd = path(int_dir, "iqtree/sanger_fast"),
       other_args = c(
         "-fast",
         "-t", "PARS",
@@ -731,22 +634,21 @@ tar_plan(
       m = "MFP", # run modelfinder and use best model
       other_args = c(
         "-mset", "GTR", # only test GTR family of models
+        "-mrate", "E,I,G,I+G",
         "-t", "PARS",
         "-g", path_abs(constraint_tree_file)
       ),
       bb = 1000,
-      # number of cores to run in parallel for each replicat
-      nt = sanger_ml_tree_nt_setting,
+      nt = 6, # run 6 cores in parallel for each replicate
       seed = iqtree_sanger_seeds,
       # redo settings:
       # - FALSE to re-start incomplete iqtree run on same data
       # - TRUE when starting pipeline from new data
-      redo = sanger_ml_tree_redo_setting,
+      redo = TRUE,
       wd = iqtree_sanger_dirs,
-      spp = sanger_partition_file,
       tree_path = c(
-        ml_tree = path(iqtree_sanger_dirs, "sanger_partitions.txt.treefile"),
-        con_tree = path(iqtree_sanger_dirs, "sanger_partitions.txt.contree")
+        ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
+        con_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.contree")
       ),
       depends = non_mono_check
     ),
@@ -757,7 +659,7 @@ tar_plan(
   tar_target(
     sanger_ml_log_rep,
     read_lines_tar(
-      path(iqtree_sanger_dirs, "sanger_partitions.txt.log"),
+      path(iqtree_sanger_dirs, "sanger_alignment.phy.log"),
       depends = sanger_ml_tree_rep
     ),
     pattern = map(iqtree_sanger_dirs, sanger_ml_tree_rep)
@@ -995,13 +897,6 @@ tar_plan(
   ),
   sanger_parts_table = make_parts_table(
     sanger_alignment_tbl, sanger_alignment
-  ),
-  tar_file(
-    sanger_partition_file,
-    write_iqtree_partition_file(
-      sanger_parts_table,
-      path(int_dir, "iqtree/sanger_partitions.txt")
-    )
   ),
   plastome_tree_rooted = root_fern_tree(plastome_tree),
   # Write out data for ftolr ----
