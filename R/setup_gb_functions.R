@@ -148,6 +148,28 @@ cap_plant_files <- function(plant_files, cap = NA) {
   head(plant_files, cap)
 }
 
+#' Get the current GenBank release number as a plain integer
+#'
+#' NCBI's GB_Release_Number file holds e.g. "273.0". restez's
+#' latest_genbank_release() strips every non-digit, turning that into "2730";
+#' this parses it as a real number instead, so the release is stored and
+#' displayed as 273.
+#'
+#' @return Integer GenBank release number (e.g. 273L)
+gb_release_number <- function() {
+  tmp <- tempfile()
+  on.exit(unlink(tmp), add = TRUE)
+  curl::curl_download(
+    "https://ftp.ncbi.nlm.nih.gov/genbank/GB_Release_Number", tmp
+  )
+  release <- as.numeric(readLines(tmp, warn = FALSE)[[1]])
+  assertthat::assert_that(
+    assertthat::is.number(release) && !is.na(release) && release > 0,
+    msg = "Could not parse a GenBank release number from GB_Release_Number"
+  )
+  as.integer(round(release))
+}
+
 #' Assert that a new GenBank release is available
 #'
 #' @param latest_release Numeric; latest release number on NCBI's FTP server
@@ -264,13 +286,6 @@ build_fresh_gb_db <- function(records_list, restez_path) {
 
 #' Copy a scratch-built GenBank file to its official data_raw location
 #'
-#' Keeps a single ".bak" copy of the outgoing file before overwriting -- once
-#' a GenBank release is superseded, NCBI's FTP server only serves the current
-#' release's flatfiles, so a filtered database built from a prior release can
-#' never be regenerated later. This is a zero-configuration, always-on safety
-#' net; see archive_outgoing_gb_db() for longer-term external archival across
-#' more than one release.
-#'
 #' @param src_path Path to the file in the scratch working directory
 #' @param dest_path Final destination path (overwritten if it already exists)
 #' @param depends Dummy argument to force a {targets} dependency edge; unused
@@ -278,69 +293,61 @@ build_fresh_gb_db <- function(records_list, restez_path) {
 #' @return dest_path
 publish_gb_file <- function(src_path, dest_path, depends = NULL) {
   fs::dir_create(fs::path_dir(dest_path), recurse = TRUE)
-  if (fs::file_exists(dest_path)) {
-    fs::file_copy(dest_path, paste0(dest_path, ".bak"), overwrite = TRUE)
-  }
   fs::file_copy(src_path, dest_path, overwrite = TRUE)
   dest_path
 }
 
-#' Archive the outgoing GenBank database to external long-term storage
+#' Archive the freshly published GenBank database to external long-term storage
 #'
 #' Once a GenBank release is superseded, NCBI's FTP server only serves the
 #' current release's flatfiles -- the filtered fern database built from a
-#' prior release can never be regenerated later, so this preserves more than
-#' the single ".bak" copy publish_gb_file() already keeps locally. Copies the
-#' outgoing (about-to-be-replaced) restez files into a release-numbered
-#' subdirectory of archive_dir, matching the existing gb_release_<N>/ naming
-#' convention already used for manual archives. Safe no-op (with a loud
-#' warning, since skipping this does mean permanently losing the ability to
-#' regenerate the outgoing release's data beyond the local .bak) if
-#' archive_dir is NA, doesn't exist, or the copy fails for any reason --
-#' never blocks the pipeline from publishing the new release.
+#' prior release can never be regenerated. This copies the just-published
+#' database (filtered fern data only; the streaming pipeline no longer keeps
+#' the raw plant-division flatfiles) into <archive_dir>/gb_release_<N>/,
+#' accumulating one snapshot per release. Safe no-op with a loud warning if
+#' archive_dir is NA / unreachable / the copy fails -- never blocks the
+#' pipeline.
 #'
-#' @param archive_dir Path to the external archive location, or NA to skip
-#' @param current_release Numeric; the OLD release number being replaced (in
-#'   restez's internal x10 format, e.g. 2720 for release 272.0)
-#' @param data_raw Path to the official data_raw directory
+#' @param archive_dir External archive location, or NA to skip
+#' @param release_number Integer GenBank release number (e.g. 273)
+#' @param db_path,readme_path Published restez sql_db and README.genbank paths
+#' @param tar_path Published restez_sql_db.tar.gz path
 #'
-#' @return Path to the archive subdirectory, or NA if skipped
-archive_outgoing_gb_db <- function(archive_dir, current_release, data_raw) {
-  old_restez_dir <- fs::path(data_raw, "restez")
-  if (!fs::dir_exists(old_restez_dir)) {
-    # Nothing to archive yet (e.g. very first run)
-    return(NA_character_)
-  }
-
+#' @return Path to the archive subdirectory, or NA if skipped/failed
+archive_gb_db <- function(archive_dir, release_number, db_path, readme_path,
+                          tar_path) {
   if (is.na(archive_dir) || !fs::dir_exists(archive_dir)) {
     warning(
-      "No archive_dir configured/reachable: the outgoing GenBank release's ",
-      "filtered database will only be kept as a local .bak copy. NCBI does ",
-      "not serve old releases' flatfiles, so this cannot be regenerated ",
-      "later if that .bak is ever lost."
+      "No archive_dir configured/reachable: GenBank release ", release_number,
+      "'s filtered database will exist only under the local data_raw ",
+      "directory. NCBI does not serve superseded releases' flatfiles, so it ",
+      "cannot be regenerated later -- archive it by hand."
     )
     return(NA_character_)
   }
 
-  release_3digit <- round(
-    current_release / ifelse(nchar(current_release) == 4, 10, 1)
-  )
-  dest <- fs::path(archive_dir, sprintf("gb_release_%d", release_3digit))
+  dest <- fs::path(archive_dir, sprintf("gb_release_%d", release_number))
 
   tryCatch(
     {
-      fs::dir_create(dest, recurse = TRUE)
-      fs::dir_copy(old_restez_dir, fs::path(dest, "restez"), overwrite = TRUE)
-      old_tar <- fs::path(data_raw, "restez_sql_db.tar.gz")
-      if (fs::file_exists(old_tar)) {
-        fs::file_copy(old_tar, dest, overwrite = TRUE)
+      assertthat::assert_that(all(fs::file_exists(c(db_path, readme_path))))
+      fs::dir_create(fs::path(dest, "restez"), recurse = TRUE)
+      fs::file_copy(
+        c(db_path, readme_path), fs::path(dest, "restez"), overwrite = TRUE
+      )
+      writeLines(
+        as.character(release_number),
+        fs::path(dest, "restez", "gb_release.txt")
+      )
+      if (fs::file_exists(tar_path)) {
+        fs::file_copy(tar_path, dest, overwrite = TRUE)
       }
       dest
     },
     error = function(e) {
       warning(sprintf(
-        "Failed to archive outgoing GenBank release to %s: %s",
-        archive_dir, conditionMessage(e)
+        "Failed to archive GenBank release %s to %s: %s",
+        release_number, archive_dir, conditionMessage(e)
       ))
       NA_character_
     }
@@ -408,7 +415,12 @@ archive_restez_db <- function(db_path, release_path, readme_path, out_path) {
   out_path
 }
 
-#' Download a fresh NCBI taxdmp.zip, backing up the previous one as .bak
+#' Download a fresh NCBI taxdmp.zip
+#'
+#' Downloads to a temp file first and only moves it into place on success, so
+#' a failed download never leaves a truncated taxdmp.zip or destroys the
+#' existing one. taxdmp.zip can always be re-fetched from NCBI, so no backup
+#' copy is kept.
 #'
 #' @param dest_path Final destination path for taxdmp.zip
 #' @param depends Dummy argument to force a {targets} dependency edge; unused
@@ -416,12 +428,12 @@ archive_restez_db <- function(db_path, release_path, readme_path, out_path) {
 #' @return dest_path
 download_taxdmp <- function(dest_path, depends = NULL) {
   fs::dir_create(fs::path_dir(dest_path), recurse = TRUE)
-  if (fs::file_exists(dest_path)) {
-    fs::file_move(dest_path, paste0(dest_path, ".bak"))
-  }
+  tmp <- fs::file_temp(ext = "zip")
+  on.exit(if (fs::file_exists(tmp)) fs::file_delete(tmp), add = TRUE)
   download_with_retry(
-    "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip", dest_path
+    "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip", tmp
   )
+  fs::file_copy(tmp, dest_path, overwrite = TRUE)
   dest_path
 }
 
@@ -444,16 +456,26 @@ send_gb_start_email <- function(latest_release, depends = NULL) {
 #' Notify that a GenBank download has finished
 #'
 #' @param latest_release Numeric release number, interpolated into the body
+#' @param archive_path Path the release was archived to, or NA if it wasn't
 #' @param depends Dummy argument to force a {targets} dependency edge; unused
 #'
 #' @return Invisible NULL
-send_gb_done_email <- function(latest_release, depends = NULL) {
+send_gb_done_email <- function(latest_release, archive_path = NA,
+                               depends = NULL) {
+  archive_line <- if (is.na(archive_path)) {
+    paste(
+      "WARNING: this release was NOT archived to external storage --",
+      "archive it by hand."
+    )
+  } else {
+    glue::glue("Archived to {archive_path}.")
+  }
   send_gb_email(
     subject = "FTOL download finished",
     body_html = glue::glue(
       "FTOL downloading of new GenBank release {latest_release} has ",
-      "finished on {Sys.time()}. Be sure to upload to FigShare and ",
-      "update hash in R/setup.R"
+      "finished on {Sys.time()}. {archive_line} Be sure to upload to ",
+      "FigShare and update hash in R/setup.R"
     )
   )
 }

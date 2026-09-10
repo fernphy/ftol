@@ -38,20 +38,19 @@ pattern `run.sh` already uses for the main FTOL pipeline.
    separately if setting this up on a fresh checkout.
 3. Confirm the `joelnitta/ftol` Docker image is built and available (see
    `run.sh` for the current tag).
-4. **Fill in the external archive path.** `_targets_gb.R` supports an
-   optional `GB_DL_ARCHIVE_DIR` environment variable: if set to a directory
-   that exists, the pipeline automatically copies the outgoing release's
-   database (before overwriting it) into `<archive_dir>/gb_release_<N>/`,
-   matching the existing manual `gb_release_<N>/` naming convention. This
-   matters because NCBI's FTP server only serves the *current* release's
-   flatfiles — once a release is superseded, a filtered database built from
-   the old one can never be regenerated. A single local `.bak` copy is
-   always kept regardless (zero configuration needed for that much), but the
-   external drive is where multiple past releases should live long-term.
+4. **Fill in the external archive path.** `_targets_gb.R` needs a
+   `GB_DL_ARCHIVE_DIR` environment variable: after each release is published,
+   the pipeline copies its filtered database (`sql_db`, `README.genbank`,
+   `gb_release.txt`, and the FigShare `.tar.gz`) into
+   `<archive_dir>/gb_release_<N>/`, one snapshot per release. This is the
+   *only* copy of past releases — NCBI's FTP server serves only the current
+   release's flatfiles, so a superseded release's filtered database can never
+   be rebuilt. If `GB_DL_ARCHIVE_DIR` is unset or unreachable the pipeline
+   still finishes, but logs a warning and says so in the done email — the
+   release then exists only under `_targets/user/data_raw/`.
    **nittalab setup: the archive location is
    `/mnt/jnitta/project_data/ftol_genbank_raw`** (NFS mount from the Synology
-   NAS), which already holds the manually-created `gb_release_<N>/` dirs. The
-   pipeline writes new `gb_release_<N>/` subdirs there. Because the pipeline
+   NAS), which already holds the `gb_release_<N>/` dirs. Because the pipeline
    runs inside the container, this host path must be bind-mounted in and
    `GB_DL_ARCHIVE_DIR` set to the in-container path — the crontab entry below
    does both (`-v /mnt/jnitta/project_data/ftol_genbank_raw:/archive`,
@@ -100,7 +99,7 @@ Key pieces of that `docker run`:
   self-rewriting status line; a full run maps over ~3,343 per-file branches,
   so `verbose` (the default) would write thousands of lines.
 - `-v /mnt/jnitta/project_data/ftol_genbank_raw:/archive` +
-  `-e GB_DL_ARCHIVE_DIR=/archive` — the outgoing release archive (see above).
+  `-e GB_DL_ARCHIVE_DIR=/archive` — the per-release archive (see above).
 
 jnitta's crontab entry (daily at 00:00):
 
@@ -153,12 +152,14 @@ on; re-enable it afterward.
 - The official `_targets/user/data_raw/restez/gb_release.txt` (the file
   `release_check` reads to decide whether there's new data) is deliberately
   the *very last* thing the pipeline touches, after the database, README,
-  FigShare archive, and taxdmp are all confirmed built — so a crash at any
-  point beforehand leaves that gate file untouched and a resumed run
-  correctly picks the remaining work back up, rather than concluding
-  (wrongly) that nothing is left to do.
+  FigShare bundle, taxdmp, and the external archive are all confirmed done —
+  so a crash at any point beforehand leaves that gate file untouched and a
+  resumed run correctly picks the remaining work back up, rather than
+  concluding (wrongly) that nothing is left to do.
 - After a successful run: follow the FigShare/release-version steps already
-  documented in `docs/updating.md` from there.
+  documented in `docs/updating.md` from there. The done email says whether
+  the external archive succeeded — if it didn't, archive the release by hand
+  before the next release supersedes it.
 
 ## Debugging
 
