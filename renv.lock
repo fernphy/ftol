@@ -194,33 +194,6 @@
       ],
       "Hash": "dbfa2adb83f8063640982459e153f650"
     },
-    "DECIPHER": {
-      "Package": "DECIPHER",
-      "Version": "3.2.0",
-      "Source": "Bioconductor",
-      "Repository": "Bioconductor 3.20",
-      "git_url": "https://git.bioconductor.org/packages/DECIPHER",
-      "git_branch": "RELEASE_3_20",
-      "git_last_commit": "7d5caa2",
-      "git_last_commit_date": "2024-10-29",
-      "RemoteType": "bioc",
-      "RemotePkgRef": "bioc::DECIPHER",
-      "RemoteRef": "bioc::DECIPHER",
-      "RemoteRepos": "https://bioconductor.org/packages/3.20/bioc",
-      "RemotePkgPlatform": "source",
-      "RemoteSha": "3.2.0",
-      "Requirements": [
-        "Biostrings",
-        "DBI",
-        "IRanges",
-        "R",
-        "S4Vectors",
-        "XVector",
-        "methods",
-        "stats"
-      ],
-      "Hash": "9071113ebe76fc1314fa7fedc91fc802"
-    },
     "DEoptim": {
       "Package": "DEoptim",
       "Version": "2.2-8",
