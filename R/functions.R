@@ -11228,19 +11228,22 @@ get_sw_versions <- function(dockerfile_path = "Dockerfile") {
 
 #' Get the docker image tag used for analysis
 #'
-#' This is provided via the IMAGE_TAG environmental variable,
-#' which is set when running the plan in docker via run.sh or one of the
-#' make_pbs*.job files.
+#' This is provided via the IMAGE_TAG environmental variable, which is set
+#' when running the plan in docker via run.sh or one of the make_pbs*.job
+#' files -- those launch a fresh container *for* that pipeline run, so the
+#' tag they pass is trustworthy provenance. An interactive dev container
+#' (e.g. the devcontainer/docker-compose setup) is a long-lived container
+#' reused across many unrelated tar_make() calls and never sets this, so
+#' this returns a clearly-marked placeholder instead of erroring -- that
+#' keeps tar_make() runnable in any context. The one place the *real* tag
+#' matters is publishing a release (see snapshot_ftol_data.R, which refuses
+#' to snapshot data built with this placeholder).
 #'
 get_docker_tag <- function() {
   tag <- Sys.getenv("IMAGE_TAG")
-  assertthat::assert_that(
-    tag != "",
-    msg = paste(
-      "Environmental variable 'IMAGE_TAG' not set. Be sure to use run.sh",
-      "or one of the make_pbs*.job files."
-    )
-  )
+  if (identical(tag, "")) {
+    return("unknown (IMAGE_TAG not set; not run via run.sh or a PBS job)")
+  }
   return(tag)
 }
 

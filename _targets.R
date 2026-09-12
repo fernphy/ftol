@@ -1078,8 +1078,10 @@ tar_plan(
   # - Current R version
   ftol_r_ver = paste(R.Version()[c("major", "minor")], collapse = "."),
   # - Fetch docker image tag
-  #   This only works if plan is made with run.sh
-  #   otherwise, will be empty string ("")
+  #   Only meaningful if built via run.sh/a PBS job (see get_docker_tag());
+  #   otherwise records a placeholder rather than erroring, so tar_make()
+  #   still runs fine in a dev container. snapshot_ftol_data.R is where the
+  #   real tag is actually required, before a release gets published.
   tar_target(
     image_tag,
     get_docker_tag(),

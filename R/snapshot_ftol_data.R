@@ -70,6 +70,20 @@ assert_that(
   nrow(code_status) == 0,
   msg = "Code repo is not clean.")
 
+# - Check that this was built from a known, reproducible docker image
+#   (get_docker_tag() returns a placeholder starting with "unknown" instead
+#   of erroring when run outside run.sh/a PBS job, e.g. in a dev container,
+#   so that tar_make() stays runnable there -- but a release must not be
+#   published without knowing which image produced it)
+assert_that(
+  !startsWith(image_tag, "unknown"),
+  msg = paste(
+    "image_tag is not a real docker image tag (got:", image_tag, "). This",
+    "snapshot must come from a tar_make() run launched via run.sh or a PBS",
+    "job with IMAGE_TAG set -- rerun the pipeline that way before",
+    "snapshotting, rather than from an interactive dev-container session."
+  ))
+
 # - Check data versions
 # Only need to check data files that are archived outside of this repo
 # (ie, on figshare https://doi.org/10.6084/m9.figshare.19474316)
