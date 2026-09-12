@@ -4299,24 +4299,24 @@ verify_rogues <- function(
 
 #' Check monophyly of a species
 #'
-#' Monophyly check done with ape::is.monophyletic(), which is rather
-#' slow. Speed things up by running in parallel.
+#' Monophyly check done with ape::is.monophyletic() for every species with >1
+#' accession in one target locus. Runs sequentially: on the per-locus trees
+#' here each call is ~0.02-0.2 s, so the whole locus is seconds to a few
+#' minutes. Parallelism across loci comes from the `mpcheck_monophy` target
+#' pattern (one crew worker per locus) — do NOT spin up a `future`/`furrr`
+#' cluster inside this function. It used to (`future::multisession`,
+#' `deployment = "main"`), which reliably hung: a PSOCK cluster and crew's
+#' mirai event loop in the same R process deadlock, and re-running only
+#' masked it.
 #'
 #' @param mpcheck_sliced Tibble (seqtbl) with accession and species names
 #' @param mpcheck_tree Phylogenetic tree for a single target locus (or
 #' dataframe containing this in column 'tree')
-#' @param workers Number of workers to run in parallel
 #'
 #' @return Tibble, with logical column `is_monophy` indicating monophyly
 #' of species with >1 accession. If species has only 1 accession, `is_monophy`
 #' is `NA`.
-check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
-  # Change back to sequential when done (including on failure)
-  on.exit(future::plan(future::sequential), add = TRUE)
-
-  # Set backend for parallelization
-  future::plan(future::multisession, workers = workers)
-
+check_monophy <- function(mpcheck_sliced, mpcheck_tree) {
   # If mpcheck_tree input is dataframe, extract tree
   if (inherits(mpcheck_tree, "data.frame")) {
     assertthat::assert_that(nrow(mpcheck_tree) == 1)
@@ -4346,24 +4346,19 @@ check_monophy <- function(mpcheck_sliced, mpcheck_tree, workers) {
     nest(data = accession) %>%
     ungroup() %>%
     mutate(
-      # ape::is.monophyletic is slow, so run in parallel
-      is_monophy = furrr::future_map_lgl(
+      is_monophy = purrr::map_lgl(
         data,
         ~ ape::is.monophyletic(
           phy = mpcheck_tree,
           tips = .x$accession,
           reroot = TRUE,
           plot = FALSE
-        ),
-        .options = furrr::furrr_options(seed = TRUE)
+        )
       )
     ) %>%
     select(species, n_accs, is_monophy) %>%
     bind_rows(species_to_skip) %>%
     mutate(target = unique(mpcheck_sliced$target))
-
-  # Close parallel workers
-  future::plan(future::sequential)
 
   res
 }

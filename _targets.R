@@ -331,11 +331,13 @@ tar_plan(
     pattern = map(mpcheck_trimmed)
   ),
   # - check monophyly
+  # One branch per locus, farmed to a crew worker (`is.monophyletic()` is fast
+  # enough to run sequentially within a locus; do NOT nest a `future` cluster
+  # here — see check_monophy()).
   tar_target(
     mpcheck_monophy,
-    check_monophy(mpcheck_sliced, mpcheck_tree, workers = 32),
-    pattern = map(mpcheck_sliced, mpcheck_tree),
-    deployment = "main"
+    check_monophy(mpcheck_sliced, mpcheck_tree),
+    pattern = map(mpcheck_sliced, mpcheck_tree)
   ),
 
   # Format custom inclusion list for Sanger sequences ----
