@@ -2519,6 +2519,44 @@ modify_ppg <- function(ppg_raw) {
       taxonRank = "species",
       parentNameUsageID = "wfo-4000006470", # genus Campyloneurum
       stamp_modified = FALSE
+    ) |>
+    # Parapolystichum nephrodioides (Baker) Perrie: validly published comb. nov.
+    # (New Zealand J. Bot. 64(1) e70049: 6, 2026), but 'unchecked' in current PPG
+    # and absent from the v0.0.0.9009 tag. Accept it and sink Lastreopsis
+    # nephrodioides so the tip resolves to Parapolystichum. Drop once PPG accepts.
+    # https://github.com/pteridogroup/ppg/issues/167
+    dwctaxon::dct_add_row(
+      taxonID = "wfo-1000092165",
+      scientificName = "Parapolystichum nephrodioides (Baker) Perrie",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      parentNameUsageID = "wfo-4000028126", # genus Parapolystichum
+      stamp_modified = FALSE
+    ) |>
+    dwctaxon::dct_modify_row(
+      scientificName = "Lastreopsis nephrodioides (Baker) Tindale",
+      taxonomicStatus = "synonym",
+      acceptedNameUsageID = "wfo-1000092165",
+      stamp_modified = FALSE
+    ) |>
+    # Zealandia powellii (Baker) Testo & A.R.Field: validly published
+    # (Syst. Bot. 44(4): 749, 2019) but PPG keeps it as a synonym of Microsorum
+    # powellii. FTOL's sequences (rbcL KY099831, trnL-trnF MG427072) sit
+    # unambiguously in Zealandia, so accept the combination and sink Microsorum
+    # powellii. Drop once PPG accepts.
+    # https://github.com/pteridogroup/ppg/issues/168
+    dwctaxon::dct_modify_row(
+      scientificName = "Zealandia powellii (Baker) Testo & A.R.Field",
+      taxonomicStatus = "accepted",
+      acceptedNameUsageID = NA,
+      parentNameUsageID = "wfo-4100001083", # genus Zealandia
+      stamp_modified = FALSE
+    ) |>
+    dwctaxon::dct_modify_row(
+      scientificName = "Microsorum powellii (Baker) Copel.",
+      taxonomicStatus = "synonym",
+      acceptedNameUsageID = "wfo-1000034942",
+      stamp_modified = FALSE
     )
 }
 
