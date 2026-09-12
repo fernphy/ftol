@@ -64,18 +64,24 @@ and `run.sh`.
    without pausing (check `claude --help` for the current flag — this changes between
    CLI versions, so don't assume the exact name; `main_pipeline_monitor.sh`'s `claude
    -p ...` calls in this repo don't currently pass one, add it there once confirmed).
-3. **`gh` CLI authenticated** on the host (used for the PPG release check and, if you
-   ever extend the sync check past the ftol_data MVP, GitHub API lookups on other
-   repos). Check with `gh auth status` — don't assume a working devcontainer setup
-   carries over to the bare host or a fresh container image. If it's not authenticated,
-   `gh auth login --hostname github.com --web` gives a device code you approve at
-   github.com/login/device from any browser (answer "No" if it offers to generate a new
-   SSH key — that's separate from `gh`'s own auth and not needed if git push already
-   works). Also confirm `git push`/`git ls-remote` actually work — this repo's remote is
-   SSH (`git@github.com:...`), which needs `openssh-client` installed and GitHub's host
-   key in `~/.ssh/known_hosts` (`ssh-keyscan -H github.com >> ~/.ssh/known_hosts`);
-   both were missing the first time this was tried in the devcontainer this was
-   developed in, so don't assume either is already in place on a fresh host/container.
+3. **`gh` CLI authenticated on the bare host itself** (used for the PPG release check
+   and, if you ever extend the sync check past the ftol_data MVP, GitHub API lookups on
+   other repos). This is a host-side prerequisite, not a container one — every `git`/
+   `gh`/`claude -p` call either script makes runs directly on the nittalab server via
+   cron, outside of Docker entirely. The transient `tar_make()` container `run.sh`
+   launches never needs any of this: its only job is `Rscript -e 'targets::tar_make()'`,
+   with no git/GitHub access of its own, so there's nothing to authenticate there.
+   Check with `gh auth status` on the host — don't assume a working devcontainer setup
+   carries over, since this doc was developed in one and the auth there didn't
+   transfer. If it's not authenticated, `gh auth login --hostname github.com --web`
+   gives a device code you approve at github.com/login/device from any browser (answer
+   "No" if it offers to generate a new SSH key — that's separate from `gh`'s own auth
+   and not needed if git push already works). Also confirm `git push`/`git ls-remote`
+   work on the host — this repo's remote is SSH (`git@github.com:...`), which needs
+   `openssh-client` installed and GitHub's host key in `~/.ssh/known_hosts`
+   (`ssh-keyscan -H github.com >> ~/.ssh/known_hosts`); both were missing the first time
+   this was tried in the devcontainer this was developed in, so verify rather than
+   assume either is already in place on the host.
 4. **A local `ftol_data` clone**, fetchable, at `<repo>/ftol_data` (already the case in
    the devcontainer this was developed in; confirm it also exists on the host at the
    same relative path — `main_pipeline_cron.sh` assumes `${FTOL_DIR}/ftol_data`).
