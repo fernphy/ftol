@@ -72,16 +72,16 @@ assert_that(
 
 # - Check that this was built from a known, reproducible docker image
 #   (get_docker_tag() returns a placeholder starting with "unknown" instead
-#   of erroring when run outside run.sh/a PBS job, e.g. in a dev container,
-#   so that tar_make() stays runnable there -- but a release must not be
-#   published without knowing which image produced it)
+#   of erroring when run outside run.sh, e.g. in a dev container, so that
+#   tar_make() stays runnable there -- but a release must not be published
+#   without knowing which image produced it)
 assert_that(
   !startsWith(image_tag, "unknown"),
   msg = paste(
     "image_tag is not a real docker image tag (got:", image_tag, "). This",
-    "snapshot must come from a tar_make() run launched via run.sh or a PBS",
-    "job with IMAGE_TAG set -- rerun the pipeline that way before",
-    "snapshotting, rather than from an interactive dev-container session."
+    "snapshot must come from a tar_make() run launched via run.sh with",
+    "IMAGE_TAG set -- rerun the pipeline that way before snapshotting,",
+    "rather than from an interactive dev-container session."
   ))
 
 # - Check data versions
