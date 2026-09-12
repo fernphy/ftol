@@ -91,3 +91,4 @@ KP337975,rbcL,Correct accession for Alsophila corcovadensis (Raddi) C. Chr. but 
 PX170254,plastome,Supposed to be Davallia but blasts to Drynaria
 JN572240,trnL-trnF,The name Christella molliuscula is ambiguous https://github.com/pteridogroup/ppg/issues/143
 JN572323,rbcL,The name Christella molliuscula is ambiguous https://github.com/pteridogroup/ppg/issues/143
+PV391896,plastome,Supposed to be Leucostegia immersa but all seven loci match Davallia (~D. tyermanni); Sanger accs MZ957* place correctly with Hypodematium
