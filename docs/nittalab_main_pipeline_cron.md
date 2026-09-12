@@ -13,6 +13,18 @@ the crontab entries below is safe to do at any time (they're inert until their f
 scheduled tick); just don't let the first tick fire while something else is using the
 store.
 
+**None of this exists on `main` yet.** It was developed on `feat/main-pipeline-cron`
+(PR: check for one titled "Add cron automation for the main FTOL pipeline" if it's not
+linked from wherever you found this doc) specifically so the in-progress run above
+wouldn't be touched by anything in this checkout while it was written. Nothing here —
+scripts, this doc, the `main-pipeline-cron` skill — can be installed or relied on until
+that PR is merged to `main`, since the host crontab entries below point at scripts that
+only exist post-merge. Also: this checkout is shared between interactive use (Joel or a
+Claude session working in a devcontainer bind-mounted to the same path) and whatever
+cron runs here — if you ever find this checkout on a branch other than `main` outside of
+active feature work, that's a mistake to fix (`git checkout main`), not a new normal;
+`main_pipeline_cron.sh` itself refuses to proceed (and notifies) if it isn't.
+
 ## Why this is two scripts, not one
 
 GenBank downloads are a single deterministic script because there's nothing to decide —
@@ -54,7 +66,16 @@ and `run.sh`.
    -p ...` calls in this repo don't currently pass one, add it there once confirmed).
 3. **`gh` CLI authenticated** on the host (used for the PPG release check and, if you
    ever extend the sync check past the ftol_data MVP, GitHub API lookups on other
-   repos).
+   repos). Check with `gh auth status` — don't assume a working devcontainer setup
+   carries over to the bare host or a fresh container image. If it's not authenticated,
+   `gh auth login --hostname github.com --web` gives a device code you approve at
+   github.com/login/device from any browser (answer "No" if it offers to generate a new
+   SSH key — that's separate from `gh`'s own auth and not needed if git push already
+   works). Also confirm `git push`/`git ls-remote` actually work — this repo's remote is
+   SSH (`git@github.com:...`), which needs `openssh-client` installed and GitHub's host
+   key in `~/.ssh/known_hosts` (`ssh-keyscan -H github.com >> ~/.ssh/known_hosts`);
+   both were missing the first time this was tried in the devcontainer this was
+   developed in, so don't assume either is already in place on a fresh host/container.
 4. **A local `ftol_data` clone**, fetchable, at `<repo>/ftol_data` (already the case in
    the devcontainer this was developed in; confirm it also exists on the host at the
    same relative path — `main_pipeline_cron.sh` assumes `${FTOL_DIR}/ftol_data`).

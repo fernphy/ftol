@@ -57,6 +57,22 @@ PROMPT
 )" || echo "main_pipeline: notify() via claude -p failed (exit $?); see subject/body above in this log"
 }
 
+# --- Guard: is this checkout actually on main? ---
+# This directory is shared with interactive use (by Joel or a Claude session)
+# on this same host -- someone investigating something on a feature branch
+# and forgetting to switch back is exactly the kind of accident that would
+# otherwise make this script silently launch a run from the wrong code, or
+# make the auto-bump-and-commit step below land a commit on the wrong branch.
+current_branch="$(git -C "${FTOL_DIR}" rev-parse --abbrev-ref HEAD)"
+if [ "${current_branch}" != "main" ]; then
+  body="This checkout is on '${current_branch}', not main. Someone likely left"
+  body="${body} it there after interactive work. Not touching it automatically --"
+  body="${body} switch back to main by hand, then this will resume on its next tick."
+  notify "FTOL cron: checkout is not on main" "${body}"
+  echo "=== main_pipeline cron end (exit 0, skipped): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+fi
+
 # --- Guard: is a run already active or awaiting a decision? ---
 state="idle"
 if [ -f "${STATE_FILE}" ]; then
@@ -142,6 +158,17 @@ fi
 current_ppg_ver="$(grep -oP 'load_ppg\(ver = "\K[^"]+' "${TARGETS_R}")"
 ppg_target_ver="${ppg_latest_tag#v}"
 if [ "${current_ppg_ver}" != "${ppg_target_ver}" ]; then
+  # Refuse to touch _targets.R if it already has uncommitted changes --
+  # those are someone's in-progress interactive work, not ours to sweep into
+  # an automated "Bump PPG" commit alongside our own one-line edit.
+  if [ -n "$(git -C "${FTOL_DIR}" status --porcelain -- _targets.R)" ]; then
+    body="Wanted to bump load_ppg(ver) from ${current_ppg_ver} to ${ppg_target_ver},"
+    body="${body} but _targets.R already has uncommitted changes -- looks like"
+    body="${body} in-progress interactive work. Not touching it. Skipping today's run."
+    notify "FTOL cron: _targets.R has uncommitted changes" "${body}"
+    echo "=== main_pipeline cron end (exit 0, skipped): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+    exit 0
+  fi
   sed -i "s/load_ppg(ver = \"${current_ppg_ver}\")/load_ppg(ver = \"${ppg_target_ver}\")/" "${TARGETS_R}"
   git -C "${FTOL_DIR}" add _targets.R
   git -C "${FTOL_DIR}" commit -q -m "Bump PPG to ${ppg_latest_tag}
