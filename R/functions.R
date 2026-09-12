@@ -2425,26 +2425,36 @@ modify_ppg <- function(ppg_raw) {
     filter(
       taxonID != "wfo-0001117070"
     ) |>
-    # Lellingeria reunionensis Parris
-    # maybe not validly published, so don't add to Rhakhis
-    dwctaxon::dct_add_row(
-      scientificName = "Lellingeria reunionensis Parris",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # Terpsichore pacifica Sundue
-    # maybe not validly published, so don't add to Rhakhis
+    # Terpsichore pacifica Sundue is nom. inval. per NCBI: no combination has
+    # been published (formally or informally) in any genus, so we don't coin
+    # a "comb. ined." ourselves. Its accessions place unambiguously in
+    # Mycopteris (not a mis-ID), so keep it under its original name and
+    # exclude Mycopteris from the monophyly check (make_taxa_exclude_tbl())
+    # rather than drop the data. https://github.com/fernphy/ftol/issues/32
     dwctaxon::dct_add_row(
       scientificName = "Terpsichore pacifica Sundue",
       taxonomicStatus = "accepted",
       taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # Terpsichore vascoana Sundue
-    # maybe not validly published, so don't add to Rhakhis
+    # Terpsichore vascoana Sundue: same situation as T. pacifica above.
+    # https://github.com/fernphy/ftol/issues/33
     dwctaxon::dct_add_row(
       scientificName = "Terpsichore vascoana Sundue",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      stamp_modified = FALSE
+    ) |>
+    # Lellingeria reunionensis Parris is nom. ined. per NCBI (coined
+    # informally in Ranker et al. 2010, PLoS Currents 2:RRN1197, but never
+    # formally published; no "comb. ined." usage found in the literature
+    # either). Its accession places in the Lellingeria myosuroides clade,
+    # which Labiak (2011, Brittonia 63(1): 141) later segregated as
+    # Stenogrammitis. Keep it under its original name and exclude
+    # Stenogrammitis from the monophyly check rather than drop the data.
+    # https://github.com/fernphy/ftol/issues/34
+    dwctaxon::dct_add_row(
+      scientificName = "Lellingeria reunionensis Parris",
       taxonomicStatus = "accepted",
       taxonRank = "species",
       stamp_modified = FALSE
@@ -9737,6 +9747,12 @@ make_taxa_exclude_tbl <- function() {
       # Thelypteridaceae generic limits are unstable, leave for the ML tree
       "Glaphyropteridopsis",
       "Lecanopteris",
+      # Lellingeria reunionensis is a nom. ined. name kept under Lellingeria
+      # (see Stenogrammitis below); it's an outlier that inflates the MRCA
+      # of "Lellingeria" to include Stenogrammitis, so Lellingeria itself
+      # also needs excluding here, not just the receiving genus.
+      # https://github.com/fernphy/ftol/issues/34
+      "Lellingeria",
       "Leptochilus",
       # "Leucotrichum",
       # "Lomariocycas",
@@ -9744,7 +9760,11 @@ make_taxa_exclude_tbl <- function() {
       # "Metathelypteris",
       # "Meniscium",
       "Mesophlebion",
-      # "Mycopteris",
+      # Terpsichore pacifica / T. vascoana are nom. inval. (no genus
+      # combination published) but their accessions place correctly here.
+      # https://github.com/fernphy/ftol/issues/32
+      # https://github.com/fernphy/ftol/issues/33
+      "Mycopteris",
       # "Notogrammitis",
       # "Olfersia",
       # "Ormopteris",
@@ -9763,9 +9783,19 @@ make_taxa_exclude_tbl <- function() {
       "Quechuapteris",
       # "Saccoloma",
       "Sceptridium",
+      # Lellingeria reunionensis is nom. ined. (no genus combination
+      # published, formal or informal) but its accession places correctly
+      # here. https://github.com/fernphy/ftol/issues/34
+      "Stenogrammitis",
       # "Strophocaulon",
       "Syngramma",
       # "Thelypteris",
+      # Terpsichore pacifica / T. vascoana are nom. inval. names kept under
+      # Terpsichore (see Mycopteris above); they're outliers that make
+      # Terpsichore itself non-monophyletic too, not just the receiving
+      # genus. https://github.com/fernphy/ftol/issues/32
+      # https://github.com/fernphy/ftol/issues/33
+      "Terpsichore",
       # "Trichomanes",
       "Tomophyllum",
       "Xiphopterella"
