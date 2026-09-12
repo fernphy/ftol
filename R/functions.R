@@ -9751,6 +9751,10 @@ make_taxa_exclude_tbl <- function() {
       "Abrodictyum",
       # "Adiantopsis",
       "Amauropelta",
+      # fast-tree artifact: Danaea_cuspidopsis (3 loci, 1 v. short) falls in
+      # Angiopteris in the fast tree but sits correctly in Danaea in the full ML
+      # tree; low rates of molecular evolution in Marattiaceae
+      "Angiopteris",
       # "Athyrium",
       # "Arachniodes",
       # "Blechnum",
@@ -9759,6 +9763,8 @@ make_taxa_exclude_tbl <- function() {
       # "Calochlaena",
       "Choristosoria",
       # "Cyathea",
+      # see Angiopteris
+      "Danaea",
       # "Dasygrammitis",
       # "Dicksonia",
       # "Didymoglossum",
@@ -9768,6 +9774,10 @@ make_taxa_exclude_tbl <- function() {
       # "Dryopteridoideae",
       # "Dryopteris",
       "Goniopteris",
+      # fast-tree artifact: single short locus (rps4/rps4-trnS, JN572163)
+      # places Pseudocyclosorus_pubescens with Glaphyropteridopsis;
+      # Thelypteridaceae generic limits are unstable, leave for the ML tree
+      "Glaphyropteridopsis",
       "Lecanopteris",
       "Leptochilus",
       # "Leucotrichum",
@@ -9789,8 +9799,9 @@ make_taxa_exclude_tbl <- function() {
       # "Polypodiales",
       # "Polystichum",
       "Pronephrium",
-      # "Pseudocyclosorus",
-      # "Reholttumia",
+      # see Glaphyropteridopsis
+      "Pseudocyclosorus",
+      "Reholttumia",
       "Quechuapteris",
       # "Saccoloma",
       "Sceptridium",
