@@ -2,7 +2,6 @@ query,match,comments
 Adiantum comorense (Tardieu) Verdc.,Adiantum comoroense (Tardieu) Verdc.,NA
 Adiantum dentatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum dentatum A.H.Wang, F.G.Wang & F.W.Xing",NA
 Adiantum madagascariense H.Rosend.,Adiantum madagascariense Rosendahl,NA
-Adiantum malesianum J.Ghatak,Adiantum malesianum Ghatak,NA
 "Adiantum mynssenae J.Prado, nom. nov.",Adiantum mynsseniae J.Prado,NA
 Adiantum obovatum A.H.Wang & F.G.Wang & F.W.Xing,"Adiantum obovatum A.H.Wang, F.G.Wang & F.W.Xing",NA
 Adiantum orbignyanum Mett.,Adiantum orbignyanum Mett.; Kuhn,NA
@@ -76,7 +75,6 @@ Blechnum vieillardii var. simplex Fourn.,Blechnum vieillardii var. simplex E.Fou
 Bolbitis gemmifera (Hieron.) C.Chr.,Bolbitis gemmifer (Hieron.) C.Chr.,NA
 Bommeria pedata (Sw.) E.Fourn.,Bommeria pedata (Sw.) Fourn.,NA
 Bosmania membranacea subsp. carinata (W.M.Chu & Z.R.He) R.Wei & X.C.Zhang,Bosmania membranacea (D.Don) Testo,NA
-Botrychium hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,Botrychium × hesperium (Maxon & R.T.Clausen) W.H.Wagner & Lellinger,NA
 Botrychium lunaria var. lunaria,Botrychium lunaria var. lunaria,NA
 Botrychium watertonense W.H.Wagner,Botrychium × watertonense W.H.Wagner,NA
 Campyloneurum wurdackii B.Leon,Campyloneurum wurdackii León,NA
@@ -84,7 +82,7 @@ Ceradenia ayapoyana M.Kessler & A.R.Sm.,Ceradenia ayopayana M.Kessler & A.R.Sm.,
 Ceradenia madidiense M.Kessler & A.R.Sm.,Ceradenia madidiensis M.Kessler & A.R.Sm.,NA
 Cheilanthes squamosa Gillies & Hook. ex Grev.,Cheilanthes squamosa Gillies ex Hook. & Grev.,NA
 Christella conspersa (Schrad.) i.Love & D.Love,Christella conspersa (Schrad.) Á.Löve & D.Löve,NA
-Christella procurrens (Mett.) Copel.,Cyclosorus procurrens (Mett.) Copel.,NA
+Christella procurrens (Mett.) Copel.,Christella procurrens,unchecked name in PPG (no author); pending PPG fix
 Coniogramme longissima Ching & H.S.Kung,Coniogramme longissima Ching & Kung,NA
 Coniogramme rosthornii Hieron.,Coniogramme rosthorni Hieron.,NA
 Cranfillia fullagari (F.Muell.) Gasper & V.A.O.Dittrich,Cranfillia fullagarii (F.Muell.) Gasper & V.A.O.Dittrich,NA
@@ -111,7 +109,7 @@ Danaea trichomanoides Spruce ex T.Moore,Danaea trichomanoides Spruce; Moore,NA
 Danaea x jamaicensis Underw.,Danaea jamaicensis Underw.,NA
 Davallia denticulata (Burm.f.) Mett.,Davallia denticulata (Burm.) Mett.; Kuhn,NA
 Davallia tasmani Field,Davallia tasmanii Field,NA
-Davallia tyermanii (T.Moore) Baker,Davallia tyermannii (T.Moore) H.J.Veitch,NA
+Davallia tyermanii (T.Moore) Baker,Davallia tyermanni T.Moore,unchecked name in PPG; pending PPG fix
 Dennstaedtia auriculata Navarr. & B.llg.,Dennstaedtia auriculata Navarrete & B.Øllg.,NA
 Dennstaedtia davallioides (R.Br.) T.Moore,Dennstaedtia davallioides (R.Br.) Moore,NA
 Dennstaedtia hirsuta (Sw.) Mett. ex Miq.,Dennstaedtia hirsuta Mett.; Miq.,NA
@@ -204,8 +202,6 @@ Platycerium holttumii de Jonch.& Hennipman,Platycerium holttumii Joncheere & Hen
 Platycerium superbum Jonch. & Hennipman,Platycerium superbum Joncheere & Hennipman,NA
 Platygyria x inaequibasis Ching & S.K.Wu,Platygyria inaequibasis Ching & S.K.Wu,NA
 Pleopeltis polypodioides var. polypodioides,Pleopeltis polypodioides (L.) E.G.Andrews & Windham,NA
-Polybotrya glandulosa Mett.,Polybotrya glandulosa Mett.; Kuhn,NA
-Polybotrya pubens Mart.,Polybotrya pubens Mart.; Kze.,NA
 Polypodium subpetiolatum Hook.,Polypodium subpetiolatum Hk.,NA
 Polystichum chingiae Ching,Polystichum chingae Ching,NA
 Polystichum cystostegia (Hook.) J.B.Armstr.,Polystichum cystostegia (Hook.) Armstr.,NA
@@ -245,8 +241,6 @@ Schizaea fluminensis Miers ex J.W.Sturm,Schizaea fluminensis Miers; Sturm,NA
 "Selliguea albipes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert","Selliguea albopes (C.Chr. & Ching) S.G.Lu, Hovenkamp & M.G.Gilbert",NA
 Selliguea feeoides Copel.,Selliguea feeioides Copel.,NA
 Serpocaulon menisciifolium (Langsd. & Fisch.) A.R.Sm.,Serpocaulon meniscifolium (Langsd. & Fisch.) A.R.Sm.,NA
-Sphaerostephanos heterocarpos (Blume) Holttum,Sphaerostephanos heterocarpus (Blume) Holttum,NA
-Sphaerostephanos polycarpos (Blume) Copel.,Sphaerostephanos polycarpa (Blume) Copel.,NA
 Sticherus brackenridgei (Fourn.) St.John,Sticherus brackenridgii (Fourn.) H.St.John,NA
 Sticherus flabellatus (R.Br.) H.St.John,Sticherus flabellatus (R.Br.) St.John,NA
 Sticherus tener Ching,Sticherus tenera (R.Br.) Ching,NA
@@ -281,7 +275,7 @@ Trichomanes tubiflora (F.S.Wagner) Christenh.,Trichomanes tubiflorum (F.S.Wagner
 Trichomanes vittaria DC.,Trichomanes vittaria DC.; Poir.,NA
 "Vandenboschia confusa Dubuisson, Deblauwe & Boucheron-Dubuisson","Vandenboschia confusa Dubuisson, Deblauwe & Bouch.-Dubuisson",NA
 x Cystocarpium roskamianum Fraser-Jenk.,× Cystocarpium roskamianum Fraser-Jenk.,NA
-x Lindsaeosoria flynnii W.H.Wagner,Lindsaeosoria × flynnii W.H.Wagner,NA
+x Lindsaeosoria flynnii W.H.Wagner,× Lindsaeosoria × flynnii W.H.Wagner,NA
 Arachniodes coadnata (Ching) Nakaike,Arachniodes coadunata (Ching) Nakaike,NA
 Asplenium fontanum subsp. fontanum,Asplenium fontanum (L.) Bernh.,NA
 Gymnocarpium dryopteris var. aokigaharaense Nakaike,Gymnocarpium dryopteris (L.) Newman,NA
@@ -336,3 +330,8 @@ Arachniodes × tohtomiensis Shimura & Hori,Arachniodes × tohtomiensis Shimura &
 Dicranopteris caudata (Copel.) St.John,Dicranopteris caudata (Copel.) H.St.John,NA
 Polystichum submarginale (Baker) Ching ex L.L.Xiang,Polystichum submarginale (Baker) Ching ex P.S.Wang,NA
 "Leptochilus nooteboomii C.T.Chen, C.W.Chen & Y.S.Chao. 2026","Leptochilus nooteboomii C.T.Chen, C.W.Chen & Y.S.Chao",NA
+Danaea plicata Christ,Danaea × plicata Christ,hybrid sign added in PPG v0.0.0.9009
+Danaea ushana Christenh.,Danaea × ushana Christenh.,hybrid sign added in PPG v0.0.0.9009
+Microsorum maximum (Brack.) Copel.,Microsorum × maximum (Brack.) Copel.,hybrid sign added in PPG v0.0.0.9009
+Polystichum gelidum Fee,Polystichum × gelidum Fée,hybrid sign added in PPG v0.0.0.9009
+"Stegnogramma centrochinensis (Ching ex Y.X.Lin) H.F.Wang, X.Y.Dong & K.P.Ma",Leptogramma centrochinensis Ching ex Y.X.Lin,Stegnogramma comb. is unchecked in PPG; use accepted Leptogramma name

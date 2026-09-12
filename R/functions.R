@@ -456,8 +456,10 @@ create_patel_inclusion_list <- function(
           "Goniopteris vivipara (Raddi) C.F.Reed", # nolint
         raw_name == "Oreopteris quelpaertensis" ~
           "Oreopteris quelpartensis (Christ) Holub", # nolint
+        raw_name == "Sphaerostephanos heterocarpus" ~
+          "Sphaerostephanos heterocarpos (Blume) Holttum",
         raw_name == "Sphaerostephanos polycarpus" ~
-          "Sphaerostephanos polycarpa (Blume) Copel.", # nolint
+          "Sphaerostephanos polycarpos (Blume) Copel.", # nolint
         raw_name == "Meniscium longifolium" ~ "Meniscium longifolium Desv.", # nolint
         raw_name == "Christella parasitica" ~
           "Christella parasitica (L.) H.Lév.",
@@ -2417,11 +2419,6 @@ modify_ppg <- function(ppg_raw) {
     filter(
       taxonID != "wfo-0001108903"
     ) |>
-    # duplicated Dicranopteris gigantea
-    # will be fixed in ppg v 0.0.0.9008
-    filter(
-      taxonID != "wfo-1000073784"
-    ) |>
     # duplicated Polystichum polyblepharon
     # https://github.com/pteridogroup/ppg/issues/151
     # keep the accepted one for now
@@ -2452,45 +2449,11 @@ modify_ppg <- function(ppg_raw) {
       taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_modify_row(
-      scientificName = "Angiopteris involuta L.J.Jiang & Z.R.He",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
+    # still 'unchecked' in PPG as of v0.0.0.9009
     dwctaxon::dct_modify_row(
       scientificName = "Aleuritopteris hainanensis Bin Zhang, Ting Wang ter & H.F.Chen",
       taxonomicStatus = "accepted",
       taxonRank = "species",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = "Hymenophyllum bifurcatum Y.Nan Zhao & Z.Y.Zuo",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4000018687",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = "Lepisorus lepidotus Ching ex Z.L.Liang & Li Bing Zhang",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4000021173",
-      stamp_modified = FALSE
-    ) |>
-    # will be fixed in ppg v 0.0.0.9008
-    dwctaxon::dct_add_row(
-      scientificName = "Polystichum oligodontum You Nong, R.H.Jiang & C.Xiong",
-      taxonomicStatus = "accepted",
-      taxonRank = "species",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4000030832",
       stamp_modified = FALSE
     ) |>
     # not yet in IPNI; unclear when will be added to PPG
@@ -2549,36 +2512,12 @@ modify_ppg <- function(ppg_raw) {
       acceptedNameUsageID = "wfo-0000145327",
       stamp_modified = FALSE
     ) |>
-    # new family Cryptocaulaceae (2026)
-    # not yet in PPG; to be added when PPG is updated
+    # not yet in PPG (NCBI flags it "nom. ined."); has GenBank data
     dwctaxon::dct_add_row(
-      scientificName = "Cryptocaulaceae Sundue, T.Fujiw., Limpan. & L.Y.Kuo",
-      taxonID = "wfo-4100006530",
-      taxonRank = "family",
-      taxonomicStatus = "accepted",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4100005211", # suborder Polypodiineae
-      stamp_modified = FALSE
-    ) |>
-    # Cryptocaulon tenerifrons in Cryptocaulaceae
-    # not yet in PPG; to be added when PPG is updated
-    dwctaxon::dct_add_row(
-      scientificName = "Cryptocaulon Vongthavone, Tagane, Sundue & T.Fujiw.",
-      taxonID = "wfo-4100006531",
-      taxonomicStatus = "accepted",
-      taxonRank = "genus",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4100006530",
-      stamp_modified = FALSE
-    ) |>
-    # Cryptocaulon tenerifrons in Cryptocaulaceae
-    # not yet in PPG; to be added when PPG is updated
-    dwctaxon::dct_add_row(
-      scientificName = "Cryptocaulon tenerifrons (Hook.) Limpan., Yoneoka, Ebihara & L.Y.Kuo",
+      scientificName = "Campyloneurum talamancanum R.C.Moran & Labiak",
       taxonomicStatus = "accepted",
       taxonRank = "species",
-      nomenclaturalStatus = "valid",
-      parentNameUsageID = "wfo-4100006531",
+      parentNameUsageID = "wfo-4000006470", # genus Campyloneurum
       stamp_modified = FALSE
     )
 }
@@ -2624,7 +2563,9 @@ format_ppg_for_ts <- function(ppg_full) {
         "wfo-0001347387", # Abrodictyum pseudorigidum Bauret & Dubuisson
         "wfo-0001226866", # Deparia concinna (Z.R.Wang) M.Kato
         "wfo-0001114903", # Dryopteris pacifica (Nakai) Tagawa
-        "wfo-1000068417" # Dryopteris anadroma Mitsuta
+        "wfo-1000068417", # Dryopteris anadroma Mitsuta
+        "wfo-0000140658", # Davallia tyermanni T.Moore (unchecked in PPG)
+        "wfo-1000085722" # Christella procurrens (unchecked in PPG, no author)
       ),
       keep = TRUE
     )
@@ -5664,47 +5605,26 @@ resolve_pterido_plastome_names <- function(
     assert(is_uniq, accession)
 
   # Define dataframe of manual matches. These were originally fuzzily matched,
-  # then checked. Add as needed.
+  # then checked. Add as needed. (Names shared with the main name-resolution
+  # pipeline live in `manual_matches`; only plastome-specific fixes go here.)
   plastome_manual_match <- tibble(
     query = c(
-      "Bolbitis laxireticulata K.Iwats.",
-      "Dryopteris gaoligongensis Z.Y.Zuo, J.Mei Lu & D.Z.Li",
-      "Dryopteris sinonepalensis Z.Y.Zuo & Fraser-Jenk.",
-      "Dennstaedtia glauca (Cav.) C.Chr. ex Looser",
-      "Asplenium scolopendrium var. scolopendrium",
-      "Eupodium kaulfussii (J.Sm.) J.Sm.",
-      "Asplenium obliquissimum (Hayata) Sugim. & Sa.Kurata",
-      "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. L1",
-      "Dryopteris jinpingensis Z.Y. Zuo, J. Mei Lu & D.Z. Li",
-      "Lomariopsis cochinchinensis Fee Fee",
-      "Dryopteris liangkwangensis Ching",
-      "Schizaea sprucei Hook.",
-      "Dryopteris tenuicula C.G. Matthew & Christ",
-      "Dryopteris x kominatoensis Tagawa",
       "Diplazium lherminieri Fee",
-      "Platycerium angolense Welw.",
       "Dryopteris × australis (Wherry) Small",
-      "Diplazium okudairai Makino"
+      "Dryopteris liangkwangensis Ching",
+      "Dryopteris tenuicula C.G. Matthew & Christ",
+      "Lomariopsis cochinchinensis Fee Fee",
+      "Platycerium angolense Welw.",
+      "Schizaea sprucei Hook."
     ),
     match = c(
-      "Bolbitis × laxireticulata K.Iwats.",
-      "Dryopteris gaoligongensis Z.Y.Zuo, J.Mei Lu & D.Z.Li",
-      "Dryopteris sinonepalensis Z.Y.Zuo & Fraser-Jenk.",
-      "Dennstaedtia glauca C.Chr. ex Looser",
-      "Asplenium scolopendrium L.",
-      "Eupodium kaulfussii J.Sm.",
-      "Asplenium obliquissimum (Hayata) Sugim. & Sa.Kurata",
-      "Dryopteris jinpingensis Z.Y.Zuo, J.Mei Lu & D.Z.Li",
-      "Dryopteris jinpingensis Z.Y.Zuo, J.Mei Lu & D.Z.Li",
-      "Lomariopsis cochinchinensis Fée",
-      "Dryopteris liankwangensis Ching",
-      "Schizaea sprucei Hk.; Bak.",
-      "Dryopteris tenuicula Matthew & Christ",
-      "Dryopteris × kominatoensis Tagawa",
       "Diplazium lherminieri Hieron.",
-      "Platycerium angolense Welw.; Bak.",
       "Dryopteris australis (Wherry) Small",
-      "Diplazium okudairae Makino"
+      "Dryopteris liankwangensis Ching",
+      "Dryopteris tenuicula Matthew & Christ",
+      "Lomariopsis cochinchinensis Fée",
+      "Platycerium angolense Welw.; Bak.",
+      "Schizaea sprucei Hk.; Bak."
     )
   ) |>
     bind_rows(manual_matches) |>
