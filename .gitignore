@@ -29,5 +29,9 @@ scratch
 setup_gb.log
 logs
 .gb_download.lock
+.main_pipeline.lock
+.main_pipeline_monitor.lock
+.main_pipeline_state
+.last_gb_release_started
 .secrets
 .env
