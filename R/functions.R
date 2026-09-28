@@ -11020,6 +11020,82 @@ upload_to_figshare <- function(path, deposit_id) {
   digest::digest(path)
 }
 
+#' Upload a file to FigShare using correctly-chunked multipart upload
+#'
+#' Works around a bug in `deposits::upload_figshare_file()`
+#' (github.com/ropenscilabs/deposits, R/upload-figshare.R -- confirmed
+#' still present in upstream `main` as of 2026-09): its part-upload loop
+#' sends the *entire* original file to every part's PUT request instead of
+#' that part's own byte range (`path = path` where it should be
+#' `path = flist[i]`), which FigShare's per-part endpoint rejects with a
+#' broken pipe for any file split into more than one part. A file that fits
+#' in a single part is unaffected -- that's why small files upload fine via
+#' `upload_to_figshare()` but large archives don't. Implements FigShare's
+#' own chunked-upload protocol directly instead of going through `deposits`
+#' at all: https://docs.figshare.com/#upload_files_example_upload_on_figshare
+#'
+#' @param path Path to local file to upload.
+#' @param deposit_id Deposit ("article") ID; should be an integer.
+#' @return Invisible NULL on success; errors on any HTTP failure.
+figshare_upload_file_chunked <- function(path, deposit_id) {
+  token <- Sys.getenv("FIGSHARE_TOKEN")
+  with_auth <- function(req) {
+    httr2::req_headers(req, Authorization = paste("token", token))
+  }
+  files_url <- glue::glue(
+    "https://api.figshare.com/v2/account/articles/{deposit_id}/files"
+  )
+
+  # 1. Register the file (name/size/md5) and get its resource location
+  location <- httr2::request(files_url) |>
+    with_auth() |>
+    httr2::req_body_json(list(
+      md5 = unname(tools::md5sum(path)),
+      name = fs::path_file(path),
+      size = as.integer(fs::file_size(path))
+    )) |>
+    httr2::req_perform() |>
+    httr2::resp_body_json()
+  file_id <- sub("^.*/", "", location)
+  file_url <- glue::glue("{files_url}/{file_id}")
+
+  # 2. Get the upload_url, then the part layout (partNo/startOffset/
+  # endOffset, inclusive byte ranges) from it
+  file_info <- httr2::request(file_url) |>
+    with_auth() |>
+    httr2::req_perform() |>
+    httr2::resp_body_json()
+  upload_url <- file_info$upload_url
+  parts <- httr2::request(upload_url) |>
+    with_auth() |>
+    httr2::req_perform() |>
+    httr2::resp_body_json()
+  parts <- parts$parts
+
+  # 3. Upload each part -- its own byte range, not the whole file
+  con <- file(path, "rb")
+  on.exit(close(con), add = TRUE)
+  for (part in parts) {
+    part_size <- part$endOffset - part$startOffset + 1
+    seek(con, where = part$startOffset)
+    chunk <- readBin(con, "raw", n = part_size)
+    httr2::request(glue::glue("{upload_url}/{part$partNo}")) |>
+      with_auth() |>
+      httr2::req_method("PUT") |>
+      httr2::req_headers("Content-Type" = "application/octet-stream") |>
+      httr2::req_body_raw(chunk) |>
+      httr2::req_perform()
+  }
+
+  # 4. Mark the upload complete
+  httr2::request(file_url) |>
+    with_auth() |>
+    httr2::req_method("POST") |>
+    httr2::req_perform()
+
+  invisible(NULL)
+}
+
 #' List a FigShare deposit's files via the private/draft endpoint
 #'
 #' Unlike the public `articles` endpoint, this shows files mid-upload
@@ -11082,15 +11158,14 @@ figshare_file_md5 <- function(filename, deposit_id) {
 }
 
 #' Upload a file to FigShare, verifying success by checksum and retrying
-#' transient failures
+#' failures
 #'
-#' `upload_to_figshare()`'s underlying API call can fail outright (e.g. a
-#' broken pipe on a large upload) or "succeed" while printing a cosmetic
-#' error (a known `deposits` package bug,
-#' https://github.com/ropenscilabs/deposits/issues/99 -- the file uploads
-#' fine despite the error text). Either way, don't trust the return value or
-#' printed output: verify against FigShare's own recorded checksum, clean up
-#' and retry on mismatch, and only report success once confirmed.
+#' Uses `figshare_upload_file_chunked()` (not `upload_to_figshare()`, whose
+#' underlying `deposits` call is broken for any file large enough to need
+#' more than one part -- see that function's docs) and doesn't trust its
+#' own success either: verify against FigShare's own recorded checksum,
+#' clean up any stale partial upload and retry on mismatch, and only report
+#' success once confirmed.
 #'
 #' @param path Path to local file to upload.
 #' @param deposit_id Deposit ID; should be an integer.
@@ -11103,7 +11178,7 @@ upload_to_figshare_verified <- function(path, deposit_id, max_tries = 3) {
 
   for (attempt in seq_len(max_tries)) {
     delete_incomplete_figshare_file(filename, deposit_id)
-    try(upload_to_figshare(path, deposit_id), silent = TRUE)
+    try(figshare_upload_file_chunked(path, deposit_id), silent = TRUE)
 
     remote_md5 <- figshare_file_md5(filename, deposit_id)
     if (identical(remote_md5, local_md5)) {
