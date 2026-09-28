@@ -11020,6 +11020,109 @@ upload_to_figshare <- function(path, deposit_id) {
   digest::digest(path)
 }
 
+#' List a FigShare deposit's files via the private/draft endpoint
+#'
+#' Unlike the public `articles` endpoint, this shows files mid-upload
+#' (`status == "created"`, no `computed_md5` yet) as well as finished ones
+#' (`status == "available"`) -- needed to detect and clean up a partial
+#' upload left by an interrupted transfer.
+#'
+#' @param deposit_id Deposit ID; should be an integer.
+#' @return List of file metadata (as parsed from the FigShare API's JSON)
+figshare_deposit_files <- function(deposit_id) {
+  token <- Sys.getenv("FIGSHARE_TOKEN")
+  httr2::request(glue::glue(
+    "https://api.figshare.com/v2/account/articles/{deposit_id}/files"
+  )) |>
+    httr2::req_headers(Authorization = paste("token", token)) |>
+    httr2::req_perform() |>
+    httr2::resp_body_json()
+}
+
+#' Delete any incomplete file(s) with the given name from a FigShare deposit
+#'
+#' FigShare's chunked upload API leaves an orphaned file object
+#' (`status == "created"`, never finalized) if an upload is interrupted
+#' (e.g. a broken pipe on a large file) -- this blocks a clean retry under
+#' the same filename, so remove it first.
+#'
+#' @param filename File name to check (basename, not full path)
+#' @param deposit_id Deposit ID; should be an integer.
+#' @return Invisible NULL
+delete_incomplete_figshare_file <- function(filename, deposit_id) {
+  token <- Sys.getenv("FIGSHARE_TOKEN")
+  files <- figshare_deposit_files(deposit_id)
+  stale <- Filter(
+    function(f) f$name == filename && f$status != "available", files
+  )
+  for (f in stale) {
+    httr2::request(glue::glue(
+      "https://api.figshare.com/v2/account/articles/{deposit_id}/files/{f$id}"
+    )) |>
+      httr2::req_method("DELETE") |>
+      httr2::req_headers(Authorization = paste("token", token)) |>
+      httr2::req_perform()
+  }
+  invisible(NULL)
+}
+
+#' md5 checksum of a *finished* file on FigShare, or NA if absent
+#'
+#' @param filename File name to check (basename, not full path)
+#' @param deposit_id Deposit ID; should be an integer.
+#' @return Character md5 hash, or NA_character_ if the file isn't present
+#'   (or hasn't finished uploading)
+figshare_file_md5 <- function(filename, deposit_id) {
+  files <- figshare_deposit_files(deposit_id)
+  match <- Filter(
+    function(f) f$name == filename && f$status == "available", files
+  )
+  if (length(match) == 0) return(NA_character_)
+  match[[1]]$computed_md5
+}
+
+#' Upload a file to FigShare, verifying success by checksum and retrying
+#' transient failures
+#'
+#' `upload_to_figshare()`'s underlying API call can fail outright (e.g. a
+#' broken pipe on a large upload) or "succeed" while printing a cosmetic
+#' error (a known `deposits` package bug,
+#' https://github.com/ropenscilabs/deposits/issues/99 -- the file uploads
+#' fine despite the error text). Either way, don't trust the return value or
+#' printed output: verify against FigShare's own recorded checksum, clean up
+#' and retry on mismatch, and only report success once confirmed.
+#'
+#' @param path Path to local file to upload.
+#' @param deposit_id Deposit ID; should be an integer.
+#' @param max_tries Number of upload attempts before giving up.
+#' @return Invisible TRUE on verified success; errors after `max_tries`
+#'   failed attempts.
+upload_to_figshare_verified <- function(path, deposit_id, max_tries = 3) {
+  local_md5 <- unname(tools::md5sum(path))
+  filename <- fs::path_file(path)
+
+  for (attempt in seq_len(max_tries)) {
+    delete_incomplete_figshare_file(filename, deposit_id)
+    try(upload_to_figshare(path, deposit_id), silent = TRUE)
+
+    remote_md5 <- figshare_file_md5(filename, deposit_id)
+    if (identical(remote_md5, local_md5)) {
+      message(filename, ": uploaded and verified (md5 match)")
+      return(invisible(TRUE))
+    }
+    message(
+      filename, ": attempt ", attempt, "/", max_tries,
+      " did not verify (remote md5: ", remote_md5 %||% "NA",
+      "), retrying..."
+    )
+    Sys.sleep(5 * attempt)
+  }
+  stop(
+    filename, ": failed to upload and verify after ", max_tries,
+    " attempts to deposit ", deposit_id
+  )
+}
+
 # Etc ----
 # This function can be called inside of other functions to check
 # if the names of the input match the names of the arguments
