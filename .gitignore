@@ -37,3 +37,4 @@ logs
 .main_pipeline.lock
 .secrets
 .env
+RELEASE_HANDOFF.md
