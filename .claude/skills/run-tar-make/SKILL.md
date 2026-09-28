@@ -127,13 +127,46 @@ mid-run (`tar_meta(fields = "error")`, `tar_progress()`, `tar_workspace(<target>
 
 Once `tar_make()` finishes without error, three follow-on scripts turn the pipeline output
 into a release-ready state — none of these are targets themselves (they mutate git repos
-and external services, which don't belong in the `_targets` store):
+and external services, which don't belong in the `_targets` store).
+
+**Context matters here too, same as launching `tar_make()` itself.** In the interactive
+dev container, `R`/`renv` are already the shell you're in — just run the `Rscript ...`
+commands below directly. **On the bare nittalab host, there is no local R/renv at all** —
+only Docker. Wrap each script in a `docker run`, matching exactly what
+`main_pipeline_cron.sh` already does (don't hand-roll a different invocation): mount the
+repo at `/wd`, and **also** mount the persisted `gh`/git config (needed because these two
+scripts push to `ftol_data`/FigShare, unlike a plain `tar_make()` container):
+
+```bash
+docker run --rm \
+  -v /home/jnitta/ftol:/wd -w /wd \
+  -v /home/jnitta/.gh_config:/gh_config \
+  -v /home/jnitta/.gitconfig:/root/.gitconfig_persisted \
+  -e GH_CONFIG_DIR=/gh_config \
+  -e GIT_CONFIG_GLOBAL=/root/.gitconfig_persisted \
+  joelnitta/ftol:latest \
+  Rscript -e "source('R/publish_figshare.R'); source('R/snapshot_ftol_data.R')"
+```
+
+(Split into two separate `docker run` calls, or two `source()` calls in one, either
+works — the example above matches `main_pipeline_cron.sh`'s single-container form.) See
+`docs/nittalab_main_pipeline_cron.md` for the full rationale on why both mounts are
+needed (`~/.gitconfig` lives on the same ephemeral overlay as `~/.config/gh` inside a
+plain container, so `GH_CONFIG_DIR` alone isn't enough for push to work headlessly).
 
 - **`Rscript R/publish_figshare.R`** — uploads `restez_sql_db.tar.gz`, `taxdmp.zip`,
   `README.genbank`, and the rendered input-data README (renamed `README.txt`) to the FTOL
-  input-data FigShare deposit (`19474316`) via `upload_to_figshare()`
-  (`R/functions.R`, uses the `deposits` package). `overwrite = TRUE` already handles
-  replacing the old file — no separate delete step, no manual SFTP-to-Desktop detour.
+  input-data FigShare deposit (`19474316`) via `upload_to_figshare_verified()`
+  (`R/functions.R`). `overwrite` semantics mean there's no separate delete step, no manual
+  SFTP-to-Desktop detour. This does *not* go through `deposits::deposit_upload_file()` for
+  the actual transfer — that package has a confirmed-still-open upstream bug
+  (`upload_figshare_file()` PUTs the whole original file to every chunk's URL instead of
+  that chunk's own byte range, broken-piping on anything large enough to need more than one
+  part; small single-part files are unaffected, which is why it looked fine in testing).
+  `figshare_upload_file_chunked()` implements FigShare's chunked-upload API directly
+  instead, and `upload_to_figshare_verified()` wraps it with checksum verification and
+  retry (cleaning up any stale partial upload first) since neither a "success" message nor
+  an absence of one can be trusted at face value.
 - **`Rscript R/snapshot_ftol_data.R`** — commits and pushes the new data files to
   `ftol_data`. "Interactive is recommended" in `docs/updating.md` predates this script's
   five `assert_that()` checks, which already gate it automatically:
