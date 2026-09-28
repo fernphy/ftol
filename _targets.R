@@ -851,6 +851,15 @@ tar_plan(
     wd = path(int_dir, "treepl/con"),
     thorough = TRUE
   ),
+  # - Sanity check (docs/updating.md step 2): compare node ages of major
+  #   clades against the currently-released ftolr tree. Not a hard gate --
+  #   ages can legitimately shift -- reviewed by a human/Claude before
+  #   release, not asserted on.
+  age_comparison_table = compare_ftol_ages(sanger_con_tree_dated, sanger_sampling),
+  tar_file(
+    age_comparison,
+    write_csv_tar(age_comparison_table, path(results_dir, "age_comparison.csv"))
+  ),
   # - Consensus tree, Testo and Sundue calibrations
   # use CV results from consensus tree
   sanger_con_cv = read_lines_tar(
@@ -1035,6 +1044,23 @@ tar_plan(
     restez_sql_db_archive,
     path(data_raw, "restez_sql_db.tar.gz")
   ),
+  # Change log (docs/updating.md step 3): frozen hand-written history per
+  # README, auto-updated with a new entry when gb_release has advanced.
+  # Non-routine entries still need a manual edit to the relevant
+  # changelog_history.txt file. input_data_readme_gh.Rmd has its own,
+  # long-stale change log that was never part of this step and is left as-is.
+  tar_file_read(
+    changelog_input_data_history,
+    "reports/input_data_readme/changelog_history.txt",
+    read_file(!!.x)
+  ),
+  changelog_input_data = update_changelog(gb_release, changelog_input_data_history),
+  tar_file_read(
+    changelog_ftol_data_history,
+    "reports/ftol_data_readme/changelog_history.txt",
+    read_file(!!.x)
+  ),
+  changelog_ftol_data = update_changelog(gb_release, changelog_ftol_data_history),
   # Render READMEs
   # - input data README for figshare
   tar_render(

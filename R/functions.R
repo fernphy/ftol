@@ -10875,6 +10875,112 @@ find_redundant_constraints <- function(
     count(anc_node_calibrated)
 }
 
+# Release reporting ----
+
+#' Prepend a change log entry when the GenBank release has advanced
+#'
+#' Compares `gb_release` to the release number recorded in the first entry
+#' of `history` (the frozen, hand-written change log text for a README).
+#' If `gb_release` is newer, prepends a new dated entry; otherwise returns
+#' `history` unchanged. Non-routine change log entries (not tied to a
+#' GenBank release) still need a manual edit to the relevant
+#' `changelog_history.txt` file -- this only automates the routine case.
+#'
+#' @param gb_release Current GenBank release number
+#' @param history Character string: existing change log text, most recent
+#'   entry first (read from e.g. reports/input_data_readme/changelog_history.txt)
+#' @return Character string: updated change log text
+update_changelog <- function(gb_release, history) {
+  latest_logged <- stringr::str_match(
+    history, "Update to GenBank release (\\d+)"
+  )[1, 2]
+  if (!is.na(latest_logged) && as.integer(latest_logged) >= as.integer(gb_release)) {
+    return(history)
+  }
+  # paste0(), not glue::glue() -- glue trims a trailing newline, which would
+  # silently swallow the blank line before the next entry.
+  new_entry <- paste0(
+    Sys.Date(), "\n\n- Update to GenBank release ", gb_release, "\n\n"
+  )
+  paste0(new_entry, history)
+}
+
+#' Make a tibble of ages by internal node number (used by
+#' compare_ftol_ages())
+#' @noRd
+make_ages_tbl <- function(phy) {
+  tibble::tibble(
+    node = seq_len(ape::Nnode(phy)) + ape::Ntip(phy),
+    age = phy$node.label
+  )
+}
+
+#' Relabel a tree's internal nodes with their age (time since root). Only
+#' meaningful for ultrametric (dated) trees. Used by compare_ftol_ages().
+#' @noRd
+label_with_ages <- function(tree, decimals = NULL) {
+  total_height <- max(ape::node.depth.edgelength(tree))
+  edge_length_all <- ape::node.depth.edgelength(tree)
+  edge_length_internal <- edge_length_all[-seq_len(ape::Ntip(tree))]
+  edge_age_internal <- total_height - edge_length_internal
+  if (!is.null(decimals)) {
+    edge_age_internal <- round(edge_age_internal, decimals)
+  }
+  tree$node.label <- edge_age_internal
+  tree
+}
+
+#' Compare node ages of major monophyletic clades between the currently-
+#' released ftolr tree and a newly-built one
+#'
+#' Sanity check for docs/updating.md step 2 ("make sure age of nodes has not
+#' changed dramatically"), produced every pipeline run as a target instead
+#' of requiring a manual `source(R/comp_ftol_ages.r)`. Not a hard gate --
+#' ages can legitimately shift -- returns a data frame for a human (or
+#' Claude) to skim rather than asserting on it. Ports the logic of the
+#' (now-superseded) standalone R/comp_ftol_ages.r script.
+#'
+#' @param new_tree Newly-built dated consensus tree (sanger_con_tree_dated)
+#' @param new_taxonomy Taxon sampling for the new tree (sanger_sampling)
+#' @param tax_levels Taxonomic levels to compare
+#' @return Data frame of taxon, old_age, new_age, diff -- sorted by
+#'   descending absolute difference
+compare_ftol_ages <- function(new_tree, new_taxonomy,
+                               tax_levels = c("family", "suborder", "order")) {
+  # ft_tree() needs ftolr attached, not just namespace-accessed via `::` --
+  # otherwise it errors with "object 'backbone_tree' not found". Matches
+  # the (now-superseded) standalone script, which did `library(ftolr)`.
+  library(ftolr)
+
+  monophyletic_ages <- function(tree, dates, taxonomy) {
+    mono <- assess_monophy(
+      taxon_sampling = taxonomy, tree = tree, tax_levels = tax_levels
+    )
+    purrr::map_df(seq_along(tax_levels), ~get_result_monophy(mono, .x)) %>%
+      dplyr::filter(monophyly == "Yes") %>%
+      dplyr::transmute(taxon, node = as.numeric(mrca)) %>%
+      dplyr::left_join(dates, by = "node") %>%
+      dplyr::select(taxon, age)
+  }
+
+  old_taxonomy <- ftolr::ftol_taxonomy %>%
+    dplyr::filter(species != "Zygnema_circumcarinatum")
+  new_taxonomy <- new_taxonomy %>%
+    dplyr::filter(species != "Zygnema_circumcarinatum")
+
+  old_dates <- ftolr::ft_tree(label_ages = TRUE) %>% make_ages_tbl()
+  old_age <- monophyletic_ages(ftolr::ft_tree(), old_dates, old_taxonomy) %>%
+    dplyr::rename(old_age = age)
+
+  new_dates <- new_tree %>% label_with_ages() %>% make_ages_tbl()
+  new_age <- monophyletic_ages(new_tree, new_dates, new_taxonomy) %>%
+    dplyr::rename(new_age = age)
+
+  dplyr::inner_join(old_age, new_age, by = "taxon") %>%
+    dplyr::mutate(diff = new_age - old_age) %>%
+    dplyr::arrange(dplyr::desc(abs(diff)))
+}
+
 # Depositing ----
 
 #' Upload a file to a figshare repository

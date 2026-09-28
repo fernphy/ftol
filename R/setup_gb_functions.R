@@ -480,6 +480,55 @@ send_gb_done_email <- function(latest_release, archive_path = NA,
   )
 }
 
+#' Notify that the main FTOL pipeline has finished and needs review
+#'
+#' Called from main_pipeline_cron.sh after run.sh finishes and (if
+#' successful) after R/publish_figshare.R + R/snapshot_ftol_data.R have run.
+#' Reuses send_gb_email()'s shared gmailr auth/send logic. Intentionally
+#' stops short of any release action -- this is the signal that it's a
+#' human's turn to review and decide on version bumps/releases.
+#'
+#' @param status One of "ready" (snapshot + FigShare publish succeeded;
+#'   waiting on a human to bump/release downstream versions),
+#'   "publish_failed" (tar_make() succeeded but snapshot/FigShare publish
+#'   errored), or "pipeline_failed" (tar_make() itself errored)
+#' @param gb_release GenBank release number just processed, or NA
+#' @param date_cutoff GenBank cutoff date, or NA
+#'
+#' @return Invisible NULL
+send_release_ready_email <- function(status, gb_release = NA,
+                                      date_cutoff = NA) {
+  subject <- switch(
+    status,
+    ready = "FTOL release ready for version bump/push",
+    publish_failed = "FTOL pipeline finished but snapshot/FigShare step failed",
+    pipeline_failed = "FTOL main pipeline run failed",
+    stop("Unknown status: ", status)
+  )
+  body_html <- switch(
+    status,
+    ready = glue::glue(
+      "The FTOL main pipeline finished on {Sys.time()}, and ",
+      "R/publish_figshare.R and R/snapshot_ftol_data.R both succeeded ",
+      "(GenBank release {gb_release}, cutoff date {date_cutoff}). ftol_data ",
+      "has been snapshotted and pushed. Next: review, then bump/release ",
+      "ftol_data, ftolr, ftol_vis, ftol_shiny, and the website ",
+      "(see docs/updating.md / the release-ftol skill)."
+    ),
+    publish_failed = glue::glue(
+      "The FTOL main pipeline finished on {Sys.time()} (GenBank release ",
+      "{gb_release}), but R/publish_figshare.R or R/snapshot_ftol_data.R ",
+      "failed. Check logs/main_pipeline_cron.log for the error before ",
+      "retrying by hand."
+    ),
+    pipeline_failed = glue::glue(
+      "The FTOL main pipeline (run.sh / tar_make()) failed on ",
+      "{Sys.time()}. Check logs/tar_make_latest.log for the error."
+    )
+  )
+  send_gb_email(subject = subject, body_html = body_html)
+}
+
 #' Send an FTOL GenBank-update notification email
 #'
 #' Shared auth + send logic, called by send_gb_start_email()/

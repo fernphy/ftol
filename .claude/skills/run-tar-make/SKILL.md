@@ -123,6 +123,38 @@ mid-run (`tar_meta(fields = "error")`, `tar_progress()`, `tar_workspace(<target>
   (`pkill -f 'mirai::dispatcher'`, `pkill -f 'crew::crew_worker'`), then clear the process
   lock as above before relaunching.
 
+## After a clean run: snapshotting and publishing (docs/updating.md steps 5-9)
+
+Once `tar_make()` finishes without error, three follow-on scripts turn the pipeline output
+into a release-ready state — none of these are targets themselves (they mutate git repos
+and external services, which don't belong in the `_targets` store):
+
+- **`Rscript R/publish_figshare.R`** — uploads `restez_sql_db.tar.gz`, `taxdmp.zip`,
+  `README.genbank`, and the rendered input-data README (renamed `README.txt`) to the FTOL
+  input-data FigShare deposit (`19474316`) via `upload_to_figshare()`
+  (`R/functions.R`, uses the `deposits` package). `overwrite = TRUE` already handles
+  replacing the old file — no separate delete step, no manual SFTP-to-Desktop detour.
+- **`Rscript R/snapshot_ftol_data.R`** — commits and pushes the new data files to
+  `ftol_data`. "Interactive is recommended" in `docs/updating.md` predates this script's
+  five `assert_that()` checks, which already gate it automatically:
+  1. `tar_git_status_targets()` — errors if anything besides `image_tag` is outdated (stale
+     build; rerun `tar_make()`).
+  2. `tar_git_status_code()` — errors if this repo has uncommitted changes; commit first.
+  3. `image_tag` must not start with `"unknown"` — the run must have come from `run.sh`
+     (fresh, provenance-tracked container), not an interactive dev-container `tar_make()`.
+  4. Two `content_id()` hash checks against `ref_aln_archive`/`restez_sql_db_archive` — if
+     one of these legitimately changed (new reference alignments prepped, or a new GenBank
+     release), the assertion failure message tells you to run `content_id(ref_aln_archive)`
+     (or the restez one) and paste the new hash into the literal constant in the script.
+     This is the one check that needs a human/Claude judgment call, not just a rerun.
+  5. `renv::status()$synchronized` must be `TRUE` — run `renv::snapshot()` if not.
+
+  If all five pass, it pulls `ftol_data`, adds the changed files plus a freshly-written
+  `LICENSE`, and pushes — safe to run non-interactively once these checks are green.
+- Only once both of the above succeed is it safe to move on to the cross-repo release
+  steps (`ftol_data`/`ftolr`/`ftol_vis`/`ftol_shiny`/website) — see the `release-ftol`
+  skill.
+
 ## Fixed hang to know about: `mpcheck_monophy`
 
 Historically `check_monophy()` (target `mpcheck_monophy`) hung indefinitely — one core

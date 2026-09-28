@@ -23,11 +23,17 @@ _targets
 _targets_gb_store
 trash
 ftol_data
+ftolr
+ftol_vis
+ftol_shiny
+fernphy.github.io
+.gh_config
 settings.json
 _supp_store
 scratch
 setup_gb.log
 logs
 .gb_download.lock
+.main_pipeline.lock
 .secrets
 .env

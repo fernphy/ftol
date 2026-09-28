@@ -1,0 +1,116 @@
+#!/bin/bash
+# Recurring driver for the FTOL main pipeline, chained after
+# gb_download_cron.sh has (maybe) pulled a new GenBank release.
+#
+# Detects new data by comparing the gb_release target recorded in
+# _targets_gb_store against the one in the main _targets store; if they
+# diverge, runs run.sh (never a hand-rolled docker run -- see the
+# run-tar-make skill), waits for it to finish, then runs
+# R/publish_figshare.R and R/snapshot_ftol_data.R headlessly and emails
+# joelnitta@gmail.com either way. Stops there -- version bumps/releases in
+# ftol_data/ftolr/ftol_vis/ftol_shiny/the website always need a human (see
+# the release-ftol skill).
+#
+# Invoked from jnitta's crontab under flock (see below). Full write-up:
+# docs/nittalab_main_pipeline_cron.md
+#
+#   0 3 * * * /usr/bin/flock -n /home/jnitta/ftol/.main_pipeline.lock \
+#     /home/jnitta/ftol/main_pipeline_cron.sh \
+#     >> /home/jnitta/ftol/logs/main_pipeline_cron.log 2>&1
+
+set -uo pipefail
+
+FTOL_DIR=/home/jnitta/ftol
+GH_CONFIG_HOST_DIR=/home/jnitta/.gh_config
+GITCONFIG_HOST_FILE=/home/jnitta/.gitconfig
+ACTIVE_WINDOW_SECS=3600
+
+cd "${FTOL_DIR}" || exit 1
+
+echo "=== main_pipeline cron start: $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+
+# Staleness guard, same rationale as gb_download_cron.sh: targets' PID-based
+# "already running" guard doesn't cross container/PID-namespace boundaries.
+progress="${FTOL_DIR}/_targets/meta/progress"
+if [ -f "${progress}" ]; then
+  age=$(( $(date +%s) - $(stat -c %Y "${progress}") ))
+  if [ "${age}" -lt "${ACTIVE_WINDOW_SECS}" ]; then
+    echo "main_pipeline: ${progress} modified ${age}s ago (< ${ACTIVE_WINDOW_SECS}s):" \
+         "a pipeline run appears active. Skipping this tick."
+    echo "=== main_pipeline cron end (exit 0, skipped): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+    exit 0
+  fi
+fi
+
+docker_read() {
+  docker run --rm -v "${FTOL_DIR}":/wd -w /wd joelnitta/ftol:latest Rscript -e "$1"
+}
+
+# Both _targets.yaml stores carry a gb_release target; they diverge exactly
+# when gb_download has pulled a release the main pipeline hasn't processed
+# yet. No separate marker file needed.
+gb_release_downloaded=$(docker_read \
+  'cat(targets::tar_read(gb_release, store = "_targets_gb_store"))' 2>/dev/null)
+gb_release_processed=$(docker_read \
+  'cat(targets::tar_read(gb_release, store = "_targets"))' 2>/dev/null)
+
+if [ -z "${gb_release_downloaded}" ]; then
+  echo "main_pipeline: could not read gb_release from _targets_gb_store (has" \
+       "gb_download_cron.sh completed a run yet?). Skipping."
+  echo "=== main_pipeline cron end (exit 0, no gb_download data): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+fi
+
+if [ "${gb_release_downloaded}" = "${gb_release_processed}" ]; then
+  echo "main_pipeline: gb_release unchanged (${gb_release_processed}). Nothing to do."
+  echo "=== main_pipeline cron end (exit 0, no new data): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+fi
+
+echo "main_pipeline: new GenBank release ${gb_release_downloaded} (main pipeline last" \
+     "processed ${gb_release_processed:-none}). Running run.sh."
+
+# IMAGE_TAG is hard-coded in run.sh and bumped by hand per release; read it
+# from there rather than duplicating/hardcoding it here.
+image_tag=$(grep -oP '(?<=^IMAGE_TAG=)\S+' run.sh | head -1)
+bash run.sh
+
+# run.sh launches a detached, --rm container; wait for it to exit.
+sleep 10
+while docker ps --filter "ancestor=${image_tag}" --format '{{.ID}}' | grep -q .; do
+  sleep 60
+done
+
+error_count=$(docker_read \
+  'e <- targets::tar_meta(fields = "error", complete_only = TRUE); cat(nrow(e))')
+
+if [ "${error_count}" != "0" ]; then
+  echo "main_pipeline: tar_make() reported ${error_count} error(s); see" \
+       "logs/tar_make_latest.log."
+  docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'pipeline_failed')"
+  echo "=== main_pipeline cron end (exit 1, pipeline failed): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 1
+fi
+
+echo "main_pipeline: tar_make() finished without error. Running snapshot + FigShare publish."
+
+docker run --rm \
+  -v "${FTOL_DIR}":/wd -w /wd \
+  -v "${GH_CONFIG_HOST_DIR}":/gh_config \
+  -v "${GITCONFIG_HOST_FILE}":/root/.gitconfig_persisted \
+  -e GH_CONFIG_DIR=/gh_config \
+  -e GIT_CONFIG_GLOBAL=/root/.gitconfig_persisted \
+  joelnitta/ftol:latest \
+  Rscript -e "source('R/publish_figshare.R'); source('R/snapshot_ftol_data.R')"
+publish_status=$?
+
+if [ "${publish_status}" -eq 0 ]; then
+  docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'ready', gb_release = ${gb_release_downloaded})"
+  echo "=== main_pipeline cron end (exit 0, release ready): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+else
+  echo "main_pipeline: publish_figshare.R / snapshot_ftol_data.R failed (exit ${publish_status})."
+  docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'publish_failed', gb_release = ${gb_release_downloaded})"
+  echo "=== main_pipeline cron end (exit 1, publish failed): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 1
+fi

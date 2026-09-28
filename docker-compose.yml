@@ -10,5 +10,11 @@ services:
       DISABLE_AUTH: "true"
       HOST_UID: "${UID}"
       HOST_GID: "${GID}"
+      # Persist gh/git auth on the host bind mount so it survives container
+      # rebuilds (default /root/.config/gh and ~/.gitconfig both live on the
+      # ephemeral overlay layer). See docs/updating.md Phase 0 / the
+      # release-ftol skill.
+      GH_CONFIG_DIR: /home/rstudio/ftol/.gh_config
+      GIT_CONFIG_GLOBAL: /home/rstudio/ftol/.gitconfig
     working_dir: /home/rstudio/ftol
     command: sleep infinity
