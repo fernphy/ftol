@@ -19,7 +19,14 @@ library(contentid)
 #' @param path Path to write CC0 license
 #' @return Path where the CC0 license was written
 write_cc0 <- function(path) {
-  cc0_file <- contentid::resolve("hash://sha256/6d489af6292662d9e36d34ce49423784984a5f6e41d7b58f49b01264df59fa03") # nolint
+  cc0_hash <- "hash://sha256/6d489af6292662d9e36d34ce49423784984a5f6e41d7b58f49b01264df59fa03" # nolint
+  # Already in place (the normal case after the first release): nothing to do.
+  # resolve() can't be relied on here -- a fresh `docker run --rm` has an
+  # empty contentid cache, so it finds no source for the hash.
+  if (fs::file_exists(path) && contentid::content_id(path) == cc0_hash) {
+    return(path)
+  }
+  cc0_file <- contentid::resolve(cc0_hash)
   fs::file_move(cc0_file, path)
   path
 }
