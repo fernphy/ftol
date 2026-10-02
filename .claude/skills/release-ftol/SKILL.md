@@ -20,7 +20,10 @@ Check which of these already happened before doing anything:
   `run-tar-make`'s job, not this skill's.
 - Has `R/publish_figshare.R` / `R/snapshot_ftol_data.R` already run? Check
   `git -C ftol_data log -1` — if its message has `code=<hash>` matching the
-  current `ftol` HEAD, snapshotting is done.
+  current `ftol` HEAD, snapshotting is done. For FigShare, don't trust a
+  log or handoff note: compare the *public* record (unauthenticated API)
+  against the local files; "uploaded and verified" only means the pending
+  edit is staged (see steps 5-7).
 - If `main_pipeline_cron.sh` (see `docs/nittalab_main_pipeline_cron.md`) is
   set up on the host, both of the above may already be done and you're
   picking this up from its "ready for version bump/push" email — in that
@@ -44,12 +47,65 @@ Check which of these already happened before doing anything:
 4. `bash run.sh` — see `run-tar-make`.
 5-7. FigShare publish — `Rscript R/publish_figshare.R` (uploads
    `restez_sql_db.tar.gz`, `taxdmp.zip`, `README.genbank`, `README.txt` to
-   deposit `19474316` via `upload_to_figshare()`; `overwrite = TRUE`, no
-   manual delete step).
+   deposit `19474316` via `upload_to_figshare_verified()`; overwrites, no
+   manual delete step). **A printed "verified by checksum" does NOT mean it
+   is public.** On an already-public deposit, uploads only change the
+   owner's *pending edit* (https://figshare.com/account/articles/19474316);
+   the public record keeps serving the old files until the owner clicks
+   Publish. Procedure:
+
+   1. Run it in tmux/detached (the restez upload is large).
+   2. List the pending files:
+      `curl -s -H "Authorization: token $FIGSHARE_TOKEN"
+      https://api.figshare.com/v2/account/articles/19474316/files`
+      (token is in `.Renviron`; never echo it). Retried uploads leave
+      same-named duplicates with identical md5s. Remove them with
+      `bash figshare_delete_files.sh <id>:<name>:<md5> ...` — it only
+      deletes an id if its name and md5 still match, never publishes, and
+      is pre-approved in `.claude/settings.local.json`. Keep one of each
+      name (`ref_aln.tar.gz` is untouched and must remain).
+   3. → **Confirmation gate: the user publishes.** Tell them the pending
+      files look right (names, sizes, md5s equal to the local files under
+      `_targets/user/data_raw/`) and ask them to click Publish. Do not call
+      the publish API yourself.
+   4. Verify the *public* record afterwards: unauthenticated
+      `GET https://api.figshare.com/v2/articles/19474316` shows a bumped
+      `version`, and the downloaded `README.genbank` names the new GenBank
+      release. Only then continue.
 8. Commit any final `ftol` code changes yourself, as usual.
-9. `Rscript R/snapshot_ftol_data.R` — see `run-tar-make`'s "After a clean
-   run" section for its five checks. Safe to run non-interactively once
-   they're green.
+9. Snapshot — do the "Before the snapshot" preflight below, then
+   `Rscript R/snapshot_ftol_data.R` inside the container (see
+   `run-tar-make`'s "After a clean run" section for the command and its
+   checks). Safe to run non-interactively once the preflight is green.
+
+### Before the snapshot (preflight; each item bit us once)
+
+- **`restez_sql_db_hash` / `ref_aln_hash` in `R/snapshot_ftol_data.R`**
+  are hard-coded and go stale whenever the archives are rebuilt. Don't just
+  paste a new hash: first confirm the local archive is what FigShare serves
+  (the `gb_release.txt` inside `restez_sql_db.tar.gz` and `README.genbank`
+  should state the release you're shipping, and the md5s should match the
+  public record). Then update the hash (`contentid::content_id(path)`) and
+  have the user commit/push — the script requires a clean code repo.
+- **Code repo must be clean as seen from the container**, which doesn't
+  read the host's global git ignore. Untracked local-only files (e.g.
+  `.claude/settings.local.json`) make the check fail; list them in the
+  repo's `.git/info/exclude`, not just the global ignore.
+- **`ftol_data` must be able to fast-forward.** `git -C ftol_data status -sb`
+  — if it is behind origin and has local edits to tracked non-data files
+  (typically `release.R`, left modified by an earlier session), `git_pull`
+  fails with "1 conflict prevents checkout". Fix: `git -C ftol_data stash
+  push -- release.R` before the snapshot (do NOT `git checkout --` it; that
+  discards work and is blocked), then after the snapshot `git stash pop`,
+  keep the automated version, and have the user commit/push `release.R`
+  (step 10 also needs a clean `ftol_data`).
+- The snapshot container runs as root, so it leaves root-owned files in
+  `ftol_data/.git` (and the skills dir if edited from the dev container);
+  host-side `git fetch` there may then fail on `FETCH_HEAD`. Harmless to
+  the snapshot; `sudo chown -R jnitta:jnitta` fixes it.
+- `write_cc0()` doesn't need the contentid cache (a `docker run --rm`
+  starts with an empty one) as long as `ftol_data/LICENSE` is already the
+  CC0 text.
 
 ## Steps 10-16 (cross-repo, confirmation-gated)
 
@@ -108,6 +164,57 @@ wherever it is.
 
 → **Confirmation gate** before pushing — GH Actions deploys the site
 immediately on push to `main`.
+
+## Running steps 10-16 on the bare host (not the dev container)
+
+The scripts' hard-coded sibling paths (`../ftol`) assume the dev-container
+layout; on the host the repos are nested (`~/ftol/{ftol_data,ftolr,...}`),
+so the pipeline's `_targets` is at `..`. Each bit us once:
+
+- `ftol_data/release.R` and `ftolr/update_data_ver.R` need
+  `ftol_repo <- if (dir.exists("../ftol/_targets")) "../ftol" else ".."`
+  (done in `release.R`, committed; `update_data_ver.R` is untracked in
+  `ftolr`, patched in place). `release.R` also needs a dashed cutoff date
+  (`gsub("/", "-", ...)`), as does `update_data_ver.R`, otherwise
+  `ft_data_ver("cutoff")` becomes `2026/08/02` and ends up in release notes.
+- The host `gh` is old (2.4.0): `gh release create ... --latest` fails with
+  `unknown flag`. Omit `--latest` (the newest non-prerelease becomes Latest
+  anyway). `ftolr/inst/release.R` already omits it.
+- `ftolr`: untracked `update_data_ver.R` makes `inst/release.R`'s
+  clean-repo check fail and would be swept into the script's own commit --
+  add it to `ftolr/.git/info/exclude` and exclude it from the commit.
+  `devtools::build_readme()` in `inst/release.R` always changes `README.md`
+  (example output) -- commit it ("Update README") before the push/release.
+  `git fetch --tags` in `ftol_data` first, or `git describe` misses the new
+  tag.
+- Sibling repos (`ftol_vis`, `ftol_shiny`, `fernphy.github.io`) have empty
+  renv libraries on the host: run `renv::restore(prompt = FALSE)` in tmux
+  first (~15 min, compiles from source; most is cached afterwards). Needs
+  system libs `libharfbuzz-dev libfribidi-dev libtiff-dev libjpeg-dev
+  libwebp-dev`. `ftol_shiny`'s `update_ftolr.R` ends with a blocking
+  `shiny::runApp()` and needs `gert` (not in its renv) -- run restore +
+  `renv::install("fernphy/ftolr")` + `renv::snapshot()` by hand, commit
+  `renv.lock`, and smoke-test headless (`runApp(..., launch.browser =
+  FALSE)` + `curl`).
+- `fernphy.github.io` renv is 0.15.5 with `renv.config.pak.enabled = TRUE`
+  in `.Rprofile`; `renv::install()` then fails with "Cannot parse package".
+  Run it with `options(renv.config.pak.enabled = FALSE)`. The restore must
+  happen BEFORE `update_ftolr.R` (it needs the old `ftolr` installed).
+  `update_ftolr.R` doesn't update the previous release's news link: change
+  `#current-v<old>` to `#v<old>` in `news.Qmd` and delete its FIXME.
+- `renv::snapshot()` on the host rewrites many `Repository` fields
+  (`CRAN` -> `RSPM`/PPM URL) and reorders entries. Rebuild `renv.lock` from
+  `git show HEAD:renv.lock` with only the `ftolr` Version/RemoteSha/Hash
+  lines changed, so the commit is a 3-line diff.
+- `git add` refuses paths in `.gitignore` even when tracked (`ftol_vis`'s
+  `_targets/user/taxonium/*`): use `git add -u <path>`.
+- shinyapps.io deploy needs an rsconnect account on the host
+  (`rsconnect::setAccountInfo()`, done once by the user in `ftol_shiny`);
+  target the existing app explicitly: `rsconnect::deployApp("ftol_explorer",
+  appName = "ftol_explorer", account = "fernphy", server = "shinyapps.io",
+  forceUpdate = TRUE)`. The auto-mode classifier blocks this and the
+  `gh release create` calls even with an allow rule -- the user runs them,
+  or approves the prompt.
 
 ## Out of scope
 
