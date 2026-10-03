@@ -80,10 +80,12 @@ alongside `run.sh`/`gb_download_cron.sh`):
    polling `docker ps`, then checks `tar_meta(fields = "error")` for a clean
    finish.
 4. Clean finish → runs `R/publish_figshare.R` and `R/snapshot_ftol_data.R` in
-   one container, with **extra mounts** beyond what `gb_download_cron.sh`
-   needs: `.gh_config` and `.gitconfig` (see setup step 1 above) — required
-   because these two scripts push to `ftol_data`/FigShare, unlike the plain
-   `tar_make()` container.
+   one container, as the host user (`HOST_UID`/`HOST_GID`, so nothing in the
+   repo ends up root-owned) with the gitconfig mounted read-only at
+   `/etc/gitconfig_persisted` (commit author only). The container has no `gh`
+   and no credentials, so the snapshot **commits but does not push**; the
+   script then pushes `ftol_data` from the host
+   (`git -C ftol_data push origin main`), which has the `gh` credentials.
 5. Either way, emails `joelnitta@gmail.com` via `send_release_ready_email()`
    — `"ready"` (snapshot + FigShare succeeded, your turn to review/release),
    `"publish_failed"` (pipeline succeeded but the snapshot/FigShare step

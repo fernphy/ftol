@@ -99,10 +99,19 @@ Check which of these already happened before doing anything:
   discards work and is blocked), then after the snapshot `git stash pop`,
   keep the automated version, and have the user commit/push `release.R`
   (step 10 also needs a clean `ftol_data`).
-- The snapshot container runs as root, so it leaves root-owned files in
-  `ftol_data/.git` (and the skills dir if edited from the dev container);
-  host-side `git fetch` there may then fail on `FETCH_HEAD`. Harmless to
-  the snapshot; `sudo chown -R jnitta:jnitta` fixes it.
+- If a root-owned file still shows up (`find ~/ftol -user root`), it came
+  from a container run without `HOST_UID`/`HOST_GID` or from a dev
+  container session started before `remoteUser` was set; fix once with
+  `sudo chown -R jnitta:jnitta ~/ftol`.
+- **Run the snapshot/publish container as the host user, and push from the
+  host.** Use the `docker run` in `run-tar-make`'s "After a clean run"
+  section: `-e HOST_UID=$(id -u) -e HOST_GID=$(id -g)` (no root-owned
+  files left in `ftol_data/.git`, issue #38) and the gitconfig mounted at
+  `/etc/gitconfig_persisted`. The image has no `gh` and the container has
+  no credentials, so the snapshot commits and prints a reminder instead of
+  pushing -- then run `git -C ftol_data push origin main` on the host.
+  Docker is only for the image-bound scripts (`tar_make()`, FigShare
+  publish, snapshot); everything else runs on the host.
 - `write_cc0()` doesn't need the contentid cache (a `docker run --rm`
   starts with an empty one) as long as `ftol_data/LICENSE` is already the
   CC0 text.
@@ -215,6 +224,36 @@ so the pipeline's `_targets` is at `..`. Each bit us once:
   forceUpdate = TRUE)`. The auto-mode classifier blocks this and the
   `gh release create` calls even with an allow rule -- the user runs them,
   or approves the prompt.
+
+## Working agreements that applied to this release
+
+- **Commits only on request** (org policy in `/etc/claude-code/CLAUDE.md`),
+  including the scripts' own commits (`release.R`, `update_data_ver.R`,
+  the `ftolr` release prep). Get one explicit OK for "let the script make
+  its N local commits" per step, and otherwise ask the user to commit/push
+  code changes (the snapshot requires a clean, pushed code repo).
+- **Public actions are the user's call even when approved in chat.** The
+  auto-mode classifier blocked `gh release create` (once), the shiny
+  deploy, and FigShare API deletes, regardless of allow rules for the
+  exact command. Don't retry or rephrase: hand the user the exact command.
+  Narrow, scripted helpers (`figshare_delete_files.sh`) were allowed.
+- **Verify the public result after every public step**, don't trust the
+  script's last line: `gh release list -R fernphy/<repo> -L 1`; for the
+  site `gh run list -R fernphy/fernphy.github.io -L 1` then `curl` the page
+  for "Current: v<new>"; for the app `curl` for HTTP 200 and the version
+  string; for FigShare the unauthenticated API (see steps 5-7).
+- **The host does have R 4.5 + renv** (the "no local R on the bare host"
+  note in `run-tar-make` is about the *pipeline*, which needs the image).
+  Steps 10-16 run on the host; only the image-bound scripts (`tar_make()`,
+  FigShare publish, snapshot) run in Docker, as the host user.
+- Run anything slow (renv restores, `renv::install`, FigShare upload) in
+  detached tmux with a log under `logs/` (user's global CLAUDE.md), and
+  put R snippets in a script file rather than nesting quotes in
+  `tmux new-session "..."` (a mangled `Rscript -e` caused a spurious
+  "Cannot parse package" error).
+- Delete `RELEASE_HANDOFF.md` and drop leftover `git stash` entries when
+  the release is finished; remove one-off permission rules from
+  `.claude/settings.local.json`.
 
 ## Out of scope
 

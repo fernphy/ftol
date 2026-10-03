@@ -130,29 +130,37 @@ into a release-ready state — none of these are targets themselves (they mutate
 and external services, which don't belong in the `_targets` store).
 
 **Context matters here too, same as launching `tar_make()` itself.** In the interactive
-dev container, `R`/`renv` are already the shell you're in — just run the `Rscript ...`
-commands below directly. **On the bare nittalab host, there is no local R/renv at all** —
-only Docker. Wrap each script in a `docker run`, matching exactly what
-`main_pipeline_cron.sh` already does (don't hand-roll a different invocation): mount the
-repo at `/wd`, and **also** mount the persisted `gh`/git config (needed because these two
-scripts push to `ftol_data`/FigShare, unlike a plain `tar_make()` container):
+dev container, `R`/`renv` are already the shell you're in -- just run the `Rscript ...`
+commands below directly. **On the bare nittalab host, the `ftol` project's renv library
+is not installed** (the pipeline's package set lives in the Docker image), so these two
+scripts run in a `docker run`, matching what `main_pipeline_cron.sh` does (don't hand-roll
+a different invocation). Docker is for these image-bound scripts only; everything after
+them (`release.R`, the sibling-repo scripts, `git push`, `gh`) runs on the host.
 
 ```bash
 docker run --rm \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
   -v /home/jnitta/ftol:/wd -w /wd \
-  -v /home/jnitta/.gh_config:/gh_config \
-  -v /home/jnitta/.gitconfig:/root/.gitconfig_persisted \
-  -e GH_CONFIG_DIR=/gh_config \
-  -e GIT_CONFIG_GLOBAL=/root/.gitconfig_persisted \
+  -v /home/jnitta/.gitconfig:/etc/gitconfig_persisted:ro \
+  -e GIT_CONFIG_GLOBAL=/etc/gitconfig_persisted \
   joelnitta/ftol:latest \
   Rscript -e "source('R/publish_figshare.R'); source('R/snapshot_ftol_data.R')"
+
+# The container can't push (the image has no `gh`, and no credentials are
+# mounted): the snapshot commits, then prints a reminder. Push from the host:
+git -C ftol_data push origin main
 ```
 
+- `HOST_UID`/`HOST_GID` make `entrypoint.sh` run the script as your user (via `gosu`), so
+  files written into the bind-mounted repos (`ftol_data/.git`, `_targets`, ...) are owned
+  by you, not root. Without them the container runs as root and leaves root-owned objects
+  behind (issue #38).
+- The gitconfig is mounted at `/etc/...` (not `/root/...`, which the remapped user can't
+  read) read-only, only for the commit author.
+- `FIGSHARE_TOKEN` comes from `.Renviron` in the mounted repo -- no extra mount needed.
+
 (Split into two separate `docker run` calls, or two `source()` calls in one, either
-works — the example above matches `main_pipeline_cron.sh`'s single-container form.) See
-`docs/nittalab_main_pipeline_cron.md` for the full rationale on why both mounts are
-needed (`~/.gitconfig` lives on the same ephemeral overlay as `~/.config/gh` inside a
-plain container, so `GH_CONFIG_DIR` alone isn't enough for push to work headlessly).
+works -- the example above matches `main_pipeline_cron.sh`'s single-container form.)
 
 - **`Rscript R/publish_figshare.R`** — uploads `restez_sql_db.tar.gz`, `taxdmp.zip`,
   `README.genbank`, and the rendered input-data README (renamed `README.txt`) to the FTOL

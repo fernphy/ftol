@@ -169,8 +169,19 @@ if (nrow(added) > 0) {
     committer = git_signature_default(),
     message = msg
   )
-  # Push
-  git_push(remote = "origin", repo = "ftol_data", verbose = TRUE)
+  # Push -- only where a credential helper exists. The release image has no
+  # `gh` (and runs as an unprivileged remapped user with no credentials), so
+  # inside it the push is left to the host:
+  #   git -C ftol_data push origin main
+  if (nzchar(Sys.which("gh"))) {
+    git_push(remote = "origin", repo = "ftol_data", verbose = TRUE)
+  } else {
+    message(
+      "gh not found (expected inside the release container): committed but ",
+      "NOT pushed. Push from the host with: ",
+      "git -C ftol_data push origin main"
+    )
+  }
 } else {
   print("No changes to add; nothing committed or pushed")
 }

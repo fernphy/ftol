@@ -21,8 +21,10 @@
 set -uo pipefail
 
 FTOL_DIR=/home/jnitta/ftol
-GH_CONFIG_HOST_DIR=/home/jnitta/.gh_config
 GITCONFIG_HOST_FILE=/home/jnitta/.gitconfig
+# Run containers as the host user (entrypoint.sh remaps via HOST_UID/GID) so
+# nothing they write into the bind-mounted repos ends up root-owned.
+HOST_USER_ARGS="-e HOST_UID=$(id -u) -e HOST_GID=$(id -g)"
 ACTIVE_WINDOW_SECS=3600
 
 cd "${FTOL_DIR}" || exit 1
@@ -43,7 +45,8 @@ if [ -f "${progress}" ]; then
 fi
 
 docker_read() {
-  docker run --rm -v "${FTOL_DIR}":/wd -w /wd joelnitta/ftol:latest Rscript -e "$1"
+  docker run --rm ${HOST_USER_ARGS} -v "${FTOL_DIR}":/wd -w /wd \
+    joelnitta/ftol:latest Rscript -e "$1"
 }
 
 # Both _targets.yaml stores carry a gb_release target; they diverge exactly
@@ -94,15 +97,22 @@ fi
 
 echo "main_pipeline: tar_make() finished without error. Running snapshot + FigShare publish."
 
-docker run --rm \
+# The gitconfig is only for the commit author; the container has no gh and no
+# credentials, so it can't push -- the host does that below.
+docker run --rm ${HOST_USER_ARGS} \
   -v "${FTOL_DIR}":/wd -w /wd \
-  -v "${GH_CONFIG_HOST_DIR}":/gh_config \
-  -v "${GITCONFIG_HOST_FILE}":/root/.gitconfig_persisted \
-  -e GH_CONFIG_DIR=/gh_config \
-  -e GIT_CONFIG_GLOBAL=/root/.gitconfig_persisted \
+  -v "${GITCONFIG_HOST_FILE}":/etc/gitconfig_persisted:ro \
+  -e GIT_CONFIG_GLOBAL=/etc/gitconfig_persisted \
   joelnitta/ftol:latest \
   Rscript -e "source('R/publish_figshare.R'); source('R/snapshot_ftol_data.R')"
 publish_status=$?
+
+if [ "${publish_status}" -eq 0 ]; then
+  # Push the snapshot commit from the host, which has the gh credentials
+  # (no-op "Everything up-to-date" if the snapshot had nothing to commit).
+  git -C "${FTOL_DIR}/ftol_data" push origin main
+  publish_status=$?
+fi
 
 if [ "${publish_status}" -eq 0 ]; then
   docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'ready', gb_release = ${gb_release_downloaded})"
