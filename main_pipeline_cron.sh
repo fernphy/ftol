@@ -2,8 +2,9 @@
 # Recurring driver for the FTOL main pipeline, chained after
 # gb_download_cron.sh has (maybe) pulled a new GenBank release.
 #
-# Detects new data by comparing the gb_release target recorded in
-# _targets_gb_store against the one in the main _targets store; if they
+# Detects new data by comparing the current_release target (the release
+# gb_download has actually pulled) recorded in _targets_gb_store against the
+# gb_release target in the main _targets store; if they
 # diverge, runs run.sh (never a hand-rolled docker run -- see the
 # run-tar-make skill), waits for it to finish, then runs
 # R/publish_figshare.R and R/snapshot_ftol_data.R headlessly and emails
@@ -49,16 +50,17 @@ docker_read() {
     joelnitta/ftol:latest Rscript -e "$1"
 }
 
-# Both _targets.yaml stores carry a gb_release target; they diverge exactly
+# The download store's current_release and the main store's gb_release both
+# hold the GenBank release number; they diverge exactly
 # when gb_download has pulled a release the main pipeline hasn't processed
 # yet. No separate marker file needed.
 gb_release_downloaded=$(docker_read \
-  'cat(targets::tar_read(gb_release, store = "_targets_gb_store"))' 2>/dev/null)
+  'cat(targets::tar_read(current_release, store = "_targets_gb_store"))' 2>/dev/null)
 gb_release_processed=$(docker_read \
   'cat(targets::tar_read(gb_release, store = "_targets"))' 2>/dev/null)
 
 if [ -z "${gb_release_downloaded}" ]; then
-  echo "main_pipeline: could not read gb_release from _targets_gb_store (has" \
+  echo "main_pipeline: could not read current_release from _targets_gb_store (has" \
        "gb_download_cron.sh completed a run yet?). Skipping."
   echo "=== main_pipeline cron end (exit 0, no gb_download data): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
   exit 0

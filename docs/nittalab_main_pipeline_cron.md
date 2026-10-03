@@ -73,7 +73,7 @@ alongside `run.sh`/`gb_download_cron.sh`):
    `gb_download_cron.sh`, same caveat: **comment out the crontab line before
    running the pipeline by hand**, the guard is a backstop, not a
    substitute.
-2. Compares `tar_read(gb_release, store = "_targets_gb_store")` against
+2. Compares `tar_read(current_release, store = "_targets_gb_store")` against
    `tar_read(gb_release, store = "_targets")` — no new marker file, reuses
    targets both stores already carry. Equal → exit 0 (the common case).
 3. Diverge → `bash run.sh` (reads `IMAGE_TAG` out of `run.sh` itself rather
