@@ -20,22 +20,23 @@ the `release-ftol` skill).
 
 ## One-time setup
 
-1. Confirm `gh`/git credentials are set up per Phase 0 of the FTOL release
-   automation plan: a persisted `gh` login at `/home/jnitta/.gh_config`
-   (`GH_CONFIG_DIR`), git protocol switched to `https`, and
-   `gh auth setup-git` run once **with `GIT_CONFIG_GLOBAL` also pointed at
-   a persisted file** (`/home/jnitta/.gitconfig`) so `git push`/
-   `gert::git_push()` work with no SSH agent or live terminal. Both env
-   vars are needed together: `~/.gitconfig` (where `gh auth setup-git`
-   would otherwise write the `credential.helper` entry) lives on the same
-   ephemeral overlay layer as `~/.config/gh` and is lost on rebuild just
-   the same — `GH_CONFIG_DIR` alone isn't enough. Also add
-   `git config --global --add safe.directory '*'` to that same persisted
-   file (a fresh cron container has no other safe.directory entries for the
-   mounted repos). Verify by running a git command with *only* these two
-   env vars set (no other config) in a plain `docker exec`/fresh
-   `docker run` — not the VS Code terminal, which masks gaps via its own
-   SSH agent forwarding and pre-existing `/root/.gitconfig`.
+1. Confirm the **host** can push to GitHub non-interactively, since the host
+   (not the container) pushes `ftol_data` after the snapshot: `gh auth
+   status` should show a login, and `~/.gitconfig` should have the
+   `credential.helper = !/usr/bin/gh auth git-credential` entries (from
+   `gh auth setup-git`, with git protocol `https`) so `git push` needs no SSH
+   agent or live terminal. Verify with `git -C ftol_data push --dry-run
+   origin main` from a plain shell (the cron environment uses the same
+   `~/.gitconfig`; a VS Code terminal can mask gaps via its own SSH agent
+   forwarding).
+
+   The release container gets none of these credentials: it has no `gh`, and
+   mounts `~/.gitconfig` read-only at `/etc/gitconfig_persisted`
+   (`GIT_CONFIG_GLOBAL`) only so commits carry the right author. That file
+   should also contain `[safe] directory = *` (a fresh container has no
+   other safe.directory entries for the mounted repos). The persisted
+   `/home/jnitta/.gh_config` (`GH_CONFIG_DIR`) is only used by the dev
+   container (see `docker-compose.yml`), not by this cron job.
 2. Confirm `FIGSHARE_TOKEN` is present in `.Renviron` (already required for
    `R/publish_figshare.R`, already used by the pre-existing
    `upload_to_figshare()` helper).
