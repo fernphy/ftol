@@ -174,6 +174,21 @@ wherever it is.
 → **Confirmation gate** before pushing — GH Actions deploys the site
 immediately on push to `main`.
 
+**Order matters: push `ftol_vis` (step 14) BEFORE the site.** The site's
+`viewer.Rmd` reads `ftol_vis`'s `ftol_config.json` from
+raw.githubusercontent.com (`main`) at *render* time and bakes it into the
+Taxonium URL on the page. If the site is rendered before the new
+`ftol_vis` commit is on `main` (or within raw.githubusercontent's ~5 min
+cache), the Tree Viewer keeps showing the old version ("FTOL v1.8.0") even
+though the data is right -- this happened for v1.9.0. After the push, verify
+the live page, not just the Action: fetch
+`https://fernphy.github.io/viewer.html` and decode the `config=` parameter
+of the taxonium.org URL; its `title` must be
+`FTOL v<new>`. If it's stale, re-render without a new commit:
+`gh workflow run build_site.yml -R fernphy/fernphy.github.io --ref main`
+(the workflow has `workflow_dispatch`), wait for the render and the
+`pages-build-deployment` run, and re-check.
+
 ## Running steps 10-16 on the bare host (not the dev container)
 
 The scripts' hard-coded sibling paths (`../ftol`) assume the dev-container
