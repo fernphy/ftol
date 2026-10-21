@@ -76,7 +76,12 @@ tar_plan(
     path(data_raw, "plastome_outgroups.csv"),
     read_csv(!!.x)
   ),
-  fern_accs = ncbi_acc_get("Polypodiopsida[ORGN] AND 10:200000[SLEN]"),
+  # `release_check` is referenced only so this re-queries NCBI for each new
+  # release instead of staying cached from the previous one
+  fern_accs = {
+    release_check
+    ncbi_acc_get("Polypodiopsida[ORGN] AND 10:200000[SLEN]")
+  },
   keep_accs = unique(c(fern_accs, outgroup_accs$accession)),
 
   # Notify download has started (fires once per new release; cached on resume)
@@ -87,7 +92,12 @@ tar_plan(
   # Stream download + filter, one plant-division file at a time ----
   tar_target(
     plant_file_records,
-    download_and_filter_one_file(plant_files, keep_accs, scratch_dir),
+    {
+      # `release_check` (the release number) is referenced so every branch
+      # re-downloads for a new release even if the file names are unchanged
+      release_check
+      download_and_filter_one_file(plant_files, keep_accs, scratch_dir)
+    },
     pattern = map(plant_files)
   ),
 
@@ -110,10 +120,21 @@ tar_plan(
   # the gate release_check reads, so it must be the LAST official file to
   # change -- a crash any time before that leaves release_check seeing the
   # old release, and a resumed run correctly picks the work back up.
+  # Re-downloaded on every run that gets past release_check (it's tiny), so a
+  # README that NCBI hadn't updated yet gets refreshed on the next day's run
+  # instead of staying cached; release_consistent (below) checks it.
   tar_target(
     gb_readme_scratch_path,
-    download_gb_readme(scratch_dir),
-    format = "file"
+    {
+      release_check
+      download_gb_readme(scratch_dir)
+    },
+    format = "file",
+    cue = tar_cue(mode = "always")
+  ),
+  # Must pass before the gate flips (see gb_release_published)
+  release_consistent = assert_gb_readme_matches(
+    gb_readme_scratch_path, latest_release
   ),
   tar_target(
     gb_release_scratch_path,
@@ -177,7 +198,7 @@ tar_plan(
       gb_release_scratch_path, path(data_raw, "restez/gb_release.txt"),
       depends = list(
         restez_db_published, gb_readme_published, archive_result,
-        restez_tar_archive, taxdmp_path
+        restez_tar_archive, taxdmp_path, release_consistent
       )
     ),
     format = "file"

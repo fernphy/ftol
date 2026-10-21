@@ -176,13 +176,47 @@ gb_release_number <- function() {
 #' @param current_release Numeric; release number of the currently-installed
 #'   local database
 #'
-#' @return TRUE (invisibly) if a new release is available; errors otherwise
+#' @return `latest_release` (invisibly) if a new release is available; errors
+#'   otherwise. The release number (not TRUE) is returned on purpose, so
+#'   targets depending on this one invalidate when the release changes.
 assert_new_gb_release <- function(latest_release, current_release) {
   assertthat::assert_that(
     isTRUE(latest_release > current_release),
     msg = "No new GenBank data available; quitting"
   )
-  invisible(TRUE)
+  # Return the release number, NOT TRUE: downstream targets depend on this
+  # target, and a constant value would leave them cached from the previous
+  # release (that is how release 274 was once "published" with 273's data).
+  invisible(latest_release)
+}
+
+#' Check the downloaded README is for the release being published
+#'
+#' Guards the release gate: gb_release.txt must never flip to a release whose
+#' README (and hence data) is a different one, e.g. a stale cached README, or
+#' NCBI having bumped GB_Release_Number before updating README.genbank.
+#'
+#' @param readme_path Path to the downloaded README.genbank
+#' @param latest_release Numeric release number being published
+#'
+#' @return Invisibly, the release number found in the README
+assert_gb_readme_matches <- function(readme_path, latest_release) {
+  readme <- readLines(readme_path, warn = FALSE)
+  release_line <- readme[grepl("^GenBank Flat File Release", readme)]
+  assertthat::assert_that(
+    length(release_line) > 0,
+    msg = "GenBank release line not found in README.genbank"
+  )
+  readme_release <- readr::parse_number(release_line[[1]])
+  assertthat::assert_that(
+    isTRUE(all.equal(readme_release, latest_release)),
+    msg = paste0(
+      "README.genbank is for release ", readme_release,
+      " but release ", latest_release, " is being published; refusing to ",
+      "flip the release gate"
+    )
+  )
+  invisible(readme_release)
 }
 
 #' Download one GenBank flatfile, filter to target accessions, delete raw file
