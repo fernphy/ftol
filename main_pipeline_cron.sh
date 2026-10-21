@@ -4,7 +4,9 @@
 #
 # Detects new data by comparing the current_release target (the release
 # gb_download has actually pulled) recorded in _targets_gb_store against the
-# gb_release target in the main _targets store; if they
+# last release this wrapper fully processed (_targets/user/
+# .last_processed_gb_release, written only after pipeline + publish + push all
+# succeed, so a failed run is retried); if they
 # diverge, runs run.sh (never a hand-rolled docker run -- see the
 # run-tar-make skill), waits for it to finish, then runs
 # R/publish_figshare.R and R/snapshot_ftol_data.R headlessly and emails
@@ -27,6 +29,16 @@ GITCONFIG_HOST_FILE=/home/jnitta/.gitconfig
 # nothing they write into the bind-mounted repos ends up root-owned.
 HOST_USER_ARGS="-e HOST_UID=$(id -u) -e HOST_GID=$(id -g)"
 ACTIVE_WINDOW_SECS=3600
+# GenBank release that has been *fully* processed: pipeline + FigShare publish
+# + snapshot + push all succeeded. Written only at the very end of a good run,
+# so a run that fails partway is retried on the next tick. (The main store's
+# own gb_release target can't serve as this marker: it completes in the first
+# seconds of any run, so after a mid-run failure it already says "processed".)
+# Lives in the gitignored _targets/user/ so it never dirties the repo. After
+# processing a release by hand, update it: echo <release> > this file.
+STATE_FILE="${MAIN_PIPELINE_STATE_FILE:-${FTOL_DIR}/_targets/user/.last_processed_gb_release}"
+# MAIN_PIPELINE_DRY_RUN=1: decide and report, but never start a run
+DRY_RUN="${MAIN_PIPELINE_DRY_RUN:-0}"
 
 cd "${FTOL_DIR}" || exit 1
 
@@ -50,14 +62,22 @@ docker_read() {
     joelnitta/ftol:latest Rscript -e "$1"
 }
 
-# The download store's current_release and the main store's gb_release both
-# hold the GenBank release number; they diverge exactly
-# when gb_download has pulled a release the main pipeline hasn't processed
-# yet. No separate marker file needed.
+# gb_download's current_release (the release it has actually pulled) vs the
+# last release this wrapper fully processed (STATE_FILE).
 gb_release_downloaded=$(docker_read \
   'cat(targets::tar_read(current_release, store = "_targets_gb_store"))' 2>/dev/null)
-gb_release_processed=$(docker_read \
-  'cat(targets::tar_read(gb_release, store = "_targets"))' 2>/dev/null)
+if [ -s "${STATE_FILE}" ]; then
+  gb_release_processed=$(tr -d '[:space:]' < "${STATE_FILE}")
+else
+  # Deliberately NOT guessed from the main store: a wrong guess would start a
+  # run that publishes to FigShare. Seed it once by hand with the last release
+  # that was fully processed and released.
+  echo "main_pipeline: ${STATE_FILE} is missing or empty. Create it with the" \
+       "last fully processed GenBank release (e.g. echo 273 > that file)." \
+       "Refusing to guess. Skipping."
+  echo "=== main_pipeline cron end (exit 1, no state file): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 1
+fi
 
 if [ -z "${gb_release_downloaded}" ]; then
   echo "main_pipeline: could not read current_release from _targets_gb_store (has" \
@@ -67,13 +87,19 @@ if [ -z "${gb_release_downloaded}" ]; then
 fi
 
 if [ "${gb_release_downloaded}" = "${gb_release_processed}" ]; then
-  echo "main_pipeline: gb_release unchanged (${gb_release_processed}). Nothing to do."
+  echo "main_pipeline: release ${gb_release_processed} already fully processed. Nothing to do."
   echo "=== main_pipeline cron end (exit 0, no new data): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
   exit 0
 fi
 
-echo "main_pipeline: new GenBank release ${gb_release_downloaded} (main pipeline last" \
-     "processed ${gb_release_processed:-none}). Running run.sh."
+echo "main_pipeline: new GenBank release ${gb_release_downloaded} (last fully" \
+     "processed: ${gb_release_processed:-none})."
+if [ "${DRY_RUN}" = "1" ]; then
+  echo "main_pipeline: DRY RUN -- would run run.sh now. Stopping."
+  echo "=== main_pipeline cron end (exit 0, dry run): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+fi
+echo "main_pipeline: Running run.sh."
 
 # IMAGE_TAG is hard-coded in run.sh and bumped by hand per release; read it
 # from there rather than duplicating/hardcoding it here.
@@ -117,6 +143,9 @@ if [ "${publish_status}" -eq 0 ]; then
 fi
 
 if [ "${publish_status}" -eq 0 ]; then
+  # Only now is this release "done"; a failure anywhere above leaves the marker
+  # untouched so the next tick retries (targets resumes from cache).
+  printf '%s\n' "${gb_release_downloaded}" > "${STATE_FILE}"
   docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'ready', gb_release = ${gb_release_downloaded})"
   echo "=== main_pipeline cron end (exit 0, release ready): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
   exit 0

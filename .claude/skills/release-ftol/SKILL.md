@@ -270,6 +270,24 @@ so the pipeline's `_targets` is at `..`. Each bit us once:
   the release is finished; remove one-off permission rules from
   `.claude/settings.local.json`.
 
+## Keep the cron job's marker in sync
+
+`main_pipeline_cron.sh` decides whether to run by comparing the downloaded
+GenBank release with `_targets/user/.last_processed_gb_release`, which it
+writes only after a fully successful automated run. If you process a release
+by hand (running `run.sh` and the release steps yourself), set it when the
+release is done -- otherwise the next cron tick re-runs the pipeline and
+re-publishes to FigShare:
+
+```bash
+echo <release> > /home/jnitta/ftol/_targets/user/.last_processed_gb_release
+```
+
+A failed automated run leaves the marker alone on purpose, so it is retried
+on the next tick (and you get a `pipeline_failed`/`publish_failed` email,
+once `gmailr` auth works). Pause the cron entry (`#DISABLED#`) if you are
+repairing data by hand while a mismatch would trigger a run.
+
 ## Out of scope
 
 - Step 17 (Mastodon) — not covered by this skill; do it yourself.

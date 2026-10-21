@@ -73,9 +73,26 @@ alongside `run.sh`/`gb_download_cron.sh`):
    `gb_download_cron.sh`, same caveat: **comment out the crontab line before
    running the pipeline by hand**, the guard is a backstop, not a
    substitute.
-2. Compares `tar_read(current_release, store = "_targets_gb_store")` against
-   `tar_read(gb_release, store = "_targets")` — no new marker file, reuses
-   targets both stores already carry. Equal → exit 0 (the common case).
+2. Compares `tar_read(current_release, store = "_targets_gb_store")` (the
+   release `gb_download` has actually pulled) against the **last fully
+   processed release**, kept in `_targets/user/.last_processed_gb_release`
+   (gitignored, so it can't dirty the repo). Equal → exit 0 (the common case).
+   The marker is written only at the very end of a good run (pipeline +
+   FigShare publish + snapshot + host push all succeeded), so a run that fails
+   partway is simply retried on the next tick (`targets` resumes from cache).
+   The main store's own `gb_release` target is deliberately **not** used: it
+   completes in the first seconds of any run, so after a mid-run failure it
+   already looks "processed" (this silently stopped all retries after the
+   GenBank 274 failure). If the marker is missing the job refuses to guess
+   and exits 1 -- seed it once with the last release that was fully
+   processed and released, e.g.
+   `echo 273 > _targets/user/.last_processed_gb_release`.
+   **After processing a release by hand** (e.g. running `run.sh` and the
+   release steps yourself), update the marker the same way, otherwise the next
+   tick re-runs the pipeline and re-publishes.
+   For testing, `MAIN_PIPELINE_DRY_RUN=1` makes the job decide and report
+   without starting a run, and `MAIN_PIPELINE_STATE_FILE=<path>` overrides the
+   marker location.
 3. Diverge → `bash run.sh` (reads `IMAGE_TAG` out of `run.sh` itself rather
    than duplicating it), waits for the detached container to exit by
    polling `docker ps`, then checks `tar_meta(fields = "error")` for a clean
