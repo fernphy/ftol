@@ -590,8 +590,24 @@ send_gb_email <- function(subject, body_html) {
     pattern = "client_secret.*json", full.names = TRUE
   )
   gmailr::gm_auth_configure(path = secret_json)
-  gmailr::gm_oauth_client()
-  gmailr::gm_auth("pteridogroup.no.reply@gmail.com")
+  # Hand gm_auth() the cached token object directly instead of letting gargle
+  # look it up. gargle matches cached tokens on a hash that includes the whole
+  # OAuth client object (name, with its class, included), and that differs
+  # between gargle versions: with the lookup, a perfectly valid token in
+  # .secrets/ is not found and non-interactive auth fails with "Can't get
+  # Google credentials" (this silently disabled all pipeline emails from
+  # 2026-09 on). Passing the token bypasses the lookup; gargle still refreshes
+  # it when stale and re-caches it. Falls back to the normal lookup / browser
+  # flow (interactive sessions) if there is no cached token yet.
+  token_file <- list.files(
+    ".secrets",
+    pattern = "pteridogroup\\.no\\.reply@gmail\\.com$", full.names = TRUE
+  )
+  if (length(token_file) > 0) {
+    gmailr::gm_auth(token = readRDS(token_file[[1]]))
+  } else {
+    gmailr::gm_auth("pteridogroup.no.reply@gmail.com")
+  }
 
   gmailr::gm_send_message(email_draft)
   invisible(NULL)
