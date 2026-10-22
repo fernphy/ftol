@@ -101,13 +101,12 @@ assert_that(
   msg = glue::glue("Contents of {ref_aln_archive} have changed; update hash")
 )
 
-# If this fails, run content_id(restez_sql_db_archive) to obtain new hash
-restez_sql_db_hash <- "hash://sha256/2046c17d2aca987872ab60b4752a2049e902654241fb418f8ef3105e61d6ea18" # nolint
-assert_that(
-  content_id(restez_sql_db_archive) == restez_sql_db_hash,
-  msg = glue::glue(
-  "Contents of {restez_sql_db_archive} have changed; update hash")
-)
+# The restez db changes with every GenBank release, so its hash is computed
+# here (and recorded in the ftol_data commit message below) rather than
+# asserted against a hard-coded value that would need a hand edit + commit
+# before every release. publish_figshare.R has already verified the uploaded
+# FigShare copy against this same local file by checksum.
+restez_sql_db_hash <- content_id(restez_sql_db_archive)
 
 # - Check renv status (lock file is synchronized with library)
 assert_that(

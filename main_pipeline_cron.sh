@@ -146,7 +146,8 @@ if [ "${publish_status}" -eq 0 ]; then
   # Only now is this release "done"; a failure anywhere above leaves the marker
   # untouched so the next tick retries (targets resumes from cache).
   printf '%s\n' "${gb_release_downloaded}" > "${STATE_FILE}"
-  docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'ready', gb_release = ${gb_release_downloaded})"
+  date_cutoff=$(docker_read 'cat(as.character(targets::tar_read(date_cutoff, store = "_targets")))' 2>/dev/null)
+  docker_read "source('R/setup_gb_functions.R'); send_release_ready_email(status = 'ready', gb_release = ${gb_release_downloaded}, date_cutoff = '${date_cutoff:-unknown}')"
   echo "=== main_pipeline cron end (exit 0, release ready): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
   exit 0
 else
