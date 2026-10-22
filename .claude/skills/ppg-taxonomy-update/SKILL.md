@@ -377,6 +377,45 @@ edited CSV + rebuilt `ppg_db`, and check it's 0 rows.
 `working_pterido_names_to_inspect.csv` in the repo root is Joel's scratch notes from past
 rounds — useful for seeing how similar cases were handled, not read by the pipeline.
 
+## Failure 7 -- `non_mono_check`: non-monophyletic taxa in the fast tree
+
+`verify_non_mono_taxa()` stops the pipeline (about 4 h in, right before the ~10-day ML
+replicates) when the fast IQ-TREE tree has a non-monophyletic taxon that is in neither
+`non_mono_notes.csv` nor `make_taxa_exclude_tbl()`. **This usually happens:** most flags
+are false positives from the messy fast tree, but sometimes one is a real mis-ID that the
+all-by-all BLAST missed, and a PPG version bump can add naming conflicts. Telling them apart
+is the hard part; run `inspect_non_mono.R` (this skill's directory; reads the store, writes
+nothing) and look at, per flagged taxon:
+
+- **New vs previous release / renames.** The script compares tips with the previous
+  release's tree in `ftol_data/`. After a PPG bump, many "new" tips are renames (old tip
+  removed, new one added); a flag caused by 1-2 renamed tips is a naming conflict, not bad
+  data.
+- **Drop test.** Does the taxon (and others sharing its intruders) become monophyletic when
+  the listed outlier tips are removed? If yes, one or two samples explain the flag. Look at
+  those: where do they sit (nearest relatives), which paper/accessions are they (`raw_meta`:
+  title/publication), is the source a phylogeny of that very clade?
+- **Whole group vs few tips.** A whole genus nesting inside another (e.g. all 36
+  *Gymnosphaera* inside *Cyathea*) with no sampling or genus-assignment change vs the previous
+  release is the classic backbone artifact of the fast tree: add it to the exclusion list and
+  let the ML tree (`ml_monophy_by_clade`) decide. A few tips in the wrong place whose
+  sequences look like another genus's are possible mis-IDs: check them, and if confirmed add
+  the accessions to `accs_exclude.csv`.
+
+Decision and where it goes:
+
+| Finding | Action |
+|---|---|
+| Fast-tree artifact (usually a whole group, no data change) | uncomment/add in `make_taxa_exclude_tbl()` with a one-line why (see the commented past false positives there) |
+| Real non-monophyly worth recording | row in `non_mono_notes.csv` (taxon, rank, notes, action) |
+| Sequence placed in another genus but the name is `nom. ined.`/`comb. ined.` (so PPG keeps it elsewhere) | the "Special case" under Failure 1: keep PPG's name, exclude the genus the outliers inflate **and the receiving group**, file one fernphy/ftol issue per species (accessions, why, what to undo), link them from the exclusion-list comment. Example: GenBank 274, *Arachniodes macrostegia*/*A. ochropteroides* (Olfersia comb. ined. never published; PPG v2.0.0 reverted to Arachniodes): issues #41, #42; excluded Arachniodes, Dryopteridoideae, Polybotryoideae |
+| Confirmed mis-ID | `accs_exclude.csv` |
+
+Check the fix before relaunching with `verify_non_mono_taxa(tar_read(fast_monophy_by_clade),
+tar_read(non_mono_notes), make_taxa_exclude_tbl())` (a short Rscript, as in
+`inspect_non_mono.R`). Editing `make_taxa_exclude_tbl()` only invalidates `taxa_exclude` and
+`non_mono_check`, not the cached fast tree, so the resume goes straight on to the ML phase.
+
 ---
 
 To actually launch and monitor the fixed-up pipeline (log location, background launch,

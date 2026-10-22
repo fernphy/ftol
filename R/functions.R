@@ -9734,13 +9734,25 @@ make_taxa_exclude_tbl <- function() {
       # tree; low rates of molecular evolution in Marattiaceae
       "Angiopteris",
       # "Athyrium",
-      # "Arachniodes",
+      # Arachniodes macrostegia / A. ochropteroides: PPG v2.0.0 accepts them in
+      # Arachniodes, but the Olfersia combinations are comb. ined. (never
+      # formally published, known since Moran & Labiak 2015,
+      # doi:10.1086/683393) and the sequences place with Olfersia
+      # (Polybotryoideae). The two tips make Arachniodes non-monophyletic and
+      # inflate the MRCAs of Dryopteridoideae and Polybotryoideae (see below);
+      # dropping them makes all three monophyletic.
+      # https://github.com/fernphy/ftol/issues/41
+      # https://github.com/fernphy/ftol/issues/42
+      "Arachniodes",
       # "Blechnum",
       # "Callistopteris",
       # "Crepidomanes",
       # "Calochlaena",
       "Choristosoria",
-      # "Cyathea",
+      # fast-tree artifact: the whole Gymnosphaera clade (36 tips) + 2 Alsophila
+      # nest inside Cyathea in the GenBank 274 fast tree; no sampling or genus
+      # assignment change vs 273 (Cyathea 155 tips), leave for the ML tree
+      "Cyathea",
       # see Angiopteris
       "Danaea",
       # "Dasygrammitis",
@@ -9749,7 +9761,8 @@ make_taxa_exclude_tbl <- function() {
       "Dipteris",
       # "Diplazium",
       # "Diploblechnum",
-      # "Dryopteridoideae",
+      # see Arachniodes
+      "Dryopteridoideae",
       # "Dryopteris",
       "Goniopteris",
       # fast-tree artifact: single short locus (rps4/rps4-trnS, JN572163)
@@ -9781,7 +9794,8 @@ make_taxa_exclude_tbl <- function() {
       # "Phanerophlebia",
       # "Pneumatopteris",
       "Pellaeopsis",
-      # "Polybotryoideae",
+      # see Arachniodes
+      "Polybotryoideae",
       # "Polybotrya",
       # "Polystichopsis",
       # "Polypodiales",
