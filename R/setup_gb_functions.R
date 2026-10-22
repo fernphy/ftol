@@ -508,8 +508,22 @@ send_gb_done_email <- function(latest_release, archive_path = NA,
     subject = "FTOL download finished",
     body_html = glue::glue(
       "FTOL downloading of new GenBank release {latest_release} has ",
-      "finished on {Sys.time()}. {archive_line} Be sure to upload to ",
-      "FigShare and update hash in R/setup.R"
+      "finished on {Sys.time()}. {archive_line} ",
+      "<p>What happens next (nothing to do for the download itself): the ",
+      "next gb_download tick (00:00) updates the downloaded release, then ",
+      "main_pipeline_cron.sh starts the main pipeline at its next 03:00 tick ",
+      "(a full run takes about 10 days). When it finishes you get an ",
+      "&quot;FTOL release ready&quot; (or a failure) email; the run uploads ",
+      "the new files to FigShare as a <b>pending draft that you must ",
+      "publish</b>, computes the data hash, and snapshots ftol_data. ",
+      "(If the main-pipeline cron entry is disabled, start it by hand with ",
+      "<code>bash run.sh</code>.)</p>",
+      "<p><b>Before that run starts</b> (within about a day), check that the ",
+      "latest PPG release is pinned in _targets.R (<code>load_ppg(ver = ...)</code>; ",
+      "<code>gh api repos/pteridogroup/ppg/releases/latest --jq .tag_name</code>) ",
+      "and run the ppg-taxonomy-update skill's pre-checks. The cron job does ",
+      "<b>not</b> bump PPG, and a name-resolution failure costs over an hour ",
+      "into a run.</p>"
     )
   )
 }
