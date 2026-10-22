@@ -2459,7 +2459,7 @@ modify_ppg <- function(ppg_raw) {
       taxonRank = "species",
       stamp_modified = FALSE
     ) |>
-    # still 'unchecked' in PPG as of v0.0.0.9009
+    # still 'unchecked' in PPG as of v2.0.0
     dwctaxon::dct_modify_row(
       scientificName = "Aleuritopteris hainanensis Bin Zhang, Ting Wang ter & H.F.Chen",
       taxonomicStatus = "accepted",
@@ -2502,6 +2502,18 @@ modify_ppg <- function(ppg_raw) {
       parentNameUsageID = "wfo-4000021236",
       stamp_modified = FALSE
     ) |>
+    # Haplopteris naraensis C.W.Chen & Hori: new species (type material
+    # sequenced in GenBank, e.g. PX667977 trnL-F), not yet in PPG -- waiting on
+    # it to enter the PPG data pipeline. Hopefully in the next PPG version, in
+    # which case remove this row.
+    dwctaxon::dct_add_row(
+      scientificName = "Haplopteris naraensis C.W.Chen & Hori",
+      taxonomicStatus = "accepted",
+      taxonRank = "species",
+      nomenclaturalStatus = "valid",
+      parentNameUsageID = "wfo-4000016887", # Haplopteris C.Presl
+      stamp_modified = FALSE
+    ) |>
     # New grammitid genus Phaneroloma, needs PPG voting
     dwctaxon::dct_add_row(
       scientificName = "Phaneroloma nudicarpum (Copel.) G.S.Armstr. & D.J.Ohlsen",
@@ -2530,43 +2542,41 @@ modify_ppg <- function(ppg_raw) {
       parentNameUsageID = "wfo-4000006470", # genus Campyloneurum
       stamp_modified = FALSE
     ) |>
-    # Parapolystichum nephrodioides (Baker) Perrie: validly published comb. nov.
-    # (New Zealand J. Bot. 64(1) e70049: 6, 2026), but 'unchecked' in current PPG
-    # and absent from the v0.0.0.9009 tag. Accept it and sink Lastreopsis
-    # nephrodioides so the tip resolves to Parapolystichum. Drop once PPG accepts.
-    # https://github.com/pteridogroup/ppg/issues/167
-    dwctaxon::dct_add_row(
-      taxonID = "wfo-1000092165",
-      scientificName = "Parapolystichum nephrodioides (Baker) Perrie",
+    # Selliguea palmata (Blume) Li Bing Zhang & Liang Zhang is treated as a
+    # species distinct from S. taeniata (comb. nov. raising S. taeniata var.
+    # palmata to species rank: Zhang et al. 2026, J. Syst. Evol. 64(4):
+    # 805-827). PPG v2.0.0 still has it 'unchecked' and keeps the whole palmata
+    # group as synonyms of S. taeniata; the corresponding PPG change is being
+    # made for the next PPG version, so drop these two steps then.
+    # https://github.com/pteridogroup/ppg/issues/170
+    # (Only the names based on Polypodium palmatum Blume are moved; the
+    # "angustata" varieties stay with S. taeniata as in PPG.)
+    dwctaxon::dct_modify_row(
+      taxonID = "wfo-1000090898", # Selliguea palmata
       taxonomicStatus = "accepted",
-      taxonRank = "species",
-      parentNameUsageID = "wfo-4000028126", # genus Parapolystichum
+      parentNameUsageID = "wfo-4000035000", # genus Selliguea Bory
       stamp_modified = FALSE
     ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Lastreopsis nephrodioides (Baker) Tindale",
-      taxonomicStatus = "synonym",
-      acceptedNameUsageID = "wfo-1000092165",
-      stamp_modified = FALSE
-    ) |>
-    # Zealandia powellii (Baker) Testo & A.R.Field: validly published
-    # (Syst. Bot. 44(4): 749, 2019) but PPG keeps it as a synonym of Microsorum
-    # powellii. FTOL's sequences (rbcL KY099831, trnL-trnF MG427072) sit
-    # unambiguously in Zealandia, so accept the combination and sink Microsorum
-    # powellii. Drop once PPG accepts.
-    # https://github.com/pteridogroup/ppg/issues/168
-    dwctaxon::dct_modify_row(
-      scientificName = "Zealandia powellii (Baker) Testo & A.R.Field",
-      taxonomicStatus = "accepted",
-      acceptedNameUsageID = NA,
-      parentNameUsageID = "wfo-4100001083", # genus Zealandia
-      stamp_modified = FALSE
-    ) |>
-    dwctaxon::dct_modify_row(
-      scientificName = "Microsorum powellii (Baker) Copel.",
-      taxonomicStatus = "synonym",
-      acceptedNameUsageID = "wfo-1000034942",
-      stamp_modified = FALSE
+    dplyr::mutate(
+      acceptedNameUsageID = dplyr::if_else(
+        taxonID %in% c(
+          "wfo-0001127463", # Polypodium palmatum Blume (basionym)
+          "wfo-0000148180", # Drynaria palmata (Blume) J.Sm.
+          "wfo-0000148670", # Microsorum palmatum (Blume) Fee
+          "wfo-0000149020", # Pleopeltis palmata (Blume) T.Moore
+          "wfo-0000149131", # Pleuridium palmatum (Blume) J.Sm.
+          "wfo-0001035584", # Phymatopsis palmata (Blume) J.Sm.
+          "wfo-0001229244", # Phymatopteris palmata (Blume) Pic.Serm.
+          "wfo-0001127481", # Phymatopsis taeniata var. palmata (Blume) Ching
+          "wfo-0001375269", # Phymatopteris taeniata var. palmata (Blume) Parris
+          "wfo-0001375270", # Selliguea taeniata var. palmata (Blume) Parris
+          "wfo-0001127473", # Crypsinus taeniatus var. palmatus (Blume) Tagawa
+          "wfo-1200107079", # Crypsinus taeniatus subsp. palmatus (Blume) C.Chr.
+          "wfo-1200104278"  # Polypodium taeniatum var. palmatum (Blume) C.Chr.
+        ),
+        "wfo-1000090898", # Selliguea palmata
+        acceptedNameUsageID
+      )
     )
 }
 
@@ -2613,7 +2623,12 @@ format_ppg_for_ts <- function(ppg_full) {
         "wfo-0001114903", # Dryopteris pacifica (Nakai) Tagawa
         "wfo-1000068417", # Dryopteris anadroma Mitsuta
         "wfo-0000140658", # Davallia tyermanni T.Moore (unchecked in PPG)
-        "wfo-1000085722" # Christella procurrens (unchecked in PPG, no author)
+        "wfo-1000085722", # Christella procurrens (unchecked in PPG, no author)
+        # Parablechnum yariguense J.D.Gomez-Rom. et al. (Phytotaxa 756(2): 164,
+        # 2026): 'unchecked' in PPG v2.0.0 (and main as of 2026-10-04); marked
+        # accepted upstream, so this workaround should not be needed in the
+        # next PPG version (remove it then).
+        "wfo-1000090403"
       ),
       keep = TRUE
     )
