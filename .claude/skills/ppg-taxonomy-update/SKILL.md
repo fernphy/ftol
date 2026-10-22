@@ -17,6 +17,36 @@ resolution" part. For actually launching/monitoring a `tar_make()` run (log loca
 background launch, recovering from a stale lock or zombie process) use the `run-tar-make`
 skill — it's a separate concern from diagnosing *why* a run failed.
 
+## Step 0 -- always fetch the latest PPG and pin it BEFORE launching a run
+
+For every new GenBank release, **before the first `tar_make()` / `run.sh`**, check
+whether PPG has a newer tag than the one pinned in `_targets.R` and bump it if so:
+
+```bash
+gh api repos/pteridogroup/ppg/releases/latest --jq .tag_name   # e.g. v2.0.0
+grep -n 'load_ppg(ver' _targets.R                              # what we pin now
+```
+
+Pin a *tag* only (`load_ppg(ver = "2.0.0")`, no leading `v`): it downloads the tag zip,
+and PPG `main` also gets untagged weekly auto-updates that can't be pinned. Then
+**verify before launching**, not by running the pipeline: a name-resolution failure
+costs over an hour into a run, because NCBI metadata is fetched first. Two scripts in
+this skill's directory do the pre-check in minutes and write nothing:
+
+- `unroll_modify_ppg.R <ver>` -- runs `modify_ppg()` one patch at a time; lists patches
+  that now error (the taxon is in PPG already: delete the patch) and NO-OPs (fixed
+  upstream: delete the patch).
+- `check_ppg.R <ver>` -- rebuilds the reference from the current code and reports
+  manual-match targets missing from it (Failure 2), plastome names that don't resolve
+  (Failure 4) and the `pterido_names_to_inspect` checkpoint (Failure 6) using the
+  upstream targets in the store. Run it again after each fix until all gates are 0.
+
+Forgetting this step is what let the GenBank 274 run start on PPG `0.0.0.9009` while
+`2.0.0` (with changed names and four now-redundant workarounds) was already out.
+The cron job (`main_pipeline_cron.sh`) does **not** do this: it runs whatever PPG is
+pinned, so bump the pin as soon as a new PPG tag appears (ideally before the next
+GenBank release is processed).
+
 ## Orientation — the data flow
 
 ```
@@ -192,6 +222,17 @@ publication in the comment. This genuinely is PPG's problem to fix, so file the 
 **pteridogroup/ppg/issues**, not fernphy/ftol, and link it from the comment.
 
 ### Filing a PPG issue: use the taxonomic request form, not a plain issue
+
+**This form can also be used to request *upcoming* PPG changes, not just to report
+data problems** -- e.g. when FTOL has decided to treat a name differently from PPG
+(raise a name to accepted, move synonyms, correct an author) and the maintainer will
+make or wants the corresponding change in a future PPG version. **Only do this with the
+user's explicit approval for that specific issue** (it is a public issue on another
+organization's repo). In the issue, say that FTOL applies the change locally in
+`modify_ppg()` until a PPG version contains it, list exact taxonIDs and the requested
+edits, and cite the source publication. Then link the issue from the `modify_ppg()`
+workaround comment. Example: https://github.com/pteridogroup/ppg/issues/170 (*Selliguea
+palmata*).
 
 PPG issues for a species-level (or below) change go through the **taxonomic request**
 template, not a freehand issue — `gh issue create` doesn't render `.yml` issue forms, so

@@ -54,6 +54,14 @@ LOG="logs/tar_make_$(date +%Y%m%d_%H%M%S).log"
 ln -sf "$(basename "$LOG")" logs/tar_make_latest.log
 ```
 
+## Before launching a run for a NEW GenBank release: fetch the latest PPG and pin it
+
+Always do this first (`ppg-taxonomy-update` skill, "Step 0"): compare
+`gh api repos/pteridogroup/ppg/releases/latest --jq .tag_name` with
+`grep -n 'load_ppg(ver' _targets.R`, bump the pin if a newer tag exists, and run that
+skill's `unroll_modify_ppg.R` / `check_ppg.R` pre-checks. Otherwise the run fails an hour
+in at the name-resolution gates, or worse, silently uses outdated taxonomy.
+
 ## Launching
 
 Run from the project root (`/home/rstudio/ftol/ftol`) so `renv` is picked up, in the

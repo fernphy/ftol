@@ -44,7 +44,11 @@ Check which of these already happened before doing anything:
    `reports/{input_data_readme,ftol_data_readme}/changelog_history.txt` get
    a new dated entry when `gb_release` advances. Only touch these by hand
    for a non-routine entry (e.g. "Add taxdmp.zip").
-4. `bash run.sh` — see `run-tar-make`.
+4. `bash run.sh` — see `run-tar-make`. **Before it, fetch the latest PPG and pin it**
+   (`ppg-taxonomy-update` skill, "Step 0"; check `gh api
+   repos/pteridogroup/ppg/releases/latest --jq .tag_name` against
+   `load_ppg(ver = ...)` in `_targets.R`) and run its pre-check scripts. The
+   unattended cron job does not do this, so keep the pin current.
 5-7. FigShare publish — `Rscript R/publish_figshare.R` (uploads
    `restez_sql_db.tar.gz`, `taxdmp.zip`, `README.genbank`, `README.txt` to
    deposit `19474316` via `upload_to_figshare_verified()`; overwrites, no
