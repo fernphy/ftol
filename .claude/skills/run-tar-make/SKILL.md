@@ -54,6 +54,31 @@ LOG="logs/tar_make_$(date +%Y%m%d_%H%M%S).log"
 ln -sf "$(basename "$LOG")" logs/tar_make_latest.log
 ```
 
+## Log maintenance (keep `logs/` to what is current)
+
+`logs/` should hold only what is active: the two cron logs (`gb_download_cron.log`,
+`main_pipeline_cron.log`), the log of the run in progress and the `tar_make_latest.log`
+symlink. Everything else is history.
+
+- **Cron logs are rotated monthly by `logrotate`**, run from jnitta's crontab daily at
+  04:30 (no root needed; config in `logrotate_ftol.conf` in the repo root, state in
+  `logs/rotated/logrotate.state`). Rotated, compressed copies land in `logs/rotated/`
+  (6 kept). `copytruncate` makes it safe while a job is appending, and `minsize 1M`
+  leaves the small `main_pipeline_cron.log` alone (you want its text when troubleshooting
+  a run) until it really grows. Test a config change with `logrotate -d -s <tmp state>
+  logrotate_ftol.conf` (`-d` changes nothing).
+- **Finished run logs go to `logs/saved_logs/`** (move, don't delete) once they are
+  superseded: failed attempts (they are the evidence for an incident, e.g. the 10-15
+  `date_cutoff` mismatch and the 10-22 `plastome_metadata_renamed` stop), and the
+  provenance run + `publish_figshare_*` log of an already released version. Keep the
+  names (they carry the timestamp). Small, so keep them; delete only on the user's say-so.
+- **Never touch a file a running job holds open**: the log of the run in progress, the
+  file `tar_make_latest.log` points to, and the two cron logs (use `logrotate`, not
+  `mv`, for those). Check `docker ps` / `tmux ls` first. A run can take ~10 days.
+- When a run ends, move its log (and the previous attempts') to `saved_logs/` only after
+  the release it produced is done and anything you want to cite (in an issue or commit)
+  has been copied into it.
+
 ## Before launching a run for a NEW GenBank release: fetch the latest PPG and pin it
 
 Always do this first (`ppg-taxonomy-update` skill, "Step 0"): compare

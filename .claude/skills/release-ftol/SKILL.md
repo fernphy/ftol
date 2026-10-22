@@ -270,6 +270,8 @@ so the pipeline's `_targets` is at `..`. Each bit us once:
   put R snippets in a script file rather than nesting quotes in
   `tmux new-session "..."` (a mangled `Rscript -e` caused a spurious
   "Cannot parse package" error).
+- Tidy `logs/` when the release is done (see `run-tar-make`, "Log maintenance":
+  move finished run logs to `logs/saved_logs/`; the cron logs rotate on their own).
 - Delete `RELEASE_HANDOFF.md` and drop leftover `git stash` entries when
   the release is finished; remove one-off permission rules from
   `.claude/settings.local.json`.

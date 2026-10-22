@@ -109,6 +109,22 @@ alongside `run.sh`/`gb_download_cron.sh`):
    `"publish_failed"` (pipeline succeeded but the snapshot/FigShare step
    errored), or `"pipeline_failed"` (`run.sh` itself errored).
 
+## Log rotation
+
+`logs/gb_download_cron.log` grows ~0.3 MB per nightly tick (progress output) and
+`logs/main_pipeline_cron.log` accumulates the wrapper's output. A third crontab entry
+rotates them monthly with `logrotate` (no root needed; config `logrotate_ftol.conf` in
+the repo root; rotated copies in `logs/rotated/`, 6 kept; `copytruncate`, so it is safe
+while a job is appending; `minsize 1M` keeps the small main-pipeline log until it grows):
+
+```cron
+30 4 * * * /usr/sbin/logrotate -s /home/jnitta/ftol/logs/rotated/logrotate.state /home/jnitta/ftol/logrotate_ftol.conf >> /home/jnitta/ftol/logs/rotated/logrotate.cron.log 2>&1
+```
+
+It runs daily (idempotent) so a month is not skipped if the server was down on the 1st.
+The first run only records today's date; the first real rotation is at the next month
+boundary. See the `run-tar-make` skill ("Log maintenance") for what to keep in `logs/`.
+
 ## Enabling and disabling the job
 
 Same recipe as `gb_download_cron.sh` (see `docs/nittalab_gb_download.md`),
