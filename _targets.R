@@ -646,7 +646,7 @@ tar_plan(
       # redo settings:
       # - FALSE to re-start incomplete iqtree run on same data
       # - TRUE when starting pipeline from new data
-      redo = TRUE,
+      redo = FALSE,
       wd = iqtree_sanger_dirs,
       tree_path = c(
         ml_tree = path(iqtree_sanger_dirs, "sanger_alignment.phy.treefile"),
