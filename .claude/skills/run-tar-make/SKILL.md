@@ -156,6 +156,50 @@ mid-run (`tar_meta(fields = "error")`, `tar_progress()`, `tar_workspace(<target>
   (`pkill -f 'mirai::dispatcher'`, `pkill -f 'crew::crew_worker'`), then clear the process
   lock as above before relaunching.
 
+## Pausing a run partway (e.g. to free the CPUs for another project)
+
+A full run takes ~10 days, almost all of it the 10 `sanger_ml_tree_rep`
+IQ-TREE replicates (6 threads each, ~15 GB RAM each), so the server sometimes
+has to be given back mid-run. IQ-TREE can resume, but only if everything below
+is in place -- otherwise the days of tree search are thrown away.
+
+- **Why it works:** each `iqtree/sanger_N/` dir holds a `sanger_alignment.phy.
+  ckp.gz` (~24 MB), rewritten every few minutes. The `sanger_ml_tree_rep`
+  target in `_targets.R` has `redo = FALSE` (committed), so no `--redo` is
+  passed and IQ-TREE logs `CHECKPOINT: Resuming analysis from ...ckp.gz`. With
+  `--redo` it would ignore the checkpoint and restart from scratch. Don't flip
+  it back to `TRUE`: that changes the target's code, so targets rebuilds it.
+  (IQ-TREE normally deletes the `.ckp.gz` when a replicate finishes, so a
+  finished run doesn't poison the next one. After an *aborted* run on old data
+  that you don't want to resume, delete the stale `*.ckp.gz` files first.)
+- **Pause:**
+  1. Comment out the `main_pipeline_cron.sh` line in the crontab (prefix it
+     `#PAUSED# `, keep a copy of `crontab -l`). Otherwise the 03:00 tick
+     relaunches the pipeline as soon as `_targets/meta/progress` is >1 h old.
+  2. Back up the checkpoints (`cp -p` each `sanger_N/*.ckp.gz` to a dir
+     outside the repo, ~230 MB), in case one is half-written at kill time.
+  3. Find the container (`docker ps`; `docker top <id> | grep -c iqtree2`
+     is > 0 only for the pipeline one -- other containers on the server are
+     other people's/projects') and `docker stop -t 30 <id>`. You lose at most
+     a few minutes per replicate (time since its last checkpoint write).
+  4. Confirm with `top`/`ps` that no `iqtree2 ... sanger_N` is left. Other
+     users' jobs will still show; those aren't yours.
+- **Resume:**
+  1. `rm -f _targets/meta/process` -- it holds a pid from inside the dead
+     container (check with `ps -p`; on the host it's usually an unrelated
+     kernel thread).
+  2. `bash run.sh` (production pathway; the detached container survives a
+     VPN drop, so no tmux needed).
+  3. Verify, a minute or two in: each `sanger_N/sanger_alignment.phy.log`
+     has `CHECKPOINT: Resuming analysis` and `grep '^Iteration' ... | tail`
+     continues from the old count instead of starting at 1. The
+     `Command-line differs from checkpoint` warnings are expected (the
+     checkpoint stored the old `--redo` command line) and harmless.
+  4. Un-comment the cron line (it skips ticks while the run is active).
+  5. Delete the checkpoint backup once the run looks healthy.
+- The earlier targets (taxonomy, alignment, `sanger_fast`) are checkpointed by
+  targets itself: a pause there only costs the target in flight.
+
 ## After a clean run: snapshotting and publishing (docs/updating.md steps 5-9)
 
 Once `tar_make()` finishes without error, three follow-on scripts turn the pipeline output
