@@ -195,7 +195,14 @@ is in place -- otherwise the days of tree search are thrown away.
      continues from the old count instead of starting at 1. The
      `Command-line differs from checkpoint` warnings are expected (the
      checkpoint stored the old `--redo` command line) and harmless.
-  4. Un-comment the cron line (it skips ticks while the run is active).
+  4. **Leave the cron line commented out until the run has finished.**
+     Re-enabling it mid-run once launched a duplicate pipeline at 03:00 (the
+     old progress-file guard goes quiet for hours during the IQ-TREE phase),
+     two runs then shared one set of checkpoints. The script now also skips
+     when a container from the `run.sh` image is running, but treat that as a
+     backstop. After a duplicate: `docker stop` the newer container, and check
+     `gzip -t` on each `sanger_N/*.ckp.gz`; the surviving run keeps its state
+     in memory and rewrites the checkpoint at its next save.
   5. Delete the checkpoint backup once the run looks healthy.
 - The earlier targets (taxonomy, alignment, `sanger_fast`) are checkpointed by
   targets itself: a pause there only costs the target in flight.

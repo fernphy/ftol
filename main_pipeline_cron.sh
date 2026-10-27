@@ -57,6 +57,22 @@ if [ -f "${progress}" ]; then
   fi
 fi
 
+# Second guard: the progress file above is only touched when a target starts or
+# finishes, so during a long single target (the ~10-day IQ-TREE replicates) it
+# goes quiet for hours and the guard passes while a run is still going. A
+# container from the run.sh image still running means a run is active, whether
+# cron or a human launched it. (Two runs share one _targets store and one set
+# of IQ-TREE checkpoints and corrupt each other.)
+# IMAGE_TAG is hard-coded in run.sh and bumped by hand per release; read it
+# from there rather than duplicating/hardcoding it here.
+image_tag=$(grep -oP '(?<=^IMAGE_TAG=)\S+' run.sh | head -1)
+if docker ps --filter "ancestor=${image_tag}" --format '{{.ID}}' | grep -q .; then
+  echo "main_pipeline: a container from ${image_tag} is running (a pipeline" \
+       "run is active). Skipping this tick."
+  echo "=== main_pipeline cron end (exit 0, skipped): $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
+  exit 0
+fi
+
 docker_read() {
   docker run --rm ${HOST_USER_ARGS} -v "${FTOL_DIR}":/wd -w /wd \
     joelnitta/ftol:latest Rscript -e "$1"
@@ -101,9 +117,6 @@ if [ "${DRY_RUN}" = "1" ]; then
 fi
 echo "main_pipeline: Running run.sh."
 
-# IMAGE_TAG is hard-coded in run.sh and bumped by hand per release; read it
-# from there rather than duplicating/hardcoding it here.
-image_tag=$(grep -oP '(?<=^IMAGE_TAG=)\S+' run.sh | head -1)
 bash run.sh
 
 # run.sh launches a detached, --rm container; wait for it to exit.

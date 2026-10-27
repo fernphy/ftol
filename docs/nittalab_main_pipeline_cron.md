@@ -72,7 +72,10 @@ alongside `run.sh`/`gb_download_cron.sh`):
    last hour — same cross-container staleness guard as
    `gb_download_cron.sh`, same caveat: **comment out the crontab line before
    running the pipeline by hand**, the guard is a backstop, not a
-   substitute.
+   substitute. The progress file goes quiet for hours during the long IQ-TREE
+   replicates, so it also skips if any container from the `run.sh` image is
+   running. **Don't re-enable the cron line while a run is in progress** (a
+   duplicate run once started this way and shared the IQ-TREE checkpoints).
 2. Compares `tar_read(current_release, store = "_targets_gb_store")` (the
    release `gb_download` has actually pulled) against the **last fully
    processed release**, kept in `_targets/user/.last_processed_gb_release`
