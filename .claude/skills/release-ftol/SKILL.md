@@ -51,8 +51,10 @@ Check which of these already happened before doing anything:
    unattended cron job does not do this, so keep the pin current.
 5-7. FigShare publish — `Rscript R/publish_figshare.R` (uploads
    `restez_sql_db.tar.gz`, `taxdmp.zip`, `README.genbank`, `README.txt` to
-   deposit `19474316` via `upload_to_figshare_verified()`; overwrites, no
-   manual delete step). **A printed "verified by checksum" does NOT mean it
+   deposit `19474316` via `upload_to_figshare_verified()`; FigShare keeps
+   same-named files rather than replacing them, so the function deletes
+   outdated copies (different md5) from the pending edit first -- no manual
+   delete step for those). **A printed "verified by checksum" does NOT mean it
    is public.** On an already-public deposit, uploads only change the
    owner's *pending edit* (https://figshare.com/account/articles/19474316);
    the public record keeps serving the old files until the owner clicks
@@ -70,8 +72,10 @@ Check which of these already happened before doing anything:
       name (`ref_aln.tar.gz` is untouched and must remain).
    3. → **Confirmation gate: the user publishes.** Tell them the pending
       files look right (names, sizes, md5s equal to the local files under
-      `_targets/user/data_raw/`) and ask them to click Publish. Do not call
-      the publish API yourself.
+      `_targets/user/data_raw/`) and ask them to click Publish. Tell them where: the article page
+      ("Private version") has no Publish button; go to figshare.com
+      **Items**, then the "..." menu next to the deposit, then **Publish**.
+      Do not call the publish API yourself.
    4. Verify the *public* record afterwards: unauthenticated
       `GET https://api.figshare.com/v2/articles/19474316` shows a bumped
       `version`, and the downloaded `README.genbank` names the new GenBank

@@ -11171,6 +11171,66 @@ delete_incomplete_figshare_file <- function(filename, deposit_id) {
   invisible(NULL)
 }
 
+#' Delete finished same-named files on FigShare whose md5 differs from local
+#'
+#' FigShare does not replace a file when another with the same name is
+#' uploaded: it keeps both. `figshare_file_md5()` then sees the first
+#' (previous release's) copy and verification fails. Remove such outdated
+#' copies before uploading. Only affects the deposit's pending edit; the
+#' public record is unchanged until the owner publishes. Files whose md5
+#' already matches are left alone.
+#'
+#' @param filename File name (basename).
+#' @param deposit_id Deposit ID; should be an integer.
+#' @param local_md5 md5 of the local file about to be uploaded.
+delete_outdated_figshare_files <- function(filename, deposit_id, local_md5) {
+  files <- figshare_deposit_files(deposit_id)
+  outdated <- Filter(
+    function(f) {
+      f$name == filename && f$status == "available" &&
+        !identical(f$computed_md5, local_md5)
+    },
+    files
+  )
+  for (f in outdated) figshare_delete_file(f$id, deposit_id)
+  invisible(NULL)
+}
+
+#' Delete extra identical copies of a file on FigShare, keeping the first
+#'
+#' Chunked uploads that are retried can leave several same-named files with
+#' identical md5s in the pending edit. Keep one, delete the rest. Only
+#' finished files whose md5 equals `local_md5` are considered.
+#'
+#' @param filename File name (basename).
+#' @param deposit_id Deposit ID; should be an integer.
+#' @param local_md5 md5 of the local file.
+delete_duplicate_figshare_files <- function(filename, deposit_id, local_md5) {
+  files <- figshare_deposit_files(deposit_id)
+  same <- Filter(
+    function(f) {
+      f$name == filename && f$status == "available" &&
+        identical(f$computed_md5, local_md5)
+    },
+    files
+  )
+  for (f in same[-1]) figshare_delete_file(f$id, deposit_id)
+  invisible(NULL)
+}
+
+#' Delete one file (by ID) from a FigShare deposit's pending edit
+figshare_delete_file <- function(file_id, deposit_id) {
+  httr2::request(glue::glue(
+    "https://api.figshare.com/v2/account/articles/{deposit_id}/files/{file_id}"
+  )) |>
+    httr2::req_method("DELETE") |>
+    httr2::req_headers(
+      Authorization = paste("token", Sys.getenv("FIGSHARE_TOKEN"))
+    ) |>
+    httr2::req_perform()
+  invisible(NULL)
+}
+
 #' md5 checksum of a *finished* file on FigShare, or NA if absent
 #'
 #' @param filename File name to check (basename, not full path)
@@ -11207,10 +11267,12 @@ upload_to_figshare_verified <- function(path, deposit_id, max_tries = 3) {
 
   for (attempt in seq_len(max_tries)) {
     delete_incomplete_figshare_file(filename, deposit_id)
+    delete_outdated_figshare_files(filename, deposit_id, local_md5)
     try(figshare_upload_file_chunked(path, deposit_id), silent = TRUE)
 
     remote_md5 <- figshare_file_md5(filename, deposit_id)
     if (identical(remote_md5, local_md5)) {
+      delete_duplicate_figshare_files(filename, deposit_id, local_md5)
       message(filename, ": uploaded and verified (md5 match)")
       return(invisible(TRUE))
     }

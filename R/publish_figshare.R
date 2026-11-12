@@ -6,8 +6,11 @@
 # download + FigShare web UI upload/delete dance in docs/updating.md
 # steps 5-7.
 #
-# Uses upload_to_figshare_verified() (R/functions.R), which already
-# overwrites, so there is no separate "delete old file" step. It wraps
+# Uses upload_to_figshare_verified() (R/functions.R). FigShare does NOT
+# replace a same-named file (it keeps both), so that function first deletes
+# outdated same-named files from the pending edit and any identical duplicates
+# left by retried uploads; there is no separate
+# "delete old file" step. It wraps
 # upload_to_figshare() with checksum verification and retry: a broken pipe
 # on a large upload leaves a stale partial file on FigShare that blocks a
 # clean retry (cleaned up automatically), and a successful upload can print
