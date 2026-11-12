@@ -10412,7 +10412,7 @@ define_manual_spanning_tips <- function(data_set = c("this_study", "ts2016")) {
       "Cyathea_epaleata"               ,
       "Ophioglossum"                   ,
       "stem"                           ,
-      "Ophioderma_pendula"             ,
+      "Ophioderma_pendulum"            ,
       "Ophioglossum_parvifolium"
     ),
     "ts2016" = tribble(
