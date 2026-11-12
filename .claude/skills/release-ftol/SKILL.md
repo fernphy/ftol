@@ -159,14 +159,12 @@ downstream `ftolr` install.
 **14. `ftol_vis`.** `cd ftol_vis && Rscript update_ftolr.R` — `renv::install`
 + `tar_make()`. Purely local, safe to run unattended.
 
-**15. `ftol_shiny`.** `cd ftol_shiny && Rscript update_ftolr.R` —
-`renv::install`, snapshot, commit, smoke-test via `shiny::runApp()`. Purely
-local up through the smoke test.
-
-→ **Confirmation gate** before `rsconnect::deployApp('ftol_explorer')` (the
-script prints this command rather than running it) — goes live publicly.
-Needs `rsconnect` installed in `ftol_shiny`'s renv first if it isn't
-already.
+**15. (retired)** The Shiny explorer (`ftol_shiny`) was replaced by the static
+`explorer.qmd` page in `fernphy.github.io`; its data is built from `ftolr` at
+site render time (step 16), so there is no separate deploy. After the site
+push, check that `explorer.html` shows the new version ("FTOL v<new>").
+Also set `ppg_ver` at the top of `explorer.qmd` to the PPG version the run used
+(`load_ppg(ver = ...)` in `_targets.R`); ftolr doesn't record it.
 
 **16. `fernphy.github.io`.** `cd fernphy.github.io && Rscript update_ftolr.R`
 — freezes the outgoing "Current" version into `downloads.Rmd`'s "Past
