@@ -248,6 +248,34 @@ so the pipeline's `_targets` is at `..`. Each bit us once:
   `gh release create` calls even with an allow rule -- the user runs them,
   or approves the prompt.
 
+### More pitfalls found in the v1.10.0 release
+
+- **`git fetch --tags` in `ftol_data` right after creating its release** (before
+  `ftolr/update_data_ver.R`): the script reads `git describe --tags`, and without
+  the new tag it silently writes the *old* version (`ftol = "1.9.0"`) and
+  re-imports the old data ("no changes to commit"). If it happens, `git reset
+  --hard HEAD~1` the script's unpushed commit and rerun.
+- **`ftol_vis` can skip its rebuild**: after `renv::install`, targets may not
+  notice the new ftolr (outputs keep last release's date and tip count). Compare
+  `ft_tree(drop_og = TRUE)` tip count with `ftol_tree.tree`; if stale, run
+  `targets::tar_destroy("meta", ask = FALSE)` then `tar_make()`.
+- **`renv.lock` in each sibling repo**: patch only the `ftolr` `Version`,
+  `RemoteSha` and `Hash` (snapshot to a temp lockfile and compare; `ftol_shiny`
+  has the same three lines). Verify the result parses as JSON.
+- **GitHub PAT in `~/.Renviron`**: a stale `GITHUB_PAT` makes `renv::install`
+  of a GitHub package fail with a 401, even for public repos. Test it with
+  `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: token $PAT"
+  https://api.github.com/user` (200 = fine). Workaround for one run:
+  `R_ENVIRON_USER=/dev/null Rscript ...`.
+- **Monitors:** use `tail -n 0 -F` (not plain `tail -F`) with a glob, otherwise
+  old logs matching the glob replay their last lines as false events.
+- **Publishing FigShare**: the pending edit is published from figshare.com
+  **Items** -> "..." menu -> Publish (the article page has no Publish button).
+  `ref_aln.tar.gz` differing in md5 from the public copy is only tar uid
+  metadata; contents can be compared with `diff -r`.
+- **Don't batch** a commit/push together with a gated public command in one
+  Bash call: the classifier blocks the whole call and nothing runs.
+
 ## Working agreements that applied to this release
 
 - **Commits only on request** (org policy in `/etc/claude-code/CLAUDE.md`),
